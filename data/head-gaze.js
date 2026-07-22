@@ -41,7 +41,7 @@
     o('none', '指定なし', '', ''),
     o('neutral', '無表情', 'neutral expression', 'The expression is neutral.'),
     o('soft_smile', 'やわらかい微笑み', 'a soft gentle smile', 'The character wears a soft, gentle smile.'),
-    o('playful', 'playful', 'playful expression, no comic effect marks, no manga symbols, no floating marks, no text', 'The character wears a playful expression. No comic effect marks, manga symbols, floating marks, or text appear.'),
+    o('playful', 'playful', 'playful expression', 'The character wears a playful expression.'),
     o('shy', '照れる', 'a shy expression, slightly embarrassed', 'The character looks shy and slightly embarrassed.'),
     o('embarrassed', '恥ずかしがる', 'an embarrassed expression', 'The character wears an embarrassed expression.'),
     o('crying', '泣く', 'crying', 'The character is crying.'),

@@ -84,6 +84,13 @@
     o('none', '指定なし', '', ''),
     o('rear_three_quarter', '背面斜め', 'rear three-quarter view, seen from behind', 'The figure is shown from a rear three-quarter angle.'),
     o('back_and_shoulders', '背中と肩を見せる', 'back-facing pose with the back and shoulders clearly visible', 'The figure faces away, keeping the back and shoulders clearly visible.'),
-    o('hips_away', '腰を奥へ向ける', 'hips angled away from the camera, seen from behind', 'The hips remain angled away from the camera while the upper body turns only slightly.')
+    o('hips_away', '腰を奥へ向ける', 'hips angled away from the camera, seen from behind', 'The hips remain angled away from the camera while the upper body turns only slightly.'),
+    o('back_and_waist', '背中と腰を見せる', 'back-focused pose with the back and waist clearly visible, torso kept facing away', 'The back and waist remain clearly visible while the torso stays facing away.'),
+    o('full_back_line', '背中のラインを主役にする', 'full back line clearly visible, back-focused pose, torso remains facing away', 'The full line of the back remains visible and becomes the focus while the torso faces away.'),
+    o('rear_pose_emphasis', '後ろ姿を強調する', 'rear pose emphasized, seen from behind, torso kept facing away', 'The pose is emphasized from behind while the torso remains facing away.')
+  ];
+  D.backDesigns = [
+    o('none', '指定なし', '', ''),
+    o('open_back_outfit', '背中の開いた服', 'open-back outfit, backless design treated as clothing design, fabric following the back line', 'The character wears an intact open-back outfit; the exposed back is part of the clothing design, with fabric following the back line.')
   ];
 })(window);

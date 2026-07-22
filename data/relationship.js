@@ -38,6 +38,7 @@
     lying_down: '寝転び',
     affection_gesture: '愛情ジェスチャー',
     back_view: '背面・振り返り',
+    back_focused: '背中主役',
     face_covering: '顔隠し'
   };
 
@@ -2319,6 +2320,41 @@ preset(
   'ベッドに仰向けで横たわり、照れたように片手で口元を隠しながらViewerを見る構図。',
   { pose: { posture: 'reclining', motion: { state: 'static' }, support: { type: 'bed_surface' }, lyingOrientation: 'supine', supportPose: 'none', rearViewEmphasis: 'none', weight: null, lowerBody: { stance: null, legRelation: 'parallel', knee: 'one_bent' }, pelvis: { orientation: 'camera', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'hunched' }, arms: { mode: 'separate', primary: { action: 'hand_covering_mouth' }, secondary: { action: 'relaxed_at_side' }, combined: null }, head: { yaw: 'toward_camera', pitch: 'raised', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'upward', eyes: 'open' }, expression: 'shy' }, interaction: { target: 'viewer', distance: 'close', approach: 'none' }, camera: { shotSize: 'upper_body', elevation: 'high', roll: 'level' }, composition: { subjectPlacement: 'left_of_center', negativeSpace: 'right', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' }, output: { includeSolo: true } },
   { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance', 'upward_gaze'], moodTags: ['hesitant', 'sweet'], sceneTags: ['bed', 'lying_down', 'face_covering'] }
+),
+preset(
+  'relationship_bed_hands_and_knees_look_back',
+  'ベッドで四つん這い、こちらを振り返る恋人',
+  'ベッド上で手のひらと両膝をつき、胴体は奥向きのまま顔だけViewerへ振り返る背中主役の構図。',
+  { pose: { posture: 'kneeling', motion: { state: 'static' }, support: { type: 'bed_surface' }, lyingOrientation: 'none', supportPose: 'hands_and_knees', rearViewEmphasis: 'back_and_waist', weight: 'lowered', lowerBody: { stance: null, legRelation: 'kneeling_both', knee: 'both_bent' }, pelvis: { orientation: 'away_camera', shift: 'slight' }, torso: { relationToPelvis: 'aligned', lean: 'forward' }, shoulders: { emphasis: 'one_forward' }, arms: { mode: 'combined', primary: { action: null }, secondary: { action: null }, combined: 'supporting_upper_body' }, head: { yaw: 'over_shoulder', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'over_shoulder', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'close', approach: 'none' }, camera: { shotSize: 'knee_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'left_of_center', negativeSpace: 'right', crop: 'none', foreground: 'soft', depth: 'layered', rhythm: 'subtle_dynamic' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['sweet', 'sensual'], sceneTags: ['back_focused', 'bed', 'back_view'] }
+),
+preset(
+  'relationship_bed_kneeling_upright_look_back',
+  'ベッドで膝立ちのまま振り返る恋人',
+  'ベッド上で膝立ちを保ち、背中から腰を見せながら顔だけViewerへ戻す構図。',
+  { pose: { posture: 'kneeling', motion: { state: 'static' }, support: { type: 'bed_surface' }, lyingOrientation: 'none', supportPose: 'kneeling_upright', rearViewEmphasis: 'full_back_line', weight: 'lowered', lowerBody: { stance: null, legRelation: 'kneeling_both', knee: 'both_bent' }, pelvis: { orientation: 'away_camera', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'drawn_back' }, arms: { mode: 'separate', primary: { action: 'resting_on_thigh' }, secondary: { action: 'resting_on_thigh' }, combined: null }, head: { yaw: 'over_shoulder', pitch: 'neutral', tilt: 'level' }, gaze: { target: 'viewer', direction: 'over_shoulder', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'close', approach: 'none' }, camera: { shotSize: 'knee_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'right_of_center', negativeSpace: 'left', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['calm_intimacy', 'sensual'], sceneTags: ['back_focused', 'bed', 'back_view'] }
+),
+preset(
+  'relationship_bed_forward_lean_back_turn',
+  'ベッドで前傾し、背中を見せて振り返る恋人',
+  'ベッド上で前傾して身体を支え、背中のラインを残したまま顔だけViewerへ振り返る構図。',
+  { pose: { posture: 'kneeling', motion: { state: 'static' }, support: { type: 'bed_surface' }, lyingOrientation: 'none', supportPose: 'forward_lean_support', rearViewEmphasis: 'full_back_line', weight: 'lowered', lowerBody: { stance: null, legRelation: 'kneeling_both', knee: 'both_bent' }, pelvis: { orientation: 'away_camera', shift: 'slight' }, torso: { relationToPelvis: 'aligned', lean: 'forward' }, shoulders: { emphasis: 'relaxed' }, arms: { mode: 'combined', primary: { action: null }, secondary: { action: null }, combined: 'supporting_upper_body' }, head: { yaw: 'over_shoulder', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'over_shoulder', eyes: 'open' }, expression: 'shy' }, interaction: { target: 'viewer', distance: 'close', approach: 'none' }, camera: { shotSize: 'waist_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'left_of_center', negativeSpace: 'right', crop: 'none', foreground: 'soft', depth: 'strong', rhythm: 'subtle_dynamic' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['sweet', 'hesitant'], sceneTags: ['back_focused', 'bed', 'back_view'] }
+),
+preset(
+  'relationship_furniture_hands_support_turn',
+  'ソファや家具に手をついて振り返る恋人',
+  '家具にもたれず両手で身体を支え、前傾と背面を保ったままViewerを振り返る日常寄りの構図。',
+  { pose: { posture: 'standing', motion: { state: 'static' }, support: { type: 'leaning_surface' }, lyingOrientation: 'none', supportPose: 'leaning_forward_on_hands', rearViewEmphasis: 'rear_pose_emphasis', weight: 'forward', lowerBody: { stance: 'shoulder_width', legRelation: 'parallel', knee: 'one_bent' }, pelvis: { orientation: 'away_camera', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'forward' }, shoulders: { emphasis: 'one_forward' }, arms: { mode: 'combined', primary: { action: null }, secondary: { action: null }, combined: 'supporting_upper_body' }, head: { yaw: 'over_shoulder', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'over_shoulder', eyes: 'open' }, expression: 'playful' }, interaction: { target: 'viewer', distance: 'normal', approach: 'none' }, camera: { shotSize: 'knee_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'right_of_center', negativeSpace: 'left', crop: 'none', foreground: 'none', depth: 'layered', rhythm: 'subtle_dynamic' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective'], moodTags: ['everyday', 'playful'], sceneTags: ['back_focused', 'sofa', 'back_view'] }
+),
+preset(
+  'relationship_open_back_outfit_turn',
+  '背中の開いた服で振り返る恋人',
+  '衣装を保ったまま背中の開いたデザインと背面装飾を主役にし、顔だけViewerへ振り返る構図。',
+  { pose: { posture: 'standing', motion: { state: 'static' }, support: { type: 'none' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'full_back_line', weight: 'even', lowerBody: { stance: 'relaxed', legRelation: 'parallel', knee: 'straight' }, pelvis: { orientation: 'away_camera', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'drawn_back' }, arms: { mode: 'separate', primary: { action: 'relaxed_at_side' }, secondary: { action: 'relaxed_at_side' }, combined: null }, head: { yaw: 'over_shoulder', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'over_shoulder', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'normal', approach: 'none' }, camera: { shotSize: 'waist_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'centered', negativeSpace: 'around', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' }, output: { includeSolo: true, preserveClothing: true, backDesign: 'open_back_outfit' } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective'], moodTags: ['calm_intimacy', 'sensual'], sceneTags: ['back_focused', 'back_view'] }
 )
   ];
 

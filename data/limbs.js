@@ -31,7 +31,7 @@
     arm('hands_clasped', '両手を組む', 'hands clasped together', 'Both hands are clasped together.', 2),
     arm('hands_behind_back', '両手を背中側で組む', 'both hands held behind the back', 'Both hands are held together behind the back.', 2, ['standing', 'walking']),
     arm('hands_on_lap', '両手を膝上に置く', 'both hands resting on the lap', 'Both hands rest naturally on the lap.', 2, ['sitting'], ['arms', 'hands', 'torso']),
-    arm('supporting_upper_body', '両腕で上体を支える', 'both arms supporting the upper body', 'Both arms support the upper body.', 2, ['reclining'], ['arms', 'hands', 'torso']),
+    arm('supporting_upper_body', '両腕で上体を支える', 'both arms supporting the upper body', 'Both arms support the upper body.', 2, ['standing', 'sitting', 'kneeling', 'reclining'], ['arms', 'hands', 'torso']),
     arm('heart_hands_near_face', '顔の近くで両手ハート', 'forming a heart shape with both hands near the face', 'Both hands form a heart shape near the face.', 2, null, ['hands_near_face']),
     arm('arms_open_toward_viewer', '相手へ両腕を広げる', 'opening both arms toward the viewer', 'Both arms open toward the viewer.', 2, ['standing', 'sitting'], ['arms', 'hands', 'torso'])
   ];
