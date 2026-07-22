@@ -99,6 +99,18 @@
       { labelJa: 'ベッド上にする', patch: { 'pose.support.type': 'bed_surface' } }
     ]));
     if (s.pose.support.type === 'bed_surface' && s.pose.posture === 'reclining' && s.pose.lyingOrientation === 'none') out.push(issue('bed_orientation_missing', 'info', 'support', 'ベッド上の寝る向きが未設定です', '仰向け・横向き・うつ伏せのいずれかを選ぶと構図が明確になります。', ['pose.support.type', 'pose.lyingOrientation'], []));
+    if (s.pose.supportPose === 'hands_and_knees' && s.pose.posture !== 'kneeling') out.push(issue('hands_and_knees_posture_mismatch', 'warning', 'support', '四点支持と基本姿勢が揃っていません', '手のひらと両膝で支える場合は、基本姿勢も膝をつく状態にすると寝姿や立ち姿へ崩れにくくなります。', ['pose.supportPose', 'pose.posture'], [
+      { labelJa: '基本姿勢を膝つきにする', patch: { 'pose.posture': 'kneeling', 'pose.lowerBody.legRelation': 'kneeling_both', 'pose.lowerBody.knee': 'both_bent' } }
+    ]));
+    if (s.pose.supportPose === 'kneeling_upright' && s.pose.posture !== 'kneeling') out.push(issue('kneeling_upright_posture_mismatch', 'warning', 'support', '膝立ちと基本姿勢が揃っていません', '膝立ちを維持するには、基本姿勢も両膝をつく状態にしてください。', ['pose.supportPose', 'pose.posture'], [
+      { labelJa: '基本姿勢を膝つきにする', patch: { 'pose.posture': 'kneeling', 'pose.lowerBody.legRelation': 'kneeling_both', 'pose.lowerBody.knee': 'both_bent' } }
+    ]));
+    if (['forward_lean_support', 'leaning_forward_on_hands'].indexOf(s.pose.supportPose) >= 0 && s.pose.torso.lean !== 'forward') out.push(issue('forward_support_lean_mismatch', 'info', 'support', '前傾支持と上半身の傾きが揃っていません', '上半身を前へ傾けると、支持姿勢が普通の立ち姿や座り姿へ戻りにくくなります。', ['pose.supportPose', 'pose.torso.lean'], [
+      { labelJa: '上半身を前へ傾ける', patch: { 'pose.torso.lean': 'forward' } }
+    ]));
+    if (s.pose.supportPose === 'hands_and_knees' && s.pose.lyingOrientation !== 'none') out.push(issue('hands_and_knees_lying_mismatch', 'info', 'support', '四点支持に寝る向きが重なっています', 'うつ伏せなどの寝姿指定を外すと、身体を面へ寝かせず四点で支える構造が明確になります。', ['pose.supportPose', 'pose.lyingOrientation'], [
+      { labelJa: '寝る向きを指定なしにする', patch: { 'pose.lyingOrientation': 'none' } }
+    ]));
     var gestureIds = ['heart_hands_near_face', 'finger_heart_near_face', 'reaching_forward_soft', 'pinching_toward_viewer'];
     var gestureSet = gestureIds.indexOf(s.pose.arms.combined) >= 0 || gestureIds.indexOf(s.pose.arms.primary.action) >= 0 || gestureIds.indexOf(s.pose.arms.secondary.action) >= 0;
     if (gestureSet && ['full_body', 'wide', 'wide_shot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('affection_gesture_too_wide', 'warning', 'visibility', '顔まわりの仕草には画角が広すぎます', 'アップまたは半身にすると、手と表情の関係が伝わりやすくなります。', ['pose.arms', 'camera.shotSize'], [
@@ -109,6 +121,9 @@
     ]));
     if (s.pose.rearViewEmphasis !== 'none' && s.pose.head.yaw === 'toward_camera') out.push(issue('rear_view_head_mismatch', 'info', 'head', '背面構図で顔が正面を向いています', '背中を残したまま顔を見せる場合は「肩越しに振り返る」がおすすめです。', ['pose.rearViewEmphasis', 'pose.head.yaw', 'pose.gaze'], [
       { labelJa: '肩越しに振り返る', patch: { 'pose.head.yaw': 'over_shoulder', 'pose.gaze.target': 'viewer', 'pose.gaze.direction': 'over_shoulder' } }
+    ]));
+    if (['back_and_waist', 'full_back_line', 'rear_pose_emphasis'].indexOf(s.pose.rearViewEmphasis) >= 0 && ['toward_camera', 'counter'].indexOf(s.pose.torso.relationToPelvis) >= 0) out.push(issue('rear_view_torso_mismatch', 'warning', 'bodyFlow', '背中主役なのに胴体が正面へ戻りやすい指定です', '顔だけを振り返らせ、胴体と骨盤は奥向きのまま揃えると背中のラインを維持できます。', ['pose.rearViewEmphasis', 'pose.torso.relationToPelvis'], [
+      { labelJa: '胴体を骨盤へ揃える', patch: { 'pose.torso.relationToPelvis': 'aligned', 'pose.head.yaw': 'over_shoulder' } }
     ]));
     if (s.pose.rearViewEmphasis === 'back_and_shoulders' && ['face_close_up', 'headshot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('rear_view_shot_too_close', 'info', 'visibility', '背中と肩を見せるには画角が近すぎます', '上半身まで写すと、背中と肩を残した構図が安定します。', ['pose.rearViewEmphasis', 'camera.shotSize'], [
       { labelJa: '上半身へ変更', patch: { 'camera.shotSize': 'upper_body' } }

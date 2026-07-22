@@ -93,10 +93,14 @@
   function renderStep1() {
     var posture = card('どんな姿勢ですか', '基本姿勢は一つだけ選びます。', chips('pose.posture', D.postures, { basicOnly: state.entryMode !== 'detail', max: 6, expandKey: 'postures' }));
     var motion = card('静止していますか', '具体的な動作状態を選びます。', chips('pose.motion.state', D.motionStates, { max: 7, expandKey: 'motion' }));
-    var showSupport = state.entryMode === 'detail' || state.pose.posture === 'reclining' || ['sofa_surface', 'bed_surface'].indexOf(state.pose.support.type) >= 0;
+    var showSupport = state.entryMode === 'detail' || state.pose.posture === 'reclining' || ['none', 'unsupported'].indexOf(state.pose.support.type) < 0 || state.pose.supportPose !== 'none';
     var support = showSupport ? card('身体の支え', 'ソファやベッドを含め、身体を受ける面を設定します。', chips('pose.support.type', D.supportTypes, { max: 8, expandKey: 'support' })) : '';
-    var lying = showSupport && (state.pose.posture === 'reclining' || state.pose.support.type === 'bed_surface') ? card('寝姿と上体の支え', '仰向け・横向き・うつ伏せと、身の起こし方を別々に調整できます。', '<div class="subsection"><h3>寝る向き</h3>' + chips('pose.lyingOrientation', D.lyingOrientations, { max: 4, expandKey: 'lyingOrientation' }) + '</div><div class="subsection"><h3>上体の支え方</h3>' + chips('pose.supportPose', D.supportPoses, { max: 3, expandKey: 'supportPose' }) + '</div>') : '';
-    main.innerHTML = heading(1) + posture + motion + support + lying;
+    var showLying = state.entryMode === 'detail' || state.pose.posture === 'reclining' || state.pose.support.type === 'bed_surface';
+    var showSupportPose = state.entryMode === 'detail' || state.pose.supportPose !== 'none' || ['kneeling', 'reclining'].indexOf(state.pose.posture) >= 0 || ['bed_surface', 'sofa_surface', 'leaning_surface'].indexOf(state.pose.support.type) >= 0;
+    var supportStructure = showLying || showSupportPose ? card('身体の支持姿勢', '寝る向きと、手・膝で身体を支える方法を別々に調整できます。',
+      (showLying ? '<div class="subsection"><h3>寝る向き</h3>' + chips('pose.lyingOrientation', D.lyingOrientations, { max: 4, expandKey: 'lyingOrientation' }) + '</div>' : '') +
+      (showSupportPose ? '<div class="subsection"><h3>身体の支え方</h3>' + chips('pose.supportPose', D.supportPoses, { max: 7, expandKey: 'supportPose' }) + '</div>' : '')) : '';
+    main.innerHTML = heading(1) + posture + motion + support + supportStructure;
   }
   function renderStep2() {
     var flows = card('まず雰囲気から', '単一選択です。選んだ内容を、具体的な身体関係へ反映します。', '<div class="chip-grid flow-style-chips">' + D.renderFlowStyleChips(state.pose.flowStyle) + '</div>');
@@ -108,7 +112,7 @@
     var showRearView = state.entryMode === 'detail' || ['away', 'away_camera'].indexOf(state.pose.pelvis.orientation) >= 0 || state.pose.head.yaw === 'over_shoulder';
     var upper = card('腰から肩への流れ', '骨盤と上半身は別々の向きとして管理します。',
       '<div class="subsection"><h3>骨盤の向き</h3>' + chips('pose.pelvis.orientation', D.pelvisOrientations, { max: 4, expandKey: 'pelvis' }) + '</div>' +
-      (showRearView ? '<div class="subsection"><h3>背面の見せ方</h3>' + chips('pose.rearViewEmphasis', D.rearViewEmphases, { max: 4, expandKey: 'rearView' }) + '</div>' : '') +
+      (showRearView ? '<div class="subsection"><h3>背面の見せ方</h3>' + chips('pose.rearViewEmphasis', D.rearViewEmphases, { max: 7, expandKey: 'rearView' }) + '</div>' : '') +
       '<div class="subsection"><h3>上半身との関係</h3>' + chips('pose.torso.relationToPelvis', D.torsoRelations, { max: 4, expandKey: 'torso' }) + '</div>' +
       '<div class="subsection"><h3>肩</h3>' + chips('pose.shoulders.emphasis', D.shoulders, { max: 6, expandKey: 'shoulders' }) + '</div>' +
       (state.entryMode === 'detail' || view.expanded.bodyDetail ? '<div class="subsection"><h3>腰のずれ</h3>' + chips('pose.pelvis.shift', D.pelvisShifts, { max: 3, expandKey: 'shift' }) + '</div><div class="subsection"><h3>上半身の傾き</h3>' + chips('pose.torso.lean', D.torsoLeans, { max: 4, expandKey: 'lean' }) + '</div>' : '<button class="detail-toggle" type="button" data-expand="bodyDetail">詳しく調整</button>'));
@@ -171,8 +175,9 @@
       ['compact', '構造化'], ['detailed', '詳細英文'], ['structure', '日本語構造']
     ].map(function (x) { return '<button class="output-tab" role="tab" type="button" data-output-tab="' + x[0] + '" aria-selected="' + (view.outputTab === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>';
     var output = card('プロンプト出力', '標準はカンマ区切りの構造化プロンプトです。', tabs + '<pre class="output-box" id="outputBox">' + esc(outputText()) + '</pre><div class="sheet-actions"><button class="btn btn--accent" data-action="copy-output"' + (!outputText() ? ' disabled' : '') + '>この出力をコピー</button><button class="btn" data-action="open-save">名前を付けて保存</button><button class="btn btn--danger" data-action="reset">リセット</button></div>');
+    var outputAssist = card('出力補助設定', '必要なときだけ加える任意の抑制語です。初期値はOFFです。', '<div class="chip-grid"><button type="button" class="chip" data-output-toggle="suppressTextSymbols" aria-pressed="' + state.output.suppressTextSymbols + '">文字・記号を抑える</button><button type="button" class="chip" data-output-toggle="preserveClothing" aria-pressed="' + state.output.preserveClothing + '">服を保持する</button></div>');
     var custom = card('自由入力', '内容を改変せず、出力の末尾へ追加します。', '<label class="field-label" for="customText">追加したい英語</label><textarea id="customText" data-custom placeholder="例: soft fabric movement">' + esc(state.output.customText) + '</textarea>');
-    main.innerHTML = heading(6) + banner + renderIssues(false) + output + custom;
+    main.innerHTML = heading(6) + banner + renderIssues(false) + output + outputAssist + custom;
   }
   function renderMeter() {
     if (view.screen === 'start') return;
@@ -269,6 +274,11 @@
     if (target.dataset.sceneFilter) { view.sceneFilter = target.dataset.sceneFilter; presetSheet(); return; }
     if (target.dataset.viewerOnly) { view.viewerOnly = !view.viewerOnly; presetSheet(); return; }
     if (target.dataset.flow) { applyFlow(target.dataset.flow); return; }
+    if (target.dataset.outputToggle) {
+      var outputPath = 'output.' + target.dataset.outputToggle, outputPatch = {};
+      outputPatch[outputPath] = !S.getPath(state, outputPath);
+      commit(S.applyPatch(state, outputPatch), rememberFocus()); return;
+    }
     if (target.dataset.outputTab) { view.outputTab = target.dataset.outputTab; render(); return; }
     if (target.dataset.resolution) {
       var found = A.check(state).filter(function (i) { return i.id === target.dataset.resolution; })[0];

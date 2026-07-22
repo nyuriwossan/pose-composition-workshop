@@ -17,6 +17,8 @@
     var arms = s.pose.arms;
     if (arms.mode === 'combined' && arms.combined) {
       var combined = selected(D.combinedArms, arms.combined);
+      var supportOwnsHands = ['hands_and_knees', 'forward_lean_support', 'leaning_forward_on_hands'].indexOf(s.pose.supportPose) >= 0;
+      if (combined && combined.id === 'supporting_upper_body' && supportOwnsHands) return { compact: compact, detailed: detailed };
       if (combined && !PCW.advisor.armHidden(combined, s.camera.shotSize)) {
         push(compact, combined.prompt.compact);
         push(detailed, combined.prompt.detailed);
@@ -53,6 +55,7 @@
       interaction: { compact: [], detailed: [], ja: [] },
       camera: { compact: [], detailed: [], ja: [] },
       composition: { compact: [], detailed: [], ja: [] },
+      outputAssist: { compact: [], detailed: [], ja: [] },
       custom: { compact: [], detailed: [], ja: [] }
     };
     var posture = selected(D.postures, s.pose.posture);
@@ -96,6 +99,11 @@
         push(b.bodyFlow.compact, rearView.compact);
         push(b.bodyFlow.detailed, rearView.detailed);
         push(b.bodyFlow.ja, '背面の見せ方：' + rearView.labelJa);
+        if (['back_and_waist', 'full_back_line', 'rear_pose_emphasis'].indexOf(rearView.id) >= 0 && s.pose.head.yaw === 'over_shoulder') {
+          push(b.bodyFlow.compact, 'only the head turned toward the viewer, no front-facing torso, no full-body twist toward the camera');
+          push(b.bodyFlow.detailed, 'Only the head turns toward the viewer; the torso and hips remain facing away. Do not rotate the full torso toward the camera.');
+          push(b.bodyFlow.ja, '背面拘束：顔だけ振り返り、胴体と骨盤は奥向きを維持');
+        }
       }
       [[D.pelvisOrientations, s.pose.pelvis.orientation, '骨盤'], [D.pelvisShifts, s.pose.pelvis.shift, '腰'], [D.torsoRelations, s.pose.torso.relationToPelvis, '上半身'], [D.torsoLeans, s.pose.torso.lean, '傾き'], [D.shoulders, s.pose.shoulders.emphasis, '肩']].forEach(function (row) {
         var item = selected(row[0], row[1]);
@@ -153,6 +161,22 @@
       var item = selected(row[0], row[1]);
       if (item) { push(b.composition.compact, item.compact); push(b.composition.detailed, item.detailed); push(b.composition.ja, row[2] + '：' + item.labelJa); }
     });
+    var backDesign = selected(D.backDesigns, s.output.backDesign);
+    if (backDesign && backDesign.id !== 'none') {
+      push(b.outputAssist.compact, backDesign.compact);
+      push(b.outputAssist.detailed, backDesign.detailed);
+      push(b.outputAssist.ja, '背面衣装：' + backDesign.labelJa);
+    }
+    if (s.output.suppressTextSymbols) {
+      push(b.outputAssist.compact, 'no text, no letters, no Japanese text, no speech bubbles, no comic symbols, no captions, no sound effect symbols');
+      push(b.outputAssist.detailed, 'Do not include text, letters, Japanese text, speech bubbles, comic symbols, captions, or sound effect symbols.');
+      push(b.outputAssist.ja, '文字・記号：抑制');
+    }
+    if (s.output.preserveClothing) {
+      push(b.outputAssist.compact, 'clothing intact, clothes remain on, no bare torso, no shirt removal');
+      push(b.outputAssist.detailed, 'Keep the clothing intact and on the body; do not show a bare torso or shirt removal.');
+      push(b.outputAssist.ja, '服装：保持');
+    }
     if (s.output.customText) {
       b.custom.compact.push(s.output.customText);
       b.custom.detailed.push(s.output.customText);
@@ -177,7 +201,7 @@
     return groups.join(' ').replace(/\.\.+/g, '.').trim();
   }
   function structureJa(raw) {
-    var b = blocks(raw), names = { subjectPosture: '姿勢', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', custom: '自由入力' };
+    var b = blocks(raw), names = { subjectPosture: '姿勢', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', outputAssist: '出力補助', custom: '自由入力' };
     var lines = [];
     Object.keys(b).forEach(function (key) {
       if (b[key].ja.length) lines.push('【' + names[key] + '】\n' + b[key].ja.join('\n'));

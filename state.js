@@ -55,7 +55,7 @@
       camera: { shotSize: null, elevation: 'eye_level', roll: 'level' },
       interaction: { target: 'none', distance: 'normal', approach: 'none' },
       composition: { subjectPlacement: 'centered', negativeSpace: 'none', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' },
-      output: { includeSolo: true, customText: '' },
+      output: { includeSolo: true, suppressTextSymbols: false, preserveClothing: false, backDesign: 'none', customText: '' },
       meta: { ignoredWarnings: [], updatedAt: null }
     };
   }
@@ -112,6 +112,9 @@
     s.composition.depth = known(D.depths, s.composition.depth, 'separated');
     s.composition.rhythm = known(D.rhythms, s.composition.rhythm, 'stable');
     s.output.includeSolo = s.output.includeSolo !== false;
+    s.output.suppressTextSymbols = s.output.suppressTextSymbols === true;
+    s.output.preserveClothing = s.output.preserveClothing === true;
+    s.output.backDesign = known(D.backDesigns, s.output.backDesign, 'none');
     s.output.customText = typeof s.output.customText === 'string' ? s.output.customText : '';
     s.meta.ignoredWarnings = Array.isArray(s.meta.ignoredWarnings) ? s.meta.ignoredWarnings.filter(function (x) { return typeof x === 'string'; }).slice(0, 50) : [];
     s.meta.updatedAt = typeof s.meta.updatedAt === 'string' ? s.meta.updatedAt : null;
