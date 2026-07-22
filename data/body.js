@@ -37,7 +37,8 @@
     o('camera', '正面', 'pelvis facing the camera', 'The pelvis faces the camera.'),
     o('three_quarter', '斜め', 'pelvis angled three-quarters to the camera', 'The pelvis is angled three-quarters to the camera.'),
     o('side', '横向き', 'pelvis turned side-on to the camera', 'The pelvis is turned side-on to the camera.'),
-    o('away', '背中向き', 'pelvis turned away from the camera', 'The pelvis is turned away from the camera.')
+    o('away', '背中向き', 'pelvis turned away from the camera', 'The pelvis is turned away from the camera.'),
+    o('away_camera', '背中向き', 'pelvis turned away from the camera', 'The pelvis is turned away from the camera.')
   ];
   D.pelvisShifts = [
     o('none', 'ずらさない', '', ''),
@@ -62,6 +63,8 @@
     o('one_lowered', '片肩を下げる', 'one shoulder lowered', 'One shoulder sits lower than the other.'),
     o('drawn_back', '肩を引く', 'shoulders drawn back', 'The shoulders are drawn back.'),
     o('relaxed', '肩の力を抜く', 'shoulders relaxed', 'The shoulders remain relaxed.'),
-    o('hunched', '少し肩を丸める', 'shoulders slightly hunched', 'The shoulders hunch slightly.')
+    o('hunched', '少し肩を丸める', 'shoulders slightly hunched', 'The shoulders hunch slightly.'),
+    o('raised', '肩を少し上げる', 'shoulders slightly raised', 'The shoulders lift slightly.'),
+    o('both_open', '両肩を開く', 'shoulders open toward the viewer', 'Both shoulders open toward the viewer.')
   ];
 })(window);

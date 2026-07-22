@@ -25,12 +25,35 @@
       return counts;
     }, { all: 0, up: 0, half: 0, full: 0, other: 0 });
   }
-  function filterPresets(presets, group, viewerOnly) {
+  function getPresetCollectionCounts(presets) {
+    return (presets || []).reduce(function (counts, preset) {
+      var collection = preset.meta && preset.meta.collection || 'basic';
+      counts.all += 1;
+      if (counts[collection] != null) counts[collection] += 1;
+      return counts;
+    }, { all: 0, basic: 0, relationship: 0 });
+  }
+  function filterPresets(presets, group, options) {
+    if (typeof options === 'boolean') options = { viewerOnly: options };
+    options = options || {};
     return (presets || []).filter(function (preset) {
       var groupMatch = !group || group === 'all' || getPresetFramingGroup(preset) === group;
-      var tags = preset.meta && preset.meta.audienceTags || [];
-      return groupMatch && (!viewerOnly || tags.indexOf('viewer_perspective') >= 0);
+      var meta = preset.meta || {};
+      var tags = meta.audienceTags || [];
+      var collectionMatch = !options.collection || options.collection === 'all' || meta.collection === options.collection;
+      var moodMatch = !options.mood || options.mood === 'all' || (meta.moodTags || []).indexOf(options.mood) >= 0;
+      var sceneMatch = !options.scene || options.scene === 'all' || (meta.sceneTags || []).indexOf(options.scene) >= 0;
+      return groupMatch && collectionMatch && moodMatch && sceneMatch && (!options.viewerOnly || tags.indexOf('viewer_perspective') >= 0);
     });
+  }
+  function renderPresetCollectionFilters(active, presets) {
+    var counts = getPresetCollectionCounts(presets);
+    return [['all', 'すべて'], ['basic', '基本ポーズ'], ['relationship', '恋人・親しい相手']].map(function (row) {
+      return '<button type="button" class="collection-filter" data-collection-filter="' + row[0] + '" aria-pressed="' + (active === row[0]) + '">' + row[1] + ' <b>' + counts[row[0]] + '</b></button>';
+    }).join('');
+  }
+  function normalizeRelationshipPresetFilters(collection, mood, scene) {
+    return collection === 'relationship' ? { mood: mood || 'all', scene: scene || 'all' } : { mood: 'all', scene: 'all' };
   }
   function renderPresetFramingFilters(active, presets) {
     var counts = getPresetFramingCounts(presets);
@@ -47,6 +70,9 @@
   D.presetFramingGroups = groups;
   D.getPresetFramingGroup = getPresetFramingGroup;
   D.getPresetFramingCounts = getPresetFramingCounts;
+  D.getPresetCollectionCounts = getPresetCollectionCounts;
   D.filterPresets = filterPresets;
+  D.renderPresetCollectionFilters = renderPresetCollectionFilters;
+  D.normalizeRelationshipPresetFilters = normalizeRelationshipPresetFilters;
   D.renderPresetFramingFilters = renderPresetFramingFilters;
 })(window);

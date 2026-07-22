@@ -25,10 +25,24 @@
   ];
 
   D.supportTypes = [
+    { id: 'none', labelJa: '支えなし', compact: '', detailed: '' },
     { id: 'unsupported', labelJa: '支えなし', compact: '', detailed: '' },
     { id: 'supported_behind', labelJa: '後ろから支えられる', compact: 'supported from behind', detailed: 'The body is supported from behind.' },
     { id: 'supported_one_arm', labelJa: '片腕で支える', compact: 'supported by one arm', detailed: 'One arm supports the body.' },
     { id: 'leaning_surface', labelJa: '面にもたれる', compact: 'leaning on a surface', detailed: 'The body leans against a surface.' },
-    { id: 'seated_surface', labelJa: '面に座る', compact: 'seated on a surface', detailed: 'The figure is seated on a surface.' }
+    { id: 'seated_surface', labelJa: '面に座る', compact: 'seated on a surface', detailed: 'The figure is seated on a surface.' },
+    { id: 'sofa_surface', labelJa: 'ソファに座る', compact: 'seated on a sofa', detailed: 'The figure is seated on a sofa.' },
+    { id: 'bed_surface', labelJa: 'ベッド上', compact: 'on a bed', detailed: 'The figure is positioned on a bed.' }
+  ];
+  D.lyingOrientations = [
+    { id: 'none', labelJa: '指定なし', compact: '', detailed: '' },
+    { id: 'supine', labelJa: '仰向け', compact: 'lying supine', detailed: 'The figure lies on the back.' },
+    { id: 'side_lying', labelJa: '横向き', compact: 'lying on the side', detailed: 'The figure lies on the side.' },
+    { id: 'prone', labelJa: 'うつ伏せ', compact: 'lying prone', detailed: 'The figure lies on the stomach.' }
+  ];
+  D.supportPoses = [
+    { id: 'none', labelJa: '指定なし', compact: '', detailed: '' },
+    { id: 'propped_up', labelJa: '身を起こして支える', compact: 'propped up on the bed', detailed: 'The upper body is propped up on the bed.' },
+    { id: 'leaning_on_elbows', labelJa: '肘で上体を支える', compact: 'resting on the elbows', detailed: 'The upper body rests on the elbows.' }
   ];
 })(window);
