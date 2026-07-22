@@ -111,6 +111,12 @@
     if (s.pose.supportPose === 'hands_and_knees' && s.pose.lyingOrientation !== 'none') out.push(issue('hands_and_knees_lying_mismatch', 'info', 'support', '四点支持に寝る向きが重なっています', 'うつ伏せなどの寝姿指定を外すと、身体を面へ寝かせず四点で支える構造が明確になります。', ['pose.supportPose', 'pose.lyingOrientation'], [
       { labelJa: '寝る向きを指定なしにする', patch: { 'pose.lyingOrientation': 'none' } }
     ]));
+    if (s.pose.supportPose === 'hands_and_knees' && ['full_body', 'wide', 'wide_shot'].indexOf(s.camera.shotSize) < 0) out.push(issue('hands_and_knees_shot_too_close', 'info', 'visibility', '四点支持には撮影範囲が近すぎます', '四つん這い構図は、全身表示にして両手・両膝・骨盤の支持関係を見せると安定しやすくなります。出力では全身へ補正されます。', ['pose.supportPose', 'camera.shotSize'], [
+      { labelJa: '全身へ変更', patch: { 'camera.shotSize': 'full_body' } }
+    ]));
+    if (s.pose.supportPose === 'hands_and_knees' && s.output.preserveClothing && !s.output.supportOutfitAssist && s.output.backDesign === 'none') out.push(issue('hands_and_knees_outfit_tip', 'info', 'output', '四点支持の服装補助がOFFです', '服保持を安定させたい場合は、Tシャツとショートパンツまたは細身パンツの具体指定が有効です。', ['pose.supportPose', 'output.preserveClothing', 'output.supportOutfitAssist'], [
+      { labelJa: '四点支持の服装補助をON', patch: { 'output.supportOutfitAssist': true } }
+    ]));
     var gestureIds = ['heart_hands_near_face', 'finger_heart_near_face', 'reaching_forward_soft', 'pinching_toward_viewer'];
     var gestureSet = gestureIds.indexOf(s.pose.arms.combined) >= 0 || gestureIds.indexOf(s.pose.arms.primary.action) >= 0 || gestureIds.indexOf(s.pose.arms.secondary.action) >= 0;
     if (gestureSet && ['full_body', 'wide', 'wide_shot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('affection_gesture_too_wide', 'warning', 'visibility', '顔まわりの仕草には画角が広すぎます', 'アップまたは半身にすると、手と表情の関係が伝わりやすくなります。', ['pose.arms', 'camera.shotSize'], [
@@ -124,6 +130,9 @@
     ]));
     if (['back_and_waist', 'full_back_line', 'rear_pose_emphasis'].indexOf(s.pose.rearViewEmphasis) >= 0 && ['toward_camera', 'counter'].indexOf(s.pose.torso.relationToPelvis) >= 0) out.push(issue('rear_view_torso_mismatch', 'warning', 'bodyFlow', '背中主役なのに胴体が正面へ戻りやすい指定です', '顔だけを振り返らせ、胴体と骨盤は奥向きのまま揃えると背中のラインを維持できます。', ['pose.rearViewEmphasis', 'pose.torso.relationToPelvis'], [
       { labelJa: '胴体を骨盤へ揃える', patch: { 'pose.torso.relationToPelvis': 'aligned', 'pose.head.yaw': 'over_shoulder' } }
+    ]));
+    if (['back_and_waist', 'full_back_line', 'rear_pose_emphasis'].indexOf(s.pose.rearViewEmphasis) >= 0 && s.pose.support.type === 'bed_surface' && !s.output.preserveClothing) out.push(issue('rear_bed_clothing_risk', 'info', 'output', 'ベッドの背面構図は服装が省略されやすい組み合わせです', '衣装を残したい場合は「服を保持する」をONにしてください。腰まわりまで覆う文言が出力へ追加されます。', ['pose.rearViewEmphasis', 'pose.support.type', 'output.preserveClothing'], [
+      { labelJa: '服を保持する', patch: { 'output.preserveClothing': true } }
     ]));
     if (s.pose.rearViewEmphasis === 'back_and_shoulders' && ['face_close_up', 'headshot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('rear_view_shot_too_close', 'info', 'visibility', '背中と肩を見せるには画角が近すぎます', '上半身まで写すと、背中と肩を残した構図が安定します。', ['pose.rearViewEmphasis', 'camera.shotSize'], [
       { labelJa: '上半身へ変更', patch: { 'camera.shotSize': 'upper_body' } }

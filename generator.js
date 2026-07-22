@@ -12,6 +12,9 @@
   }
   function visible(zone, shot) { return !PCW.advisor.hidden(zone, shot); }
   function reachesViewer(id) { return ['reaching_forward', 'reaching_forward_soft', 'pinching_toward_viewer'].indexOf(id) >= 0; }
+  function hasClothingDescription(text) {
+    return /\b(t-?shirt|shirt|shorts?|pants?|trousers?|jeans?|skirt|dress|outfit|clothes?|jacket|hoodie|sweater|top|uniform)\b/i.test(String(text || ''));
+  }
   function armBlock(s) {
     var compact = [], detailed = [];
     var arms = s.pose.arms;
@@ -80,7 +83,14 @@
       push(b.subjectPosture.compact, lying.compact); push(b.subjectPosture.detailed, lying.detailed); push(b.subjectPosture.ja, '寝姿：' + lying.labelJa);
     }
     if (supportPose && supportPose.id !== 'none') {
-      push(b.subjectPosture.compact, supportPose.compact); push(b.subjectPosture.detailed, supportPose.detailed); push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa);
+      if (supportPose.id === 'hands_and_knees') {
+        var supportSurface = s.pose.support.type === 'bed_surface' ? 'the bed' : 'the supporting surface';
+        push(b.subjectPosture.compact, 'on hands and knees, both palms flat on ' + supportSurface + ', both knees on ' + supportSurface + ', weight supported by both hands and both knees, hips raised, torso leaning forward, full body visible, both hands visible, both knees visible, not sitting, not kneeling upright, not lying flat, not standing, not one knee raised, no front-facing torso, no full-body twist toward the camera');
+        push(b.subjectPosture.detailed, 'The figure stays on hands and knees with both palms flat on ' + supportSurface + ' and both knees on ' + supportSurface + '. The weight is supported by both hands and both knees, the hips remain raised, and the torso leans forward. Keep the full body, both hands, and both knees visible; do not turn the pose into sitting, upright kneeling, lying flat, standing, a one-knee-raised pose, a front-facing torso, or a full-body twist toward the camera.');
+        push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa + '（両手・両膝・全身を表示）');
+      } else {
+        push(b.subjectPosture.compact, supportPose.compact); push(b.subjectPosture.detailed, supportPose.detailed); push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa);
+      }
     }
 
     if (visible('lowerBody', s.camera.shotSize)) {
@@ -100,8 +110,8 @@
         push(b.bodyFlow.detailed, rearView.detailed);
         push(b.bodyFlow.ja, '背面の見せ方：' + rearView.labelJa);
         if (['back_and_waist', 'full_back_line', 'rear_pose_emphasis'].indexOf(rearView.id) >= 0 && s.pose.head.yaw === 'over_shoulder') {
-          push(b.bodyFlow.compact, 'only the head turned toward the viewer, no front-facing torso, no full-body twist toward the camera');
-          push(b.bodyFlow.detailed, 'Only the head turns toward the viewer; the torso and hips remain facing away. Do not rotate the full torso toward the camera.');
+          push(b.bodyFlow.compact, s.pose.supportPose === 'hands_and_knees' ? 'only the head turned toward the viewer, torso and hips remain facing away' : 'only the head turned toward the viewer, no front-facing torso, no full-body twist toward the camera');
+          push(b.bodyFlow.detailed, s.pose.supportPose === 'hands_and_knees' ? 'Only the head turns toward the viewer; the torso and hips remain facing away.' : 'Only the head turns toward the viewer; the torso and hips remain facing away. Do not rotate the full torso toward the camera.');
           push(b.bodyFlow.ja, '背面拘束：顔だけ振り返り、胴体と骨盤は奥向きを維持');
         }
       }
@@ -154,8 +164,12 @@
     }
 
     [[D.shotSizes, s.camera.shotSize, '撮影範囲'], [D.elevations, s.camera.elevation, 'カメラ高さ'], [D.rolls, s.camera.roll, 'カメラ傾き']].forEach(function (row) {
-      var item = selected(row[0], row[1]);
-      if (item) { push(b.camera.compact, item.compact); push(b.camera.detailed, item.detailed); push(b.camera.ja, row[2] + '：' + item.labelJa); }
+      var handsAndKneesShot = row[0] === D.shotSizes && s.pose.supportPose === 'hands_and_knees';
+      var item = selected(row[0], handsAndKneesShot ? 'full_body' : row[1]);
+      if (item) {
+        push(b.camera.compact, item.compact); push(b.camera.detailed, item.detailed);
+        push(b.camera.ja, row[2] + '：' + item.labelJa + (handsAndKneesShot && row[1] !== 'full_body' ? '（四点支持のため出力を全身へ補正）' : ''));
+      }
     });
     [[D.placements, s.composition.subjectPlacement, '人物配置'], [D.negativeSpaces, s.composition.negativeSpace, '余白'], [D.crops, s.composition.crop, 'クロップ'], [D.foregrounds, s.composition.foreground, '前景'], [D.depths, s.composition.depth, '奥行き'], [D.rhythms, s.composition.rhythm, '構図']].forEach(function (row) {
       var item = selected(row[0], row[1]);
@@ -172,9 +186,14 @@
       push(b.outputAssist.detailed, 'Do not include text, letters, Japanese text, speech bubbles, comic symbols, captions, or sound effect symbols.');
       push(b.outputAssist.ja, '文字・記号：抑制');
     }
+    if (s.pose.supportPose === 'hands_and_knees' && s.output.preserveClothing && s.output.supportOutfitAssist && (!backDesign || backDesign.id === 'none') && !hasClothingDescription(s.output.customText)) {
+      push(b.outputAssist.compact, 'wearing a white t-shirt and black lounge shorts, shorts clearly visible');
+      push(b.outputAssist.detailed, 'The outfit is a white T-shirt with black lounge shorts, and the shorts remain clearly visible.');
+      push(b.outputAssist.ja, '四点支持の服装補助：白Tシャツ＋黒のラウンジショーツ');
+    }
     if (s.output.preserveClothing) {
-      push(b.outputAssist.compact, 'clothing intact, clothes remain on, no bare torso, no shirt removal');
-      push(b.outputAssist.detailed, 'Keep the clothing intact and on the body; do not show a bare torso or shirt removal.');
+      push(b.outputAssist.compact, 'fully clothed, clothing intact, clothes remain on, shirt remains down, clothes fully cover the hips and buttocks, hips and buttocks covered by clothing, no bare torso, no shirt removal, no exposed buttocks, no nudity, not underwear-only');
+      push(b.outputAssist.detailed, 'Keep the character fully clothed with the shirt remaining down. Clothing must fully cover the hips and buttocks; do not show a bare torso, shirt removal, exposed buttocks, nudity, or an underwear-only outfit.');
       push(b.outputAssist.ja, '服装：保持');
     }
     if (s.output.customText) {
@@ -208,5 +227,5 @@
     });
     return lines.join('\n\n');
   }
-  PCW.generator = { blocks: blocks, compact: compact, detailed: detailed, structureJa: structureJa };
+  PCW.generator = { blocks: blocks, compact: compact, detailed: detailed, structureJa: structureJa, hasClothingDescription: hasClothingDescription };
 })(window);
