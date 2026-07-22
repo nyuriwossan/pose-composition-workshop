@@ -44,7 +44,7 @@
     { id: 'none', labelJa: '指定なし', compact: '', detailed: '' },
     { id: 'propped_up', labelJa: '身を起こして支える', compact: 'propped up on the bed', detailed: 'The upper body is propped up on the bed.' },
     { id: 'leaning_on_elbows', labelJa: '肘で上体を支える', compact: 'resting on the elbows', detailed: 'The upper body rests on the elbows.' },
-    { id: 'hands_and_knees', labelJa: '手のひらと両膝で支える', compact: 'on hands and knees, supporting the body with both hands, not lying flat, not sitting', detailed: 'The figure stays on the hands and knees, supporting the body with both hands rather than lying flat or sitting.' },
+    { id: 'hands_and_knees', labelJa: '手のひらと両膝で支える', compact: 'on hands and knees, weight supported by both hands and both knees', detailed: 'The figure stays on the hands and knees, with the weight supported by both hands and both knees.' },
     { id: 'kneeling_upright', labelJa: '膝立ち', compact: 'kneeling upright, not standing', detailed: 'The figure remains upright on the knees rather than standing.' },
     { id: 'forward_lean_support', labelJa: '前傾して支える', compact: 'leaning forward while supporting the body with both hands, not standing upright', detailed: 'The figure leans forward and supports the body with both hands instead of standing upright.' },
     { id: 'leaning_forward_on_hands', labelJa: '前傾して両手で支える', compact: 'leaning forward and supporting the body with both hands, not lying flat', detailed: 'The figure leans forward and supports the body with both hands instead of lying flat.' }
