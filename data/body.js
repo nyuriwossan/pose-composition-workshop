@@ -6,6 +6,19 @@
     return { id: id, labelJa: labelJa, compact: compact, detailed: detailed, postures: postures || null };
   }
 
+  D.flowStyles = [
+    o('natural', '自然', '', ''),
+    o('confident', '堂々', '', ''),
+    o('relaxed', '脱力', '', ''),
+    o('twist', 'ひねり', '', '')
+  ];
+  D.renderFlowStyleChips = function (active) {
+    var notes = { natural: '力を抜いた基本', confident: '胸を開いた安定感', relaxed: '肩と重心をゆるめる', twist: '腰と肩に方向差' };
+    return D.flowStyles.map(function (item) {
+      return '<button class="chip" type="button" data-flow="' + item.id + '" aria-pressed="' + (active === item.id) + '" title="' + notes[item.id] + '">' + item.labelJa + '</button>';
+    }).join('');
+  };
+
   D.weights = [
     o('even', '均等', 'weight evenly balanced', 'The weight is evenly balanced.', ['standing']),
     o('one_leg', '片脚に重心', 'weight shifted onto one leg', 'The weight is shifted onto one leg.', ['standing']),
@@ -66,5 +79,11 @@
     o('hunched', '少し肩を丸める', 'shoulders slightly hunched', 'The shoulders hunch slightly.'),
     o('raised', '肩を少し上げる', 'shoulders slightly raised', 'The shoulders lift slightly.'),
     o('both_open', '両肩を開く', 'shoulders open toward the viewer', 'Both shoulders open toward the viewer.')
+  ];
+  D.rearViewEmphases = [
+    o('none', '指定なし', '', ''),
+    o('rear_three_quarter', '背面斜め', 'rear three-quarter view, seen from behind', 'The figure is shown from a rear three-quarter angle.'),
+    o('back_and_shoulders', '背中と肩を見せる', 'back-facing pose with the back and shoulders clearly visible', 'The figure faces away, keeping the back and shoulders clearly visible.'),
+    o('hips_away', '腰を奥へ向ける', 'hips angled away from the camera, seen from behind', 'The hips remain angled away from the camera while the upper body turns only slightly.')
   ];
 })(window);

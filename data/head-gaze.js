@@ -37,4 +37,15 @@
     o('over_shoulder', '肩越し', 'with an over-the-shoulder gaze', 'The gaze travels back over the shoulder.')
   ];
   D.eyeStates = [o('open', '目を開ける', '', ''), o('closed', '目を閉じる', 'eyes closed', 'The eyes are closed.')];
+  D.expressions = [
+    o('none', '指定なし', '', ''),
+    o('neutral', '無表情', 'neutral expression', 'The expression is neutral.'),
+    o('soft_smile', 'やわらかい微笑み', 'a soft gentle smile', 'The character wears a soft, gentle smile.'),
+    o('playful', 'playful', 'playful expression, no comic effect marks, no manga symbols, no floating marks, no text', 'The character wears a playful expression. No comic effect marks, manga symbols, floating marks, or text appear.'),
+    o('shy', '照れる', 'a shy expression, slightly embarrassed', 'The character looks shy and slightly embarrassed.'),
+    o('embarrassed', '恥ずかしがる', 'an embarrassed expression', 'The character wears an embarrassed expression.'),
+    o('crying', '泣く', 'crying', 'The character is crying.'),
+    o('quiet_tears', '静かに涙を流す', 'quietly shedding tears, tears running softly', 'The character quietly sheds tears that run softly down the face.'),
+    o('wistful', '切なげ', 'a wistful expression', 'The character wears a wistful expression.')
+  ];
 })(window);

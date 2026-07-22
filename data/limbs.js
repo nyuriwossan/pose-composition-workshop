@@ -13,6 +13,8 @@
     arm('hand_touching_cheek', '頬に手を添える', 'hand touching the cheek', 'The hand gently touches the cheek.', 1, null, ['hands_near_face']),
     arm('hand_in_hair', '髪に手を入れる', 'hand resting in the hair', 'The hand rests lightly in the hair.', 1, null, ['hands_near_face']),
     arm('hand_near_face', '顔の近くへ手を添える', 'hand held near the face', 'The hand is held softly near the face.', 1, null, ['hands_near_face']),
+    arm('hand_covering_eyes', '片手で目元を隠す', 'hand covering the eyes', 'The hand covers the eyes as if hiding the expression.', 1, null, ['hands_near_face']),
+    arm('hand_covering_mouth', '片手で口元を隠す', 'hand lightly covering the mouth', 'The hand lightly covers the mouth.', 1, null, ['hands_near_face']),
     arm('finger_heart_near_face', '顔の近くで指ハート', 'finger heart held near the face', 'The hand makes a finger heart near the face.', 1, null, ['hands_near_face']),
     arm('hand_in_pocket', 'ポケットに手を入れる', 'hand placed in a pocket', 'The hand is placed in a pocket.', 1, ['standing', 'walking'], ['arms', 'hands', 'torso']),
     arm('across_body', '腕を体の前へ', 'arm crossing the body', 'The arm crosses softly in front of the body.', 0),
