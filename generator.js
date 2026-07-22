@@ -25,6 +25,12 @@
     [['primary', 'One'], ['secondary', 'The other']].forEach(function (pair) {
       var item = selected(D.armActions, arms[pair[0]].action);
       if (!item || PCW.advisor.armHidden(item, s.camera.shotSize)) return;
+      var reachesViewer = s.interaction.target === 'viewer' && s.interaction.approach === 'reach_toward' && item.id === 'reaching_forward';
+      if (reachesViewer) {
+        push(compact, pair[0] === 'primary' ? 'one arm reaching toward the viewer' : 'the other arm reaching toward the viewer');
+        push(detailed, pair[1] + ' arm reaches toward the viewer.');
+        return;
+      }
       var c = item.prompt.compact;
       if (pair[0] === 'primary') c = 'one ' + c;
       else c = 'the other ' + c;
@@ -43,6 +49,7 @@
       arms: { compact: [], detailed: [], ja: [] },
       head: { compact: [], detailed: [], ja: [] },
       gaze: { compact: [], detailed: [], ja: [] },
+      interaction: { compact: [], detailed: [], ja: [] },
       camera: { compact: [], detailed: [], ja: [] },
       composition: { compact: [], detailed: [], ja: [] },
       custom: { compact: [], detailed: [], ja: [] }
@@ -78,6 +85,8 @@
       [[D.pelvisOrientations, s.pose.pelvis.orientation, '骨盤'], [D.pelvisShifts, s.pose.pelvis.shift, '腰'], [D.torsoRelations, s.pose.torso.relationToPelvis, '上半身'], [D.torsoLeans, s.pose.torso.lean, '傾き'], [D.shoulders, s.pose.shoulders.emphasis, '肩']].forEach(function (row) {
         var item = selected(row[0], row[1]);
         if (!item) return;
+        var interactionOwnsLean = row[0] === D.torsoLeans && s.interaction.target === 'viewer' && ((s.interaction.approach === 'lean_toward' && item.id === 'forward') || (s.interaction.approach === 'lean_away' && item.id === 'backward'));
+        if (interactionOwnsLean) { push(b.bodyFlow.ja, row[2] + '：' + item.labelJa); return; }
         if (row[2] !== '骨盤' || visible('torso', s.camera.shotSize)) push(b.bodyFlow.compact, item.compact);
         if (row[2] !== '骨盤' || visible('torso', s.camera.shotSize)) push(b.bodyFlow.detailed, item.detailed);
         push(b.bodyFlow.ja, row[2] + '：' + item.labelJa);
@@ -104,6 +113,16 @@
       var item = selected(row[0], row[1]);
       if (item) { push(b.gaze.compact, item.compact); push(b.gaze.detailed, item.detailed); push(b.gaze.ja, row[2] + '：' + item.labelJa); }
     });
+
+    if (s.interaction.target === 'viewer') {
+      var distance = selected(D.interactionDistances, s.interaction.distance);
+      var approach = selected(D.interactionApproaches, s.interaction.approach);
+      var armReaches = s.interaction.approach === 'reach_toward' && [s.pose.arms.primary.action, s.pose.arms.secondary.action].indexOf('reaching_forward') >= 0;
+      if (distance) { push(b.interaction.compact, distance.compact); push(b.interaction.detailed, distance.detailed); push(b.interaction.ja, '距離：' + distance.labelJa); }
+      if (approach && !armReaches) { push(b.interaction.compact, approach.compact); push(b.interaction.detailed, approach.detailed); }
+      if (approach) push(b.interaction.ja, '相手への動き：' + approach.labelJa);
+      push(b.interaction.ja, '対象：画面外の相手');
+    }
 
     [[D.shotSizes, s.camera.shotSize, '撮影範囲'], [D.elevations, s.camera.elevation, 'カメラ高さ'], [D.rolls, s.camera.roll, 'カメラ傾き']].forEach(function (row) {
       var item = selected(row[0], row[1]);
@@ -137,7 +156,7 @@
     return groups.join(' ').replace(/\.\.+/g, '.').trim();
   }
   function structureJa(raw) {
-    var b = blocks(raw), names = { subjectPosture: '姿勢', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', head: '顔・首', gaze: '視線', camera: 'カメラ', composition: '構図', custom: '自由入力' };
+    var b = blocks(raw), names = { subjectPosture: '姿勢', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', custom: '自由入力' };
     var lines = [];
     Object.keys(b).forEach(function (key) {
       if (b[key].ja.length) lines.push('【' + names[key] + '】\n' + b[key].ja.join('\n'));

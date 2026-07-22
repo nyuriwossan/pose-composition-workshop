@@ -48,6 +48,7 @@
         gaze: { target: null, direction: null, eyes: 'open' }
       },
       camera: { shotSize: null, elevation: 'eye_level', roll: 'level' },
+      interaction: { target: 'none', distance: 'normal', approach: 'none' },
       composition: { subjectPlacement: 'centered', negativeSpace: 'none', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' },
       output: { includeSolo: true, customText: '' },
       meta: { ignoredWarnings: [], updatedAt: null }
@@ -87,6 +88,13 @@
     s.camera.shotSize = known(D.shotSizes, s.camera.shotSize, null);
     s.camera.elevation = known(D.elevations, s.camera.elevation, 'eye_level');
     s.camera.roll = known(D.rolls, s.camera.roll, 'level');
+    s.interaction.target = known(D.interactionTargets, s.interaction.target, 'none');
+    s.interaction.distance = known(D.interactionDistances, s.interaction.distance, 'normal');
+    s.interaction.approach = known(D.interactionApproaches, s.interaction.approach, 'none');
+    if (s.interaction.target === 'none') {
+      s.interaction.distance = 'normal';
+      s.interaction.approach = 'none';
+    }
     s.composition.subjectPlacement = known(D.placements, s.composition.subjectPlacement, 'centered');
     s.composition.negativeSpace = known(D.negativeSpaces, s.composition.negativeSpace, 'none');
     s.composition.crop = known(D.crops, s.composition.crop, 'none');

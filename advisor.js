@@ -47,6 +47,34 @@
     ]));
     if (shot === 'knee_up' && s.pose.lowerBody.footDirection) out.push(issue('feet_hidden_knee_up', 'warning', 'visibility', '足先は膝上の画角に写りません', '足先の細かな向きは、この画角では効果が期待できません。', ['camera.shotSize', 'pose.lowerBody.footDirection'], []));
   }
+  function interactionIssues(s, out) {
+    if (s.interaction.target !== 'viewer') return;
+    var high = ['slightly_high', 'high', 'top_down'].indexOf(s.camera.elevation) >= 0;
+    var low = ['slightly_low', 'low'].indexOf(s.camera.elevation) >= 0;
+    if (high && s.pose.gaze.direction === 'downward') out.push(issue('viewer_high_gaze_mismatch', 'warning', 'interaction', '高い相手への視線が下向きです', '相手視点ではカメラ位置が相手の位置です。高いカメラには上向きの視線が自然です。', ['camera.elevation', 'pose.gaze'], [
+      { labelJa: '相手を見上げる', patch: { 'pose.gaze.target': 'viewer', 'pose.gaze.direction': 'upward' } }
+    ]));
+    if (low && s.pose.gaze.direction === 'upward') out.push(issue('viewer_low_gaze_mismatch', 'warning', 'interaction', '低い相手への視線が上向きです', '相手視点ではカメラ位置が相手の位置です。低いカメラには下向きの視線が自然です。', ['camera.elevation', 'pose.gaze'], [
+      { labelJa: '相手を見下ろす', patch: { 'pose.gaze.target': 'viewer', 'pose.gaze.direction': 'downward' } }
+    ]));
+    if (s.pose.gaze.target !== 'viewer') out.push(issue('viewer_gaze_target_elsewhere', 'info', 'interaction', '視線が画面外の相手を向いていません', '距離や動きは相手基準ですが、視線対象は別に設定されています。', ['interaction.target', 'pose.gaze.target'], [
+      { labelJa: '相手を見る', patch: { 'pose.gaze.target': 'viewer' } }
+    ]));
+    if (s.interaction.distance === 'very_close' && ['full_body', 'wide', 'wide_shot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('viewer_distance_shot_mismatch', 'warning', 'interaction', 'とても近い距離と全身画角が両立しにくいです', '相手との接近感を保つなら、半身またはアップの画角が安定します。', ['interaction.distance', 'camera.shotSize'], [
+      { labelJa: '腰上へ変更', patch: { 'camera.shotSize': 'waist_up' } },
+      { labelJa: '距離を通常へ戻す', patch: { 'interaction.distance': 'normal' } }
+    ]));
+    var actions = [s.pose.arms.primary.action, s.pose.arms.secondary.action];
+    if (s.interaction.approach === 'reach_toward' && actions.indexOf('reaching_forward') < 0) out.push(issue('viewer_reach_without_arm', 'info', 'interaction', '相手へ伸ばす腕が未設定です', '片方の腕へ「前へ伸ばす」を設定すると、動きが具体的になります。', ['interaction.approach', 'pose.arms'], [
+      { labelJa: '片方の腕を伸ばす', patch: { 'pose.arms.mode': 'separate', 'pose.arms.primary.action': 'reaching_forward', 'pose.arms.combined': null } }
+    ]));
+    if (s.interaction.approach === 'lean_toward' && s.pose.torso.lean !== 'forward') out.push(issue('viewer_lean_toward_body_mismatch', 'info', 'interaction', '身を寄せる動きと上半身の傾きが揃っていません', '前傾を加えると、相手へ近づく動きが伝わりやすくなります。', ['interaction.approach', 'pose.torso.lean'], [
+      { labelJa: '上半身を前へ傾ける', patch: { 'pose.torso.lean': 'forward' } }
+    ]));
+    if (s.interaction.approach === 'lean_away' && s.pose.torso.lean !== 'backward') out.push(issue('viewer_lean_away_body_mismatch', 'info', 'interaction', '身を引く動きと上半身の傾きが揃っていません', '後方への傾きを加えると、相手から身を引く動きが伝わりやすくなります。', ['interaction.approach', 'pose.torso.lean'], [
+      { labelJa: '上半身を後ろへ傾ける', patch: { 'pose.torso.lean': 'backward' } }
+    ]));
+  }
   function check(raw) {
     var s = S.normalize(raw);
     var out = [];
@@ -92,6 +120,7 @@
       { labelJa: (recommendedSpace === 'right' ? '右' : '左') + '側に余白', patch: { 'composition.negativeSpace': recommendedSpace } }
     ]));
     visibilityIssues(s, out);
+    interactionIssues(s, out);
 
     var ignored = s.meta.ignoredWarnings || [];
     out.forEach(function (item) { item.ignored = item.severity !== 'hard' && ignored.indexOf(item.id) >= 0; });

@@ -6,7 +6,7 @@
   var main = $('main'), sticky = $('stickySummary'), nav = $('bottomNav'), meter = $('stepMeter');
   var draft = Store.loadDraft();
   var state = draft || S.initial();
-  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact' };
+  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', viewerOnly: false };
   var stepInfo = [
     null,
     { title: '姿勢と動作', copy: '身体を支える基本状態を一つ選びます。' },
@@ -93,7 +93,7 @@
     var resume = draft ? '<div class="resume-card"><p>端末に前回の設計が残っています。</p><div class="resume-actions"><button class="btn btn--primary" data-action="resume">前回の続き</button><button class="btn btn--quiet" data-action="discard-draft">破棄</button></div></div>' : '';
     main.innerHTML = '<section class="hero"><p class="eyebrow">POSE / CAMERA / COMPOSITION</p><h1>身体の動きと<br>カメラ構図を<br>一緒に組み立てる。</h1><p class="hero-copy">タグを並べるのではなく、身体各部の関係を整理。見えない指定や両立しない組み合わせを確認して、画像生成AI向けの英語へ変換します。</p></section><div class="entry-grid">' +
       '<button class="entry-card" data-entry="guided"><span class="entry-number">01</span><span><strong>かんたんに作る</strong><small>質問に沿って、自然な設計を組み立てます</small></span><span class="entry-arrow">›</span></button>' +
-      '<button class="entry-card" data-entry="preset"><span class="entry-number">02</span><span><strong>プリセットから作る</strong><small>整合済みの15種類から始めます</small></span><span class="entry-arrow">›</span></button>' +
+      '<button class="entry-card" data-entry="preset"><span class="entry-number">02</span><span><strong>プリセットから作る</strong><small>整合済みの' + D.presets.length + '種類から始めます</small></span><span class="entry-arrow">›</span></button>' +
       '<button class="entry-card" data-entry="detail"><span class="entry-number">03</span><span><strong>細かく設計する</strong><small>身体・視線・構図の各軸を調整します</small></span><span class="entry-arrow">›</span></button>' +
       '</div>' + resume + '<p class="hint">一人用・小道具なし・厳密な左右指定なし。すべて端末内で動作します。</p>';
   }
@@ -140,6 +140,8 @@
     var camera = card('どこまで写しますか', '画角外になった指定は消さず、出力だけ抑制します。', chips('camera.shotSize', D.shotSizes, { max: 8, expandKey: 'shot' }) +
       '<div class="subsection"><h3>カメラの高さ</h3>' + chips('camera.elevation', D.elevations, { max: 6, expandKey: 'elevation' }) + '</div>' +
       '<div class="subsection"><h3>カメラの傾き</h3>' + chips('camera.roll', D.rolls, { max: 3, expandKey: 'roll' }) + '</div>');
+    var interaction = card('画面外の相手', '一人だけを描きながら、画面外にいる相手との距離や動きを設定します。', chips('interaction.target', D.interactionTargets, { max: 2, expandKey: 'interactionTarget' }) +
+      (state.interaction.target === 'viewer' ? '<div class="subsection"><h3>相手との距離</h3>' + chips('interaction.distance', D.interactionDistances, { max: 3, expandKey: 'interactionDistance' }) + '</div><div class="subsection"><h3>相手への動き</h3>' + chips('interaction.approach', D.interactionApproaches, { max: 5, expandKey: 'interactionApproach' }) + '</div>' : '<p class="hint">「画面外の相手」を選ぶと、距離と近づき方を設定できます。</p>'));
     var place = state.composition.subjectPlacement;
     var recommendation = { left: '右側', left_of_center: '右側', right: '左側', right_of_center: '左側' }[place];
     var composition = card('画面の中でどう見せますか', '人物配置と余白を別々に保持します。',
@@ -148,7 +150,7 @@
       '<div class="subsection"><h3>奥行き</h3>' + chips('composition.depth', D.depths, { max: 4, expandKey: 'depth' }) + '</div>' +
       '<div class="subsection"><h3>安定・躍動</h3>' + chips('composition.rhythm', D.rhythms, { max: 3, expandKey: 'rhythm' }) + '</div>' +
       (state.entryMode === 'detail' || view.expanded.compDetail ? '<div class="subsection"><h3>クロップ</h3>' + chips('composition.crop', D.crops, { max: 5, expandKey: 'crop' }) + '</div><div class="subsection"><h3>前景</h3>' + chips('composition.foreground', D.foregrounds, { max: 3, expandKey: 'foreground' }) + '</div>' : '<button class="detail-toggle" type="button" data-expand="compDetail">詳しく調整</button>'));
-    main.innerHTML = heading(5) + camera + composition + renderIssues(true);
+    main.innerHTML = heading(5) + camera + interaction + composition + renderIssues(true);
   }
   function issueCard(item) {
     var sev = { hard: '成立しない', warning: '崩れやすい', info: '整理のヒント' }[item.severity];
@@ -204,10 +206,15 @@
   }
   function closeSheet() { $('sheetBackdrop').hidden = true; $('bottomSheet').hidden = true; $('sheetContent').innerHTML = ''; }
   function presetSheet() {
-    var builtins = D.presets.map(function (p) { return '<button class="preset-card" type="button" data-load-preset="' + attr(p.id) + '"><strong>' + esc(p.nameJa) + '</strong><small>' + esc(p.descriptionJa) + '</small></button>'; }).join('');
+    var visiblePresets = D.filterPresets(D.presets, view.presetFilter, view.viewerOnly);
+    var builtins = visiblePresets.map(function (p) {
+      var tags = (p.meta && p.meta.audienceTags || []).map(function (tag) { return D.presetAudienceTagLabels[tag] ? '<span class="preset-tag">' + esc(D.presetAudienceTagLabels[tag]) + '</span>' : ''; }).join('');
+      return '<button class="preset-card" type="button" data-load-preset="' + attr(p.id) + '"><strong>' + esc(p.nameJa) + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
+    }).join('');
+    var filters = '<div class="preset-filters" role="group" aria-label="撮影範囲で絞り込み">' + D.renderPresetFramingFilters(view.presetFilter, D.presets) + '</div><div class="preset-filter-tools"><button type="button" class="viewer-only-filter" data-viewer-only="1" aria-pressed="' + view.viewerOnly + '">相手視点のみ</button><span aria-live="polite">' + visiblePresets.length + '件を表示</span></div>';
     var users = Store.listPresets();
     var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(function (p) { return '<div class="user-preset"><button class="btn" data-load-user="' + attr(p.id) + '">' + esc(p.name) + '</button><button class="btn btn--danger" aria-label="' + esc(p.name) + 'を削除" data-delete-user="' + attr(p.id) + '">削除</button></div>'; }).join('') : '';
-    openSheet('<div class="sheet-head"><h2>プリセットから開始</h2><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div><div class="preset-list">' + builtins + '</div>' + userHtml);
+    openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + filters + '<div class="preset-list">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
   }
   function saveSheet() {
     openSheet('<div class="sheet-head"><h2>名前を付けて保存</h2><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div><label class="field-label" for="presetName">設計名</label><input id="presetName" type="text" maxlength="60" placeholder="例：斜め向きの立ち姿"><div class="sheet-actions" style="margin-top:12px"><button class="btn btn--primary" data-action="save-user-preset">保存する</button></div>');
@@ -253,6 +260,8 @@
       commit(S.applyPatch(state, patch), focusKey); return;
     }
     if (target.dataset.expand) { view.expanded[target.dataset.expand] = true; render(); return; }
+    if (target.dataset.presetFilter) { view.presetFilter = target.dataset.presetFilter; presetSheet(); return; }
+    if (target.dataset.viewerOnly) { view.viewerOnly = !view.viewerOnly; presetSheet(); return; }
     if (target.dataset.flow) { applyFlow(target.dataset.flow); return; }
     if (target.dataset.outputTab) { view.outputTab = target.dataset.outputTab; render(); return; }
     if (target.dataset.resolution) {
