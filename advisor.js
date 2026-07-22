@@ -104,6 +104,15 @@
     if (gestureSet && ['full_body', 'wide', 'wide_shot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('affection_gesture_too_wide', 'warning', 'visibility', '顔まわりの仕草には画角が広すぎます', 'アップまたは半身にすると、手と表情の関係が伝わりやすくなります。', ['pose.arms', 'camera.shotSize'], [
       { labelJa: 'バストショットへ変更', patch: { 'camera.shotSize': 'bust_shot' } }
     ]));
+    if (s.pose.rearViewEmphasis !== 'none' && ['camera', 'three_quarter'].indexOf(s.pose.pelvis.orientation) >= 0) out.push(issue('rear_view_pelvis_mismatch', 'warning', 'bodyFlow', '背面強調と骨盤の向きが揃っていません', '背面を強調していますが、骨盤が正面または斜め前を向いています。背中を見せたい場合は、骨盤を「背中向き」へ変更してください。', ['pose.rearViewEmphasis', 'pose.pelvis.orientation'], [
+      { labelJa: '骨盤を背中向きにする', patch: { 'pose.pelvis.orientation': 'away_camera' } }
+    ]));
+    if (s.pose.rearViewEmphasis !== 'none' && s.pose.head.yaw === 'toward_camera') out.push(issue('rear_view_head_mismatch', 'info', 'head', '背面構図で顔が正面を向いています', '背中を残したまま顔を見せる場合は「肩越しに振り返る」がおすすめです。', ['pose.rearViewEmphasis', 'pose.head.yaw', 'pose.gaze'], [
+      { labelJa: '肩越しに振り返る', patch: { 'pose.head.yaw': 'over_shoulder', 'pose.gaze.target': 'viewer', 'pose.gaze.direction': 'over_shoulder' } }
+    ]));
+    if (s.pose.rearViewEmphasis === 'back_and_shoulders' && ['face_close_up', 'headshot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('rear_view_shot_too_close', 'info', 'visibility', '背中と肩を見せるには画角が近すぎます', '上半身まで写すと、背中と肩を残した構図が安定します。', ['pose.rearViewEmphasis', 'camera.shotSize'], [
+      { labelJa: '上半身へ変更', patch: { 'camera.shotSize': 'upper_body' } }
+    ]));
 
     var weight = S.option(D.weights, s.pose.weight);
     if (weight && !S.validForPosture(weight, s.pose.posture)) out.push(issue('weight_posture_mismatch', 'warning', 'lowerBody', '姿勢に合わない重心指定です', '「' + weight.labelJa + '」は主に別の姿勢で使う指定です。', ['pose.posture', 'pose.weight'], [
@@ -117,7 +126,7 @@
         { labelJa: 'この脚指定を解除', patch: (function () { var p = {}; p['pose.lowerBody.' + field] = null; return p; })() }
       ]));
     });
-    if (s.pose.pelvis.orientation === 'away' && s.pose.head.yaw === 'toward_camera') out.push(issue('strong_turn', 'warning', 'head', '首と胴体に強いひねりが必要です', '背中向きの身体から顔を正面へ戻すため、画像生成で崩れやすくなります。', ['pose.pelvis.orientation', 'pose.head.yaw'], [
+    if (['away', 'away_camera'].indexOf(s.pose.pelvis.orientation) >= 0 && s.pose.head.yaw === 'toward_camera') out.push(issue('strong_turn', 'warning', 'head', '首と胴体に強いひねりが必要です', '背中向きの身体から顔を正面へ戻すため、画像生成で崩れやすくなります。', ['pose.pelvis.orientation', 'pose.head.yaw'], [
       { labelJa: '肩越しに振り返る', patch: { 'pose.head.yaw': 'over_shoulder', 'pose.gaze.direction': 'over_shoulder' } },
       { labelJa: '身体を斜め向きにする', patch: { 'pose.pelvis.orientation': 'three_quarter' } }
     ]));

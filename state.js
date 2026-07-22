@@ -40,6 +40,8 @@
         support: { type: 'unsupported' },
         lyingOrientation: 'none',
         supportPose: 'none',
+        flowStyle: null,
+        rearViewEmphasis: 'none',
         weight: null,
         lowerBody: { stance: null, legRelation: null, knee: null, footDirection: null },
         pelvis: { orientation: null, shift: 'none' },
@@ -47,7 +49,8 @@
         shoulders: { emphasis: null },
         arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null },
         head: { yaw: null, pitch: 'neutral', tilt: 'level' },
-        gaze: { target: null, direction: null, eyes: 'open' }
+        gaze: { target: null, direction: null, eyes: 'open' },
+        expression: 'none'
       },
       camera: { shotSize: null, elevation: 'eye_level', roll: 'level' },
       interaction: { target: 'none', distance: 'normal', approach: 'none' },
@@ -69,6 +72,8 @@
     s.pose.support.type = known(D.supportTypes, s.pose.support.type, 'unsupported');
     s.pose.lyingOrientation = known(D.lyingOrientations, s.pose.lyingOrientation, 'none');
     s.pose.supportPose = known(D.supportPoses, s.pose.supportPose, 'none');
+    s.pose.flowStyle = known(D.flowStyles, s.pose.flowStyle, null);
+    s.pose.rearViewEmphasis = known(D.rearViewEmphases, s.pose.rearViewEmphasis, 'none');
     s.pose.weight = known(D.weights, s.pose.weight, null);
     s.pose.lowerBody.stance = known(D.stances, s.pose.lowerBody.stance, null);
     s.pose.lowerBody.legRelation = known(D.legRelations, s.pose.lowerBody.legRelation, null);
@@ -89,6 +94,7 @@
     s.pose.gaze.target = known(D.gazeTargets, s.pose.gaze.target, null);
     s.pose.gaze.direction = known(D.gazeDirections, s.pose.gaze.direction, null);
     s.pose.gaze.eyes = known(D.eyeStates, s.pose.gaze.eyes, 'open');
+    s.pose.expression = known(D.expressions, s.pose.expression, 'none');
     s.camera.shotSize = known(D.shotSizes, s.camera.shotSize, null);
     s.camera.elevation = known(D.elevations, s.camera.elevation, 'eye_level');
     s.camera.roll = known(D.rolls, s.camera.roll, 'level');
@@ -141,6 +147,30 @@
     return applyPatch(state, patch);
   }
 
+  function applyFlowStyle(state, id) {
+    var current = normalize(state);
+    var patch = {
+      natural: { 'pose.flowStyle': 'natural', 'pose.weight': current.pose.posture === 'standing' ? 'one_leg' : current.pose.weight, 'pose.pelvis.shift': 'slight', 'pose.torso.relationToPelvis': 'aligned', 'pose.shoulders.emphasis': 'relaxed' },
+      confident: { 'pose.flowStyle': 'confident', 'pose.weight': current.pose.posture === 'standing' ? 'even' : current.pose.weight, 'pose.torso.relationToPelvis': 'aligned', 'pose.shoulders.emphasis': 'drawn_back', 'pose.head.pitch': 'raised' },
+      relaxed: { 'pose.flowStyle': 'relaxed', 'pose.weight': current.pose.posture === 'standing' ? 'one_leg' : current.pose.weight, 'pose.shoulders.emphasis': 'relaxed', 'pose.torso.lean': 'neutral', 'pose.head.tilt': 'slight' },
+      twist: { 'pose.flowStyle': 'twist', 'pose.pelvis.orientation': 'three_quarter', 'pose.torso.relationToPelvis': 'counter', 'pose.shoulders.emphasis': 'one_forward', 'pose.pelvis.shift': 'slight' }
+    }[id];
+    return patch ? applyPatch(current, patch) : current;
+  }
+
+  function designSummary(raw) {
+    var s = normalize(raw);
+    var arm = s.pose.arms.mode === 'combined' ? option(D.combinedArms, s.pose.arms.combined) : option(D.armActions, s.pose.arms.primary.action);
+    return [
+      option(D.postures, s.pose.posture),
+      option(D.flowStyles, s.pose.flowStyle),
+      option(D.weights, s.pose.weight),
+      option(D.pelvisOrientations, s.pose.pelvis.orientation),
+      arm,
+      option(D.shotSizes, s.camera.shotSize)
+    ].filter(Boolean).map(function (item) { return item.labelJa; }).join('・') || 'まだ設計されていません';
+  }
+
   function option(list, id) { return (list || []).filter(function (item) { return item.id === id; })[0] || null; }
   function validForPosture(item, posture) { return !item || !item.postures || item.postures.indexOf(posture) >= 0; }
 
@@ -149,6 +179,8 @@
     normalize: normalize,
     applyPatch: applyPatch,
     applyPostureDefaults: applyPostureDefaults,
+    applyFlowStyle: applyFlowStyle,
+    designSummary: designSummary,
     clone: clone,
     merge: merge,
     getPath: getPath,

@@ -50,14 +50,7 @@
     toast.timer = setTimeout(function () { el.classList.remove('is-visible'); }, 1800);
   }
   function currentSummary() {
-    var values = [
-      label(D.postures, state.pose.posture),
-      label(D.weights, state.pose.weight),
-      label(D.pelvisOrientations, state.pose.pelvis.orientation),
-      state.pose.arms.mode === 'combined' ? label(D.combinedArms, state.pose.arms.combined) : label(D.armActions, state.pose.arms.primary.action),
-      label(D.shotSizes, state.camera.shotSize)
-    ].filter(Boolean);
-    return values.length ? values.join('・') : 'まだ設計されていません';
+    return S.designSummary(state);
   }
   function structureStrip() {
     return '<div class="structure-strip"><small>現在の構造</small><p>' + esc(currentSummary()) + '</p></div>';
@@ -106,16 +99,16 @@
     main.innerHTML = heading(1) + posture + motion + support + lying;
   }
   function renderStep2() {
-    var flows = card('まず雰囲気から', '選んだ内容を、具体的な身体関係へ反映します。', '<div class="chip-grid">' + [
-      ['natural', '自然', '力を抜いた基本'], ['confident', '堂々', '胸を開いた安定感'], ['relaxed', '脱力', '肩と重心をゆるめる'], ['twist', 'ひねり', '腰と肩に方向差']
-    ].map(function (x) { return '<button class="chip" type="button" data-flow="' + x[0] + '" aria-pressed="false" title="' + x[2] + '">' + x[1] + '</button>'; }).join('') + '</div>');
+    var flows = card('まず雰囲気から', '単一選択です。選んだ内容を、具体的な身体関係へ反映します。', '<div class="chip-grid flow-style-chips">' + D.renderFlowStyleChips(state.pose.flowStyle) + '</div>');
     var lower = card('重心と脚', '現在の姿勢に合う候補を優先しています.',
       '<div class="subsection"><h3>重心</h3>' + chips('pose.weight', D.weights, { postureAware: true, max: 5, expandKey: 'weights' }) + '</div>' +
       '<div class="subsection"><h3>足幅</h3>' + chips('pose.lowerBody.stance', D.stances, { postureAware: true, max: 4, expandKey: 'stances' }) + '</div>' +
       '<div class="subsection"><h3>脚の関係</h3>' + chips('pose.lowerBody.legRelation', D.legRelations, { postureAware: true, max: 6, expandKey: 'legs' }) + '</div>' +
       '<div class="subsection"><h3>膝</h3>' + chips('pose.lowerBody.knee', D.knees, { postureAware: true, max: 4, expandKey: 'knees' }) + '</div>');
+    var showRearView = state.entryMode === 'detail' || ['away', 'away_camera'].indexOf(state.pose.pelvis.orientation) >= 0 || state.pose.head.yaw === 'over_shoulder';
     var upper = card('腰から肩への流れ', '骨盤と上半身は別々の向きとして管理します。',
       '<div class="subsection"><h3>骨盤の向き</h3>' + chips('pose.pelvis.orientation', D.pelvisOrientations, { max: 4, expandKey: 'pelvis' }) + '</div>' +
+      (showRearView ? '<div class="subsection"><h3>背面の見せ方</h3>' + chips('pose.rearViewEmphasis', D.rearViewEmphases, { max: 4, expandKey: 'rearView' }) + '</div>' : '') +
       '<div class="subsection"><h3>上半身との関係</h3>' + chips('pose.torso.relationToPelvis', D.torsoRelations, { max: 4, expandKey: 'torso' }) + '</div>' +
       '<div class="subsection"><h3>肩</h3>' + chips('pose.shoulders.emphasis', D.shoulders, { max: 6, expandKey: 'shoulders' }) + '</div>' +
       (state.entryMode === 'detail' || view.expanded.bodyDetail ? '<div class="subsection"><h3>腰のずれ</h3>' + chips('pose.pelvis.shift', D.pelvisShifts, { max: 3, expandKey: 'shift' }) + '</div><div class="subsection"><h3>上半身の傾き</h3>' + chips('pose.torso.lean', D.torsoLeans, { max: 4, expandKey: 'lean' }) + '</div>' : '<button class="detail-toggle" type="button" data-expand="bodyDetail">詳しく調整</button>'));
@@ -136,7 +129,8 @@
     var gaze = card('目が見る方向', '顔を横へ向けながら、目だけこちらを見る指定もできます。', chips('pose.gaze.target', D.gazeTargets, { max: 7, expandKey: 'gazeTarget' }) +
       '<div class="subsection"><h3>視線の性質</h3>' + chips('pose.gaze.direction', D.gazeDirections, { max: 6, expandKey: 'gazeDirection' }) + '</div>' +
       '<div class="subsection"><h3>目の状態</h3>' + chips('pose.gaze.eyes', D.eyeStates, { max: 2, expandKey: 'eyes' }) + '</div>');
-    main.innerHTML = heading(4) + face + gaze + renderIssues(true);
+    var expression = card('表情', 'ポーズとは独立した単一選択です。', chips('pose.expression', D.expressions, { max: 9, expandKey: 'expressions' }));
+    main.innerHTML = heading(4) + face + gaze + expression + renderIssues(true);
   }
   function renderStep5() {
     var camera = card('どこまで写しますか', '画角外になった指定は消さず、出力だけ抑制します。', chips('camera.shotSize', D.shotSizes, { max: 8, expandKey: 'shot' }) +
@@ -236,13 +230,7 @@
     setTimeout(function () { var input = $('presetName'); if (input) input.focus(); }, 0);
   }
   function applyFlow(id) {
-    var patch = {
-      natural: { 'pose.weight': state.pose.posture === 'standing' ? 'one_leg' : state.pose.weight, 'pose.pelvis.shift': 'slight', 'pose.torso.relationToPelvis': 'aligned', 'pose.shoulders.emphasis': 'relaxed' },
-      confident: { 'pose.weight': state.pose.posture === 'standing' ? 'even' : state.pose.weight, 'pose.torso.relationToPelvis': 'aligned', 'pose.shoulders.emphasis': 'drawn_back', 'pose.head.pitch': 'raised' },
-      relaxed: { 'pose.weight': state.pose.posture === 'standing' ? 'one_leg' : state.pose.weight, 'pose.shoulders.emphasis': 'relaxed', 'pose.torso.lean': 'neutral', 'pose.head.tilt': 'slight' },
-      twist: { 'pose.pelvis.orientation': 'three_quarter', 'pose.torso.relationToPelvis': 'counter', 'pose.shoulders.emphasis': 'one_forward', 'pose.pelvis.shift': 'slight' }
-    }[id];
-    if (patch) commit(S.applyPatch(state, patch));
+    commit(S.applyFlowStyle(state, id), { action: 'flow-' + id });
   }
   function copyText(text) {
     if (!text) return;

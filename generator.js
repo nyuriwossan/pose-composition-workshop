@@ -91,6 +91,12 @@
     }
 
     if (visible('torso', s.camera.shotSize) || visible('shoulders', s.camera.shotSize)) {
+      var rearView = selected(D.rearViewEmphases, s.pose.rearViewEmphasis);
+      if (rearView && rearView.id !== 'none') {
+        push(b.bodyFlow.compact, rearView.compact);
+        push(b.bodyFlow.detailed, rearView.detailed);
+        push(b.bodyFlow.ja, '背面の見せ方：' + rearView.labelJa);
+      }
       [[D.pelvisOrientations, s.pose.pelvis.orientation, '骨盤'], [D.pelvisShifts, s.pose.pelvis.shift, '腰'], [D.torsoRelations, s.pose.torso.relationToPelvis, '上半身'], [D.torsoLeans, s.pose.torso.lean, '傾き'], [D.shoulders, s.pose.shoulders.emphasis, '肩']].forEach(function (row) {
         var item = selected(row[0], row[1]);
         if (!item) return;
@@ -118,6 +124,12 @@
       var item = selected(row[0], row[1]);
       if (item) { push(b.head.compact, item.compact); push(b.head.detailed, item.detailed); push(b.head.ja, row[2] + '：' + item.labelJa); }
     });
+    var expression = selected(D.expressions, s.pose.expression);
+    if (expression && expression.id !== 'none') {
+      push(b.head.compact, expression.compact);
+      push(b.head.detailed, expression.detailed);
+      push(b.head.ja, '表情：' + expression.labelJa);
+    }
     [[D.eyeStates, s.pose.gaze.eyes, '目'], [D.gazeTargets, s.pose.gaze.target, '視線対象'], [D.gazeDirections, s.pose.gaze.direction, '視線方向']].forEach(function (row) {
       var item = selected(row[0], row[1]);
       if (item) { push(b.gaze.compact, item.compact); push(b.gaze.detailed, item.detailed); push(b.gaze.ja, row[2] + '：' + item.labelJa); }
