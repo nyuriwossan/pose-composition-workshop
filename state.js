@@ -38,6 +38,8 @@
         posture: null,
         motion: { state: 'static', action: null, phase: null, energy: 'low' },
         support: { type: 'unsupported' },
+        lyingOrientation: 'none',
+        supportPose: 'none',
         weight: null,
         lowerBody: { stance: null, legRelation: null, knee: null, footDirection: null },
         pelvis: { orientation: null, shift: 'none' },
@@ -65,6 +67,8 @@
     s.pose.posture = known(D.postures, s.pose.posture, null);
     s.pose.motion.state = known(D.motionStates, s.pose.motion.state, 'static');
     s.pose.support.type = known(D.supportTypes, s.pose.support.type, 'unsupported');
+    s.pose.lyingOrientation = known(D.lyingOrientations, s.pose.lyingOrientation, 'none');
+    s.pose.supportPose = known(D.supportPoses, s.pose.supportPose, 'none');
     s.pose.weight = known(D.weights, s.pose.weight, null);
     s.pose.lowerBody.stance = known(D.stances, s.pose.lowerBody.stance, null);
     s.pose.lowerBody.legRelation = known(D.legRelations, s.pose.lowerBody.legRelation, null);

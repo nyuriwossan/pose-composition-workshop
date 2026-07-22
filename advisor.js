@@ -65,7 +65,8 @@
       { labelJa: '距離を通常へ戻す', patch: { 'interaction.distance': 'normal' } }
     ]));
     var actions = [s.pose.arms.primary.action, s.pose.arms.secondary.action];
-    if (s.interaction.approach === 'reach_toward' && actions.indexOf('reaching_forward') < 0) out.push(issue('viewer_reach_without_arm', 'info', 'interaction', '相手へ伸ばす腕が未設定です', '片方の腕へ「前へ伸ばす」を設定すると、動きが具体的になります。', ['interaction.approach', 'pose.arms'], [
+    var reachActions = ['reaching_forward', 'reaching_forward_soft', 'pinching_toward_viewer'];
+    if (s.interaction.approach === 'reach_toward' && !actions.some(function (action) { return reachActions.indexOf(action) >= 0; })) out.push(issue('viewer_reach_without_arm', 'info', 'interaction', '相手へ伸ばす腕が未設定です', '片方の腕へ「前へ伸ばす」を設定すると、動きが具体的になります。', ['interaction.approach', 'pose.arms'], [
       { labelJa: '片方の腕を伸ばす', patch: { 'pose.arms.mode': 'separate', 'pose.arms.primary.action': 'reaching_forward', 'pose.arms.combined': null } }
     ]));
     if (s.interaction.approach === 'lean_toward' && s.pose.torso.lean !== 'forward') out.push(issue('viewer_lean_toward_body_mismatch', 'info', 'interaction', '身を寄せる動きと上半身の傾きが揃っていません', '前傾を加えると、相手へ近づく動きが伝わりやすくなります。', ['interaction.approach', 'pose.torso.lean'], [
@@ -93,6 +94,15 @@
     if (s.pose.posture === 'walking' && s.pose.motion.state === 'static') out.push(issue('static_walking', 'hard', 'motion', '歩行と静止が競合しています', '歩行姿勢には動作途中または準備中の状態を指定してください。', ['pose.posture', 'pose.motion.state'], [
       { labelJa: '動作途中にする', patch: { 'pose.motion.state': 'mid_motion' } },
       { labelJa: '立位に戻す', patch: { 'pose.posture': 'standing' } }
+    ]));
+    if (s.pose.lyingOrientation !== 'none' && ['bed_surface', 'sofa_surface', 'leaning_surface'].indexOf(s.pose.support.type) < 0) out.push(issue('lying_without_surface', 'info', 'support', '寝姿を支える面が未設定です', 'ベッドやソファなどの支持状態を選ぶと、寝姿が伝わりやすくなります。', ['pose.lyingOrientation', 'pose.support.type'], [
+      { labelJa: 'ベッド上にする', patch: { 'pose.support.type': 'bed_surface' } }
+    ]));
+    if (s.pose.support.type === 'bed_surface' && s.pose.posture === 'reclining' && s.pose.lyingOrientation === 'none') out.push(issue('bed_orientation_missing', 'info', 'support', 'ベッド上の寝る向きが未設定です', '仰向け・横向き・うつ伏せのいずれかを選ぶと構図が明確になります。', ['pose.support.type', 'pose.lyingOrientation'], []));
+    var gestureIds = ['heart_hands_near_face', 'finger_heart_near_face', 'reaching_forward_soft', 'pinching_toward_viewer'];
+    var gestureSet = gestureIds.indexOf(s.pose.arms.combined) >= 0 || gestureIds.indexOf(s.pose.arms.primary.action) >= 0 || gestureIds.indexOf(s.pose.arms.secondary.action) >= 0;
+    if (gestureSet && ['full_body', 'wide', 'wide_shot'].indexOf(s.camera.shotSize) >= 0) out.push(issue('affection_gesture_too_wide', 'warning', 'visibility', '顔まわりの仕草には画角が広すぎます', 'アップまたは半身にすると、手と表情の関係が伝わりやすくなります。', ['pose.arms', 'camera.shotSize'], [
+      { labelJa: 'バストショットへ変更', patch: { 'camera.shotSize': 'bust_shot' } }
     ]));
 
     var weight = S.option(D.weights, s.pose.weight);

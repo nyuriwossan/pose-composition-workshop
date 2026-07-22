@@ -11,6 +11,7 @@
     return text ? text.charAt(0).toUpperCase() + text.slice(1) + '.' : '';
   }
   function visible(zone, shot) { return !PCW.advisor.hidden(zone, shot); }
+  function reachesViewer(id) { return ['reaching_forward', 'reaching_forward_soft', 'pinching_toward_viewer'].indexOf(id) >= 0; }
   function armBlock(s) {
     var compact = [], detailed = [];
     var arms = s.pose.arms;
@@ -25,8 +26,8 @@
     [['primary', 'One'], ['secondary', 'The other']].forEach(function (pair) {
       var item = selected(D.armActions, arms[pair[0]].action);
       if (!item || PCW.advisor.armHidden(item, s.camera.shotSize)) return;
-      var reachesViewer = s.interaction.target === 'viewer' && s.interaction.approach === 'reach_toward' && item.id === 'reaching_forward';
-      if (reachesViewer) {
+      var viewerReach = s.interaction.target === 'viewer' && s.interaction.approach === 'reach_toward' && reachesViewer(item.id);
+      if (viewerReach && item.id === 'reaching_forward') {
         push(compact, pair[0] === 'primary' ? 'one arm reaching toward the viewer' : 'the other arm reaching toward the viewer');
         push(detailed, pair[1] + ' arm reaches toward the viewer.');
         return;
@@ -57,6 +58,8 @@
     var posture = selected(D.postures, s.pose.posture);
     var motion = selected(D.motionStates, s.pose.motion.state);
     var support = selected(D.supportTypes, s.pose.support.type);
+    var lying = selected(D.lyingOrientations, s.pose.lyingOrientation);
+    var supportPose = selected(D.supportPoses, s.pose.supportPose);
     if (posture) {
       push(b.subjectPosture.compact, (s.output.includeSolo ? 'solo character ' : 'character ') + posture.compact);
       push(b.subjectPosture.detailed, 'A solo character ' + posture.detailed + '.');
@@ -67,8 +70,14 @@
       push(b.subjectPosture.detailed, motion.detailed);
       push(b.subjectPosture.ja, '動作：' + motion.labelJa);
     } else if (motion) push(b.subjectPosture.ja, '動作：' + motion.labelJa);
-    if (support && support.id !== 'unsupported') {
+    if (support && support.id !== 'unsupported' && support.id !== 'none') {
       push(b.subjectPosture.compact, support.compact); push(b.subjectPosture.detailed, support.detailed); push(b.subjectPosture.ja, '支持：' + support.labelJa);
+    }
+    if (lying && lying.id !== 'none') {
+      push(b.subjectPosture.compact, lying.compact); push(b.subjectPosture.detailed, lying.detailed); push(b.subjectPosture.ja, '寝姿：' + lying.labelJa);
+    }
+    if (supportPose && supportPose.id !== 'none') {
+      push(b.subjectPosture.compact, supportPose.compact); push(b.subjectPosture.detailed, supportPose.detailed); push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa);
     }
 
     if (visible('lowerBody', s.camera.shotSize)) {
@@ -117,7 +126,7 @@
     if (s.interaction.target === 'viewer') {
       var distance = selected(D.interactionDistances, s.interaction.distance);
       var approach = selected(D.interactionApproaches, s.interaction.approach);
-      var armReaches = s.interaction.approach === 'reach_toward' && [s.pose.arms.primary.action, s.pose.arms.secondary.action].indexOf('reaching_forward') >= 0;
+      var armReaches = s.interaction.approach === 'reach_toward' && [s.pose.arms.primary.action, s.pose.arms.secondary.action].some(reachesViewer);
       if (distance) { push(b.interaction.compact, distance.compact); push(b.interaction.detailed, distance.detailed); push(b.interaction.ja, '距離：' + distance.labelJa); }
       if (approach && !armReaches) { push(b.interaction.compact, approach.compact); push(b.interaction.detailed, approach.detailed); }
       if (approach) push(b.interaction.ja, '相手への動き：' + approach.labelJa);
