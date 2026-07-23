@@ -14,16 +14,16 @@
     o('wide', '引きの全身', 'wide full-body shot', 'Frame the full figure in a wide shot.')
   ];
   D.elevations = [
-    o('eye_level', '目線の高さ', 'at eye level', 'Use an eye-level camera.'),
-    o('slightly_low', '少し低い', 'from a slightly low angle', 'Place the camera slightly below eye level.'),
-    o('low', '低位置', 'from a low angle', 'Use a low-angle camera.'),
-    o('slightly_high', '少し高い', 'from a slightly high angle', 'Place the camera slightly above eye level.'),
-    o('high', '高位置', 'from a high angle', 'Use a high-angle camera.'),
-    o('top_down', '真上寄り', 'from a top-down angle', 'Use a top-down camera angle.')
+    o('eye_level', '目線の高さ', 'viewed at eye level', 'Use an eye-level viewpoint.'),
+    o('slightly_low', '少し低い', 'viewed from slightly below', 'View the figure from slightly below eye level.'),
+    o('low', '低位置', 'viewed from below', 'View the figure from below.'),
+    o('slightly_high', '少し高い', 'viewed from slightly above', 'View the figure from slightly above eye level.'),
+    o('high', '高位置', 'viewed from above', 'View the figure from above.'),
+    o('top_down', '真上寄り', 'viewed from directly above', 'Use a top-down viewing angle.')
   ];
   D.rolls = [
-    o('level', '水平', '', 'Keep the camera level.'),
-    o('slight_dutch', '少し傾ける', 'with a slight Dutch angle', 'Tilt the camera slightly.'),
-    o('dutch', '大きく傾ける', 'with a Dutch angle', 'Use a noticeable Dutch angle.')
+    o('level', '水平', '', 'Keep the viewing plane level.'),
+    o('slight_dutch', '少し傾ける', 'with a slight Dutch viewing angle', 'Use a slightly tilted viewing angle.'),
+    o('dutch', '大きく傾ける', 'with a Dutch viewing angle', 'Use a noticeable Dutch viewing angle.')
   ];
 })(window);

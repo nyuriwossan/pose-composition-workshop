@@ -41,6 +41,9 @@
     back_focused: '背中主役',
     face_covering: '顔隠し'
   };
+  D.presetInteractionTagLabels = {
+    hand_interaction: '手のやりとり'
+  };
 
   var relationshipPresets = [
 preset(
@@ -2355,6 +2358,48 @@ preset(
   '衣装を保ったまま背中の開いたデザインと背面装飾を主役にし、顔だけViewerへ振り返る構図。',
   { pose: { posture: 'standing', motion: { state: 'static' }, support: { type: 'none' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'full_back_line', weight: 'even', lowerBody: { stance: 'relaxed', legRelation: 'parallel', knee: 'straight' }, pelvis: { orientation: 'away_camera', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'drawn_back' }, arms: { mode: 'separate', primary: { action: 'relaxed_at_side' }, secondary: { action: 'relaxed_at_side' }, combined: null }, head: { yaw: 'over_shoulder', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'over_shoulder', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'normal', approach: 'none' }, camera: { shotSize: 'waist_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'centered', negativeSpace: 'around', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' }, output: { includeSolo: true, preserveClothing: true, backDesign: 'open_back_outfit' } },
   { collection: 'relationship', audienceTags: ['viewer_perspective'], moodTags: ['calm_intimacy', 'sensual'], sceneTags: ['back_focused', 'back_view'] }
+),
+preset(
+  'relationship_offer_one_hand_to_viewer',
+  'Viewerへ片手を差し出す',
+  '開いた片手をViewerへ差し出し、こちらをまっすぐ見る穏やかな半身構図。',
+  { pose: { posture: 'standing', motion: { state: 'static' }, support: { type: 'none' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'none', weight: 'even', lowerBody: { stance: 'relaxed', legRelation: 'parallel', knee: 'straight' }, pelvis: { orientation: 'three_quarter', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'one_forward' }, arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null }, head: { yaw: 'toward_camera', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'direct', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'close', approach: 'none', viewerHandInteraction: 'reaching', viewerHandVisible: false }, camera: { shotSize: 'waist_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'centered', negativeSpace: 'around', crop: 'none', foreground: 'none', depth: 'strong', rhythm: 'stable' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['calm_intimacy', 'sweet'], sceneTags: ['affection_gesture'], interactionTags: ['hand_interaction'] }
+),
+preset(
+  'relationship_leading_viewer_by_hand',
+  'Viewerの手を引いて振り返る',
+  'Viewerの片手を取り、進行方向へ身体を向けたまま肩越しに振り返る全身構図。',
+  { pose: { posture: 'walking', motion: { state: 'mid_motion' }, support: { type: 'none' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'rear_pose_emphasis', weight: 'forward', lowerBody: { stance: 'relaxed', legRelation: 'stepping', knee: 'one_bent' }, pelvis: { orientation: 'away_camera', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'one_forward' }, arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null }, head: { yaw: 'over_shoulder', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'over_shoulder', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'normal', approach: 'none', viewerHandInteraction: 'holding', viewerHandVisible: true }, camera: { shotSize: 'full_body', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'left_of_center', negativeSpace: 'right', crop: 'none', foreground: 'soft', depth: 'strong', rhythm: 'dynamic' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective'], moodTags: ['everyday', 'sweet'], sceneTags: ['walking', 'affection_gesture'], interactionTags: ['hand_interaction'] }
+),
+preset(
+  'relationship_half_heart_with_viewer',
+  'Viewerと片手で半分ハート',
+  '人物とViewerの片手で、顔の近くに一つのハートを完成させるアップ構図。',
+  { pose: { posture: 'standing', motion: { state: 'static' }, support: { type: 'none' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'none', weight: null, lowerBody: { stance: null, legRelation: null, knee: null }, pelvis: { orientation: 'camera', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'relaxed' }, arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null }, head: { yaw: 'toward_camera', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'direct', eyes: 'open' }, expression: 'playful' }, interaction: { target: 'viewer', distance: 'very_close', approach: 'none', viewerHandInteraction: 'half_heart', viewerHandVisible: true }, camera: { shotSize: 'bust_shot', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'centered', negativeSpace: 'around', crop: 'tight_face', foreground: 'soft', depth: 'separated', rhythm: 'stable' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['playful', 'sweet'], sceneTags: ['affection_gesture'], interactionTags: ['hand_interaction'] }
+),
+preset(
+  'relationship_kiss_viewer_hand',
+  'Viewerの手の甲へ口づける',
+  'Viewerの片手を軽く支え、手の甲へ上品に口づける直前のアップ構図。',
+  { pose: { posture: 'standing', motion: { state: 'static' }, support: { type: 'none' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'none', weight: null, lowerBody: { stance: null, legRelation: null, knee: null }, pelvis: { orientation: 'three_quarter', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'forward' }, shoulders: { emphasis: 'relaxed' }, arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null }, head: { yaw: 'toward_camera', pitch: 'lowered', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'slightly_averted', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'very_close', approach: 'none', viewerHandInteraction: 'hand_kiss', viewerHandVisible: true }, camera: { shotSize: 'bust_shot', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'right_of_center', negativeSpace: 'left', crop: 'none', foreground: 'soft', depth: 'separated', rhythm: 'stable' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['calm_intimacy', 'sweet'], sceneTags: ['affection_gesture'], interactionTags: ['hand_interaction'] }
+),
+preset(
+  'relationship_offer_bite_to_viewer',
+  'Viewerへ一口差し出す',
+  '小さな一口を手前へ差し出し、Viewerを温かく見つめる日常的な半身構図。',
+  { pose: { posture: 'sitting', motion: { state: 'static' }, support: { type: 'seated_surface' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'none', weight: null, lowerBody: { stance: null, legRelation: 'parallel', knee: 'both_bent' }, pelvis: { orientation: 'three_quarter', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'forward' }, shoulders: { emphasis: 'relaxed' }, arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null }, head: { yaw: 'toward_camera', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'direct', eyes: 'open' }, expression: 'soft_smile' }, interaction: { target: 'viewer', distance: 'close', approach: 'none', viewerHandInteraction: 'feeding', viewerHandVisible: false }, camera: { shotSize: 'waist_up', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'left_of_center', negativeSpace: 'right', crop: 'none', foreground: 'soft', depth: 'strong', rhythm: 'stable' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['everyday', 'sweet'], sceneTags: ['affection_gesture'], interactionTags: ['hand_interaction'] }
+),
+preset(
+  'relationship_guide_viewer_hand_to_cheek',
+  'Viewerの手を自分の頬へ添える',
+  '手前から入るViewerの片手を頬へ導き、やわらかく目を合わせるアップ構図。',
+  { pose: { posture: 'standing', motion: { state: 'static' }, support: { type: 'none' }, lyingOrientation: 'none', supportPose: 'none', rearViewEmphasis: 'none', weight: null, lowerBody: { stance: null, legRelation: null, knee: null }, pelvis: { orientation: 'three_quarter', shift: 'none' }, torso: { relationToPelvis: 'aligned', lean: 'neutral' }, shoulders: { emphasis: 'relaxed' }, arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null }, head: { yaw: 'toward_camera', pitch: 'neutral', tilt: 'slight' }, gaze: { target: 'viewer', direction: 'direct', eyes: 'open' }, expression: 'shy' }, interaction: { target: 'viewer', distance: 'very_close', approach: 'none', viewerHandInteraction: 'cheek_touch', viewerHandVisible: true }, camera: { shotSize: 'bust_shot', elevation: 'eye_level', roll: 'level' }, composition: { subjectPlacement: 'centered', negativeSpace: 'around', crop: 'tight_face', foreground: 'soft', depth: 'separated', rhythm: 'stable' }, output: { includeSolo: true } },
+  { collection: 'relationship', audienceTags: ['viewer_perspective', 'close_distance'], moodTags: ['sweet', 'calm_intimacy'], sceneTags: ['affection_gesture'], interactionTags: ['hand_interaction'] }
 )
   ];
 
@@ -2383,6 +2428,7 @@ preset(
     item.meta.audienceTags = unique(['viewer_perspective'].concat(item.meta.audienceTags || []));
     item.meta.moodTags = unique((item.meta.moodTags || []).concat(extra.moodTags || []));
     item.meta.sceneTags = unique((item.meta.sceneTags || []).concat(extra.sceneTags || []));
+    item.meta.interactionTags = unique(item.meta.interactionTags || []);
     item.patch.output = item.patch.output || {};
     item.patch.output.includeSolo = true;
   });
@@ -2395,6 +2441,7 @@ preset(
     item.meta.audienceTags = item.meta.audienceTags || [];
     item.meta.moodTags = item.meta.moodTags || [];
     item.meta.sceneTags = item.meta.sceneTags || [];
+    item.meta.interactionTags = item.meta.interactionTags || [];
     return item;
   }).concat(relationshipPresets);
 

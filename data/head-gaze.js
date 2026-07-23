@@ -4,8 +4,8 @@
   var D = PCW.data = PCW.data || {};
   function o(id, labelJa, compact, detailed) { return { id: id, labelJa: labelJa, compact: compact, detailed: detailed }; }
   D.headYaws = [
-    o('toward_camera', 'カメラ方向', 'head turned toward the camera', 'The head turns toward the camera.'),
-    o('slightly_away', '少し横へ', 'head turned slightly away', 'The head turns slightly away from the camera.'),
+    o('toward_camera', 'カメラ方向', 'head turned toward the viewer', 'The head turns toward the viewer.'),
+    o('slightly_away', '少し横へ', 'head turned slightly away', 'The head turns slightly away from the viewer.'),
     o('side', '横向き', 'head in side profile', 'The head is shown in side profile.'),
     o('over_shoulder', '肩越しに振り返る', 'head looking back over the shoulder', 'The head turns back over the shoulder.')
   ];
@@ -21,7 +21,7 @@
   ];
   D.gazeTargets = [
     o('viewer', 'こちらを見る', 'eyes directed toward the viewer', 'The eyes look toward the viewer.'),
-    o('near_camera', 'カメラの少し横', 'eyes looking just past the camera', 'The eyes look just past the camera.'),
+    o('near_camera', 'カメラの少し横', 'eyes looking just past the viewer', 'The eyes look just past the viewer.'),
     o('offscreen', '画面外の対象', 'eyes focused on an off-screen subject', 'The eyes focus on a subject outside the frame.'),
     o('nearby', '近くの対象', 'eyes focused on a nearby point', 'The eyes focus on a nearby point.'),
     o('ground', '地面', 'eyes directed toward the ground', 'The eyes are directed toward the ground.'),

@@ -43,7 +43,8 @@
       var collectionMatch = !options.collection || options.collection === 'all' || meta.collection === options.collection;
       var moodMatch = !options.mood || options.mood === 'all' || (meta.moodTags || []).indexOf(options.mood) >= 0;
       var sceneMatch = !options.scene || options.scene === 'all' || (meta.sceneTags || []).indexOf(options.scene) >= 0;
-      return groupMatch && collectionMatch && moodMatch && sceneMatch && (!options.viewerOnly || tags.indexOf('viewer_perspective') >= 0);
+      var interactionMatch = !options.interaction || options.interaction === 'all' || (meta.interactionTags || []).indexOf(options.interaction) >= 0;
+      return groupMatch && collectionMatch && moodMatch && sceneMatch && interactionMatch && (!options.viewerOnly || tags.indexOf('viewer_perspective') >= 0);
     });
   }
   function renderPresetCollectionFilters(active, presets) {
@@ -52,8 +53,8 @@
       return '<button type="button" class="collection-filter" data-collection-filter="' + row[0] + '" aria-pressed="' + (active === row[0]) + '">' + row[1] + ' <b>' + counts[row[0]] + '</b></button>';
     }).join('');
   }
-  function normalizeRelationshipPresetFilters(collection, mood, scene) {
-    return collection === 'relationship' ? { mood: mood || 'all', scene: scene || 'all' } : { mood: 'all', scene: 'all' };
+  function normalizeRelationshipPresetFilters(collection, mood, scene, interaction) {
+    return collection === 'relationship' ? { mood: mood || 'all', scene: scene || 'all', interaction: interaction || 'all' } : { mood: 'all', scene: 'all', interaction: 'all' };
   }
   function renderPresetFramingFilters(active, presets) {
     var counts = getPresetFramingCounts(presets);

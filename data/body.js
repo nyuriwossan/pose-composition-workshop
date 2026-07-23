@@ -47,11 +47,11 @@
     o('one_raised', '片膝を上げる', 'one knee raised', 'One knee is raised.', ['walking', 'sitting'])
   ];
   D.pelvisOrientations = [
-    o('camera', '正面', 'pelvis facing the camera', 'The pelvis faces the camera.'),
-    o('three_quarter', '斜め', 'pelvis angled three-quarters to the camera', 'The pelvis is angled three-quarters to the camera.'),
-    o('side', '横向き', 'pelvis turned side-on to the camera', 'The pelvis is turned side-on to the camera.'),
-    o('away', '背中向き', 'pelvis turned away from the camera', 'The pelvis is turned away from the camera.'),
-    o('away_camera', '背中向き', 'pelvis turned away from the camera', 'The pelvis is turned away from the camera.')
+    o('camera', '正面', 'pelvis facing the viewer', 'The pelvis faces the viewer.'),
+    o('three_quarter', '斜め', 'pelvis angled three-quarters to the viewer', 'The pelvis is angled three-quarters to the viewer.'),
+    o('side', '横向き', 'pelvis turned side-on to the viewer', 'The pelvis is turned side-on to the viewer.'),
+    o('away', '背中向き', 'pelvis turned away from the viewer', 'The pelvis is turned away from the viewer.'),
+    o('away_camera', '背中向き', 'pelvis turned away from the viewer', 'The pelvis is turned away from the viewer.')
   ];
   D.pelvisShifts = [
     o('none', 'ずらさない', '', ''),
@@ -60,8 +60,8 @@
   ];
   D.torsoRelations = [
     o('aligned', '骨盤にそろえる', 'torso aligned with the pelvis', 'The torso stays aligned with the pelvis.'),
-    o('toward_camera', '上半身をカメラ側へ', 'torso turned slightly toward the camera', 'The torso turns slightly toward the camera.'),
-    o('away_camera', '上半身をカメラから外す', 'torso turned slightly away from the camera', 'The torso turns slightly away from the camera.'),
+    o('toward_camera', '上半身をカメラ側へ', 'torso turned slightly toward the viewer', 'The torso turns slightly toward the viewer.'),
+    o('away_camera', '上半身をカメラから外す', 'torso turned slightly away from the viewer', 'The torso turns slightly away from the viewer.'),
     o('counter', '腰と逆へひねる', 'torso counter-rotated from the pelvis', 'The torso counter-rotates against the pelvis.')
   ];
   D.torsoLeans = [
@@ -84,7 +84,7 @@
     o('none', '指定なし', '', ''),
     o('rear_three_quarter', '背面斜め', 'rear three-quarter view, seen from behind', 'The figure is shown from a rear three-quarter angle.'),
     o('back_and_shoulders', '背中と肩を見せる', 'back-facing pose with the back and shoulders clearly visible', 'The figure faces away, keeping the back and shoulders clearly visible.'),
-    o('hips_away', '腰を奥へ向ける', 'hips angled away from the camera, seen from behind', 'The hips remain angled away from the camera while the upper body turns only slightly.'),
+    o('hips_away', '腰を奥へ向ける', 'hips angled away from the viewer, seen from behind', 'The hips remain angled away from the viewer while the upper body turns only slightly.'),
     o('back_and_waist', '背中と腰を見せる', 'back-focused pose with the back and waist clearly visible, torso kept facing away', 'The back and waist remain clearly visible while the torso stays facing away.'),
     o('full_back_line', '背中のラインを主役にする', 'full back line clearly visible, back-focused pose, torso remains facing away', 'The full line of the back remains visible and becomes the focus while the torso faces away.'),
     o('rear_pose_emphasis', '後ろ姿を強調する', 'rear pose emphasized, seen from behind, torso kept facing away', 'The pose is emphasized from behind while the torso remains facing away.')
