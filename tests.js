@@ -15,7 +15,9 @@
   var rearViewPresetIds = ['relationship_back_facing_over_shoulder', 'relationship_rear_three_quarter_turn', 'relationship_bed_seated_back_turn', 'relationship_bed_prone_back_visible', 'relationship_sofa_backrest_turn'];
   var faceCoveringPresetIds = ['relationship_bed_supine_covering_eyes', 'relationship_bed_supine_covering_mouth'];
   var backFocusedPresetIds = ['relationship_bed_hands_and_knees_look_back', 'relationship_bed_kneeling_upright_look_back', 'relationship_bed_forward_lean_back_turn', 'relationship_furniture_hands_support_turn', 'relationship_open_back_outfit_turn'];
-  var relationshipAddedIds = rearViewPresetIds.concat(faceCoveringPresetIds, backFocusedPresetIds);
+  var viewerHandPresetIds = ['relationship_offer_one_hand_to_viewer', 'relationship_leading_viewer_by_hand', 'relationship_half_heart_with_viewer', 'relationship_kiss_viewer_hand', 'relationship_offer_bite_to_viewer', 'relationship_guide_viewer_hand_to_cheek'];
+  var viewerHandVisiblePresetIds = ['relationship_leading_viewer_by_hand', 'relationship_half_heart_with_viewer', 'relationship_kiss_viewer_hand', 'relationship_guide_viewer_hand_to_cheek'];
+  var relationshipAddedIds = rearViewPresetIds.concat(faceCoveringPresetIds, backFocusedPresetIds, viewerHandPresetIds);
   var relationshipPresetIds = relationshipExistingIds.concat(relationshipNewIds, relationshipAddedIds);
   function memoryStore(seed) {
     var data = seed || {};
@@ -27,7 +29,8 @@
   test('初期状態：基本姿勢は未選択', function () { eq(S.initial().pose.posture, null); });
   test('初期状態：手は個別モード', function () { eq(S.initial().pose.arms.mode, 'separate'); });
   test('初期状態：カメラは水平', function () { eq(S.initial().camera.roll, 'level'); });
-  test('初期状態：任意の出力補助はOFF、四点支持の服装補助は待機', function () { var o = S.initial().output; eq([o.suppressTextSymbols, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, true, 'none']); });
+  test('初期状態：任意の出力補助はOFF、四点支持の服装補助は待機', function () { var o = S.initial().output; eq([o.suppressTextSymbols, o.suppressPhotographyEquipment, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, false, true, 'none']); });
+  test('初期状態：Viewerの手のやりとりは未指定', function () { var i = S.initial().interaction; eq([i.viewerHandInteraction, i.viewerHandVisible], ['none', false]); });
   test('deep merge：元の状態を書き換えない', function () { var a = S.initial(); var b = S.merge(a, { pose: { posture: 'standing' } }); eq(a.pose.posture, null); eq(b.pose.posture, 'standing'); });
   test('getPath：深い値を取得', function () { eq(S.getPath(S.initial(), 'pose.motion.state'), 'static'); });
   test('setPath：深い値を設定', function () { var s = {}; S.setPath(s, 'pose.head.yaw', 'side'); eq(s.pose.head.yaw, 'side'); });
@@ -42,21 +45,22 @@
     ['gazeTargets', D.gazeTargets], ['gazeDirections', D.gazeDirections], ['eyeStates', D.eyeStates], ['expressions', D.expressions], ['shotSizes', D.shotSizes],
     ['elevations', D.elevations], ['rolls', D.rolls], ['placements', D.placements], ['negativeSpaces', D.negativeSpaces],
     ['crops', D.crops], ['foregrounds', D.foregrounds], ['depths', D.depths], ['rhythms', D.rhythms],
-    ['interactionTargets', D.interactionTargets], ['interactionDistances', D.interactionDistances], ['interactionApproaches', D.interactionApproaches], ['presets', D.presets]
+    ['interactionTargets', D.interactionTargets], ['interactionDistances', D.interactionDistances], ['interactionApproaches', D.interactionApproaches], ['viewerHandInteractions', D.viewerHandInteractions], ['presets', D.presets]
   ].forEach(function (row) {
     test('データ：' + row[0] + 'のIDは一意', function () { ok(unique(ids(row[1]))); });
   });
   test('データ：すべての選択肢に日本語ラベル', function () { [D.postures, D.motionStates, D.weights, D.armActions, D.headYaws, D.gazeTargets, D.shotSizes, D.placements].forEach(function (list) { list.forEach(function (x) { ok(x.labelJa); }); }); });
   test('データ：腕の使用手数は0〜2', function () { D.armActions.concat(D.combinedArms).forEach(function (x) { ok(x.resources.hands >= 0 && x.resources.hands <= 2); }); });
   test('データ：複合腕は2本の手を使う', function () { D.combinedArms.forEach(function (x) { eq(x.resources.hands, 2); }); });
-  test('データ：ビルトインプリセットは55件', function () { eq(D.presets.length, 55); });
+  test('データ：ビルトインプリセットは61件', function () { eq(D.presets.length, 61); });
   test('データ：全プリセットにshotSizeがある', function () { D.presets.forEach(function (p) { ok(p.patch.camera && p.patch.camera.shotSize); }); });
   test('データ：既存15プリセットを保持', function () { legacyPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：relationship既存15件が揃う', function () { relationshipExistingIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：relationship新規13件が揃う', function () { relationshipNewIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：背面5件・顔隠し2件・背中主役5件が揃う', function () { relationshipAddedIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
+  test('データ：手のやりとり6件が揃う', function () { viewerHandPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：全プリセットにcollectionがある', function () { D.presets.forEach(function (p) { ok(['basic', 'relationship'].indexOf(p.meta.collection) >= 0); }); });
-  test('データ：basic 15件・relationship 40件', function () { var c = D.getPresetCollectionCounts(D.presets); eq([c.basic, c.relationship], [15, 40]); });
+  test('データ：basic 15件・relationship 46件', function () { var c = D.getPresetCollectionCounts(D.presets); eq([c.basic, c.relationship], [15, 46]); });
   test('データ：relationshipはすべて相手視点', function () { D.filterPresets(D.presets, 'all', { collection: 'relationship' }).forEach(function (p) { ok(p.meta.audienceTags.indexOf('viewer_perspective') >= 0); }); });
   test('データ：relationshipタグは定義済み', function () { D.filterPresets(D.presets, 'all', { collection: 'relationship' }).forEach(function (p) { (p.moodTags || p.meta.moodTags || []).forEach(function (tag) { ok(D.presetMoodTagLabels[tag]); }); (p.sceneTags || p.meta.sceneTags || []).forEach(function (tag) { ok(D.presetSceneTagLabels[tag]); }); }); });
   test('データ：追加プリセットは既存から主要軸が2つ以上異なる', function () {
@@ -71,19 +75,20 @@
   test('分類：全身用shotSizeを判定', function () { ['full_body', 'wide', 'wide_shot'].forEach(function (shot) { eq(D.getPresetFramingGroup({ patch: { camera: { shotSize: shot } } }), 'full'); }); });
   test('分類：未知のshotSizeはother', function () { eq(D.getPresetFramingGroup({ patch: { camera: { shotSize: 'unknown' } } }), 'other'); });
   test('分類：全プリセットがアップ・半身・全身のいずれか', function () { D.presets.forEach(function (p) { ok(['up', 'half', 'full'].indexOf(D.getPresetFramingGroup(p)) >= 0); }); });
-  test('分類：アップ10・半身31・全身14', function () { var c = D.getPresetFramingCounts(D.presets); eq([c.up, c.half, c.full], [10, 31, 14]); });
+  test('分類：アップ13・半身33・全身15', function () { var c = D.getPresetFramingCounts(D.presets); eq([c.up, c.half, c.full], [13, 33, 15]); });
   test('分類：分類別件数の合計が全件数', function () { var c = D.getPresetFramingCounts(D.presets); eq(c.up + c.half + c.full + c.other, c.all); });
-  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 10); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
-  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 31); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
-  test('フィルター：全身だけを返す', function () { var list = D.filterPresets(D.presets, 'full', false); eq(list.length, 14); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'full'); }); });
-  test('フィルター：相手視点だけを返す', function () { var list = D.filterPresets(D.presets, 'all', true); eq(list.length, 40); list.forEach(function (p) { ok(p.meta.audienceTags.indexOf('viewer_perspective') >= 0); }); });
-  test('フィルター：relationshipのアップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', { collection: 'relationship' }); eq(list.length, 9); });
-  test('フィルター：relationshipの半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', { collection: 'relationship' }); eq(list.length, 25); });
-  test('フィルター：relationshipの全身だけを返す', function () { var list = D.filterPresets(D.presets, 'full', { collection: 'relationship' }); eq(list.length, 6); });
+  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 13); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
+  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 33); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
+  test('フィルター：全身だけを返す', function () { var list = D.filterPresets(D.presets, 'full', false); eq(list.length, 15); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'full'); }); });
+  test('フィルター：相手視点だけを返す', function () { var list = D.filterPresets(D.presets, 'all', true); eq(list.length, 46); list.forEach(function (p) { ok(p.meta.audienceTags.indexOf('viewer_perspective') >= 0); }); });
+  test('フィルター：relationshipのアップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', { collection: 'relationship' }); eq(list.length, 12); });
+  test('フィルター：relationshipの半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', { collection: 'relationship' }); eq(list.length, 27); });
+  test('フィルター：relationshipの全身だけを返す', function () { var list = D.filterPresets(D.presets, 'full', { collection: 'relationship' }); eq(list.length, 7); });
   test('フィルター：甘めは甘めタグだけを返す', function () { D.filterPresets(D.presets, 'all', { collection: 'relationship', mood: 'sweet' }).forEach(function (p) { ok(p.meta.moodTags.indexOf('sweet') >= 0); }); });
   test('フィルター：ベッドはベッドタグだけを返す', function () { D.filterPresets(D.presets, 'all', { collection: 'relationship', scene: 'bed' }).forEach(function (p) { ok(p.meta.sceneTags.indexOf('bed') >= 0); }); });
   test('フィルター：背中主役は新規5件を返す', function () { var list = D.filterPresets(D.presets, 'all', { collection: 'relationship', scene: 'back_focused' }); eq(ids(list), backFocusedPresetIds); });
-  test('フィルター：relationship以外へ切替で専用条件をリセット', function () { eq(D.normalizeRelationshipPresetFilters('basic', 'sweet', 'bed'), { mood: 'all', scene: 'all' }); });
+  test('フィルター：手のやりとりは新規6件を返す', function () { var list = D.filterPresets(D.presets, 'all', { collection: 'relationship', interaction: 'hand_interaction' }); eq(ids(list), viewerHandPresetIds); });
+  test('フィルター：relationship以外へ切替で専用条件をリセット', function () { eq(D.normalizeRelationshipPresetFilters('basic', 'sweet', 'bed', 'hand_interaction'), { mood: 'all', scene: 'all', interaction: 'all' }); });
   test('フィルター：コレクションのaria-pressedは1件', function () { var html = D.renderPresetCollectionFilters('relationship', D.presets); eq((html.match(/aria-pressed="true"/g) || []).length, 1); ok(/data-collection-filter="relationship" aria-pressed="true"/.test(html)); });
   test('フィルター：aria-pressedは選択中だけtrue', function () { var html = D.renderPresetFramingFilters('half', D.presets); eq((html.match(/aria-pressed="true"/g) || []).length, 1); ok(/data-preset-filter="half" aria-pressed="true"/.test(html)); });
   test('フィルター：選択変更でaria-pressedが更新', function () { var html = D.renderPresetFramingFilters('full', D.presets); ok(/data-preset-filter="full" aria-pressed="true"/.test(html)); ok(!/data-preset-filter="half" aria-pressed="true"/.test(html)); });
@@ -102,15 +107,15 @@
   test('正規化：人物数を1へ戻す', function () { eq(S.normalize({ subject: { count: 9 } }).subject.count, 1); });
   test('正規化：旧保存に寝姿軸がなくても移行', function () { var s = S.normalize({ pose: { posture: 'reclining' } }); eq([s.pose.lyingOrientation, s.pose.supportPose], ['none', 'none']); });
   test('正規化：旧保存に背面・表情・雰囲気軸がなくても移行', function () { var s = S.normalize({ pose: { posture: 'standing' } }); eq([s.pose.rearViewEmphasis, s.pose.expression, s.pose.flowStyle], ['none', 'none', null]); });
-  test('正規化：旧保存に出力補助軸がなくても安全に移行', function () { var o = S.normalize({ output: { includeSolo: true } }).output; eq([o.suppressTextSymbols, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, true, 'none']); });
+  test('正規化：旧保存に出力補助軸がなくても安全に移行', function () { var o = S.normalize({ output: { includeSolo: true } }).output; eq([o.suppressTextSymbols, o.suppressPhotographyEquipment, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, false, true, 'none']); });
   test('正規化：出力補助の真偽値を保持', function () { var o = S.normalize({ output: { suppressTextSymbols: true, preserveClothing: true } }).output; eq([o.suppressTextSymbols, o.preserveClothing], [true, true]); });
   test('正規化：未知の背面衣装はnoneへ戻る', function () { eq(S.normalize({ output: { backDesign: 'missing_clothes' } }).output.backDesign, 'none'); });
   test('正規化：未知の背面強調はnoneへ戻る', function () { eq(S.normalize({ pose: { rearViewEmphasis: 'backiest' } }).pose.rearViewEmphasis, 'none'); });
   test('正規化：未知の表情はnoneへ戻る', function () { eq(S.normalize({ pose: { expression: 'mixed_emotions' } }).pose.expression, 'none'); });
   test('正規化：ベッドと横向き寝を保持', function () { var s = S.normalize({ pose: { support: { type: 'bed_surface' }, lyingOrientation: 'side_lying' } }); eq([s.pose.support.type, s.pose.lyingOrientation], ['bed_surface', 'side_lying']); });
-  test('正規化：旧保存データへinteraction初期値を補う', function () { eq(S.normalize({ pose: { posture: 'standing' } }).interaction, { target: 'none', distance: 'normal', approach: 'none' }); });
-  test('正規化：未知のinteraction値を除去', function () { eq(S.normalize({ interaction: { target: 'stranger', distance: 'nearer', approach: 'jump' } }).interaction, { target: 'none', distance: 'normal', approach: 'none' }); });
-  test('正規化：相手なしなら距離と動きを初期化', function () { eq(S.normalize({ interaction: { target: 'none', distance: 'very_close', approach: 'lean_toward' } }).interaction, { target: 'none', distance: 'normal', approach: 'none' }); });
+  test('正規化：旧保存データへinteraction初期値を補う', function () { eq(S.normalize({ pose: { posture: 'standing' } }).interaction, { target: 'none', distance: 'normal', approach: 'none', viewerHandInteraction: 'none', viewerHandVisible: false }); });
+  test('正規化：未知のinteraction値を除去', function () { eq(S.normalize({ interaction: { target: 'stranger', distance: 'nearer', approach: 'jump', viewerHandInteraction: 'many_hands', viewerHandVisible: true } }).interaction, { target: 'none', distance: 'normal', approach: 'none', viewerHandInteraction: 'none', viewerHandVisible: false }); });
+  test('正規化：相手なしなら距離と動きとViewer手を初期化', function () { eq(S.normalize({ interaction: { target: 'none', distance: 'very_close', approach: 'lean_toward', viewerHandInteraction: 'holding', viewerHandVisible: true } }).interaction, { target: 'none', distance: 'normal', approach: 'none', viewerHandInteraction: 'none', viewerHandVisible: false }); });
   test('正規化：自由入力の非文字列を除去', function () { eq(S.normalize({ output: { customText: 42 } }).output.customText, ''); });
   test('正規化：壊れたignore配列を復旧', function () { eq(S.normalize({ meta: { ignoredWarnings: 'x' } }).meta.ignoredWarnings, []); });
   test('姿勢初期値：立位は片足重心候補を入れる', function () { eq(S.applyPostureDefaults(S.initial(), 'standing').pose.weight, 'one_leg'); });
@@ -154,6 +159,8 @@
   test('advisor：前傾支持に前傾がなければ案内', function () { var s = patch(null, { 'pose.supportPose': 'forward_lean_support', 'pose.torso.lean': 'neutral' }); ok(issueIds(s).indexOf('forward_support_lean_mismatch') >= 0); });
   test('advisor：背中主役で胴体を正面へひねると警告', function () { var s = patch(null, { 'pose.rearViewEmphasis': 'full_back_line', 'pose.pelvis.orientation': 'away_camera', 'pose.torso.relationToPelvis': 'counter' }); ok(issueIds(s).indexOf('rear_view_torso_mismatch') >= 0); });
   test('advisor：四点支持の近い画角は全身を提案', function () { var s = patch(null, { 'pose.supportPose': 'hands_and_knees', 'camera.shotSize': 'waist_up' }), i = A.check(s).filter(function (x) { return x.id === 'hands_and_knees_shot_too_close'; })[0]; ok(i); eq(i.resolutions[0].patch['camera.shotSize'], 'full_body'); });
+  test('advisor：撮影機材抑制ONで説明を表示', function () { var s = patch(modelState(), { 'output.suppressPhotographyEquipment': true }); ok(issueIds(s).indexOf('photography_equipment_suppression') >= 0); });
+  test('advisor：Viewerの手を表示する構図へ実用的な助言', function () { var s = patch(modelState(), { 'interaction.target': 'viewer', 'interaction.viewerHandInteraction': 'holding', 'interaction.viewerHandVisible': true }); ok(issueIds(s).indexOf('viewer_hand_generation_tip') >= 0); });
   test('advisor：ベッド背面で服保持OFFなら案内', function () { var s = patch(null, { 'pose.support.type': 'bed_surface', 'pose.rearViewEmphasis': 'full_back_line', 'output.preserveClothing': false }), i = A.check(s).filter(function (x) { return x.id === 'rear_bed_clothing_risk'; })[0]; ok(i); eq(i.resolutions[0].patch['output.preserveClothing'], true); });
   test('advisor：四点支持の服装補助OFFなら再有効化を提案', function () { var s = patch(null, { 'pose.supportPose': 'hands_and_knees', 'output.preserveClothing': true, 'output.supportOutfitAssist': false }); ok(issueIds(s).indexOf('hands_and_knees_outfit_tip') >= 0); });
 
@@ -175,7 +182,12 @@
   test('generator：同じ句を重複しない', function () { var c = G.compact(modelState()).split(', '); eq(new Set(c).size, c.length); });
   test('generator：自由入力を末尾へそのまま追加', function () { var custom = 'custom WORDS: keep-me'; var s = patch(modelState(), { 'output.customText': custom }); ok(G.compact(s).endsWith(custom)); });
   test('generator：未選択ブロックを除外', function () { var b = G.blocks(S.initial()); eq(b.arms.compact.length, 0); });
-  test('generator：カメラ高さと身体向きを混同しない', function () { var s = patch(modelState(), { 'camera.elevation': 'slightly_low', 'pose.pelvis.orientation': 'three_quarter' }); var c = G.compact(s); ok(c.indexOf('three-quarters') >= 0 && c.indexOf('slightly low angle') >= 0); });
+  test('generator：視点高さと身体向きを混同しない', function () { var s = patch(modelState(), { 'camera.elevation': 'slightly_low', 'pose.pelvis.orientation': 'three_quarter' }); var c = G.compact(s); ok(c.indexOf('three-quarters') >= 0 && c.indexOf('viewed from slightly below') >= 0); });
+  test('generator：高位置はviewed from above', function () { ok(G.compact(patch(modelState(), { 'camera.elevation': 'high' })).indexOf('viewed from above') >= 0); });
+  test('generator：低位置はviewed from below', function () { ok(G.compact(patch(modelState(), { 'camera.elevation': 'low' })).indexOf('viewed from below') >= 0); });
+  test('generator：こちらを見る表現にlooking at the cameraを使わない', function () { var c = G.compact(patch(modelState(), { 'pose.head.yaw': 'toward_camera', 'pose.gaze.target': 'viewer' })); ok(c.indexOf('head turned toward the viewer') >= 0); ok(c.indexOf('looking at the camera') < 0); });
+  test('generator：背面表現はback facing the viewer', function () { var c = G.compact(patch(modelState(), { 'pose.rearViewEmphasis': 'back_and_shoulders', 'pose.pelvis.orientation': 'away_camera' })); ok(c.indexOf('back-facing pose') >= 0 && c.indexOf('away from the viewer') >= 0); ok(c.indexOf('back facing the camera') < 0); });
+  test('generator：通常生成部分にcamera単語を残さない', function () { D.presets.forEach(function (p) { var s = S.applyPatch(S.initial(), p.patch), text = G.compact(s) + ' ' + G.detailed(s); ok(!/\bcamera\b/i.test(text), p.id + ' / ' + text); }); });
   test('generator：構造一覧に顔と視線が別見出し', function () { var j = G.structureJa(modelState()); ok(j.indexOf('【顔・首】') >= 0 && j.indexOf('【視線】') >= 0); });
   test('generator：相手視点の距離を出力', function () { var s = patch(modelState(), { 'interaction.target': 'viewer', 'interaction.distance': 'very_close' }); ok(G.compact(s).indexOf('very close face-to-face distance') >= 0); });
   test('generator：身を寄せる句は一度だけ', function () { var s = patch(modelState(), { 'interaction.target': 'viewer', 'interaction.approach': 'lean_toward', 'pose.torso.lean': 'forward' }); var c = G.compact(s); eq((c.match(/leaning toward the viewer/g) || []).length, 1); ok(c.indexOf('torso leaning forward') < 0); });
@@ -192,11 +204,13 @@
   test('generator：背面指定なしでは従来出力を変えない', function () { var s = modelState(), before = G.compact(s); s = patch(s, { 'pose.rearViewEmphasis': 'none' }); eq(G.compact(s), before); });
   test('generator：背面斜めにseen from behind', function () { var s = patch(modelState(), { 'pose.rearViewEmphasis': 'rear_three_quarter' }); ok(G.compact(s).indexOf('seen from behind') >= 0); });
   test('generator：背中と肩を明示', function () { var s = patch(modelState(), { 'pose.rearViewEmphasis': 'back_and_shoulders' }); ok(G.compact(s).indexOf('back and shoulders clearly visible') >= 0); });
-  test('generator：腰を奥へ向ける表現', function () { var s = patch(modelState(), { 'pose.rearViewEmphasis': 'hips_away' }); ok(G.compact(s).indexOf('hips angled away from the camera') >= 0); });
+  test('generator：腰を奥へ向ける表現', function () { var s = patch(modelState(), { 'pose.rearViewEmphasis': 'hips_away' }); ok(G.compact(s).indexOf('hips angled away from the viewer') >= 0); });
   test('generator：表情は単一軸で出力', function () { var s = patch(modelState(), { 'pose.expression': 'wistful' }); ok(G.compact(s).indexOf('wistful expression') >= 0); ok(G.structureJa(s).indexOf('表情：切なげ') >= 0); });
   test('generator：playful表情だけでは文字記号を抑制しない', function () { var playful = G.compact(patch(modelState(), { 'pose.expression': 'playful' })); ok(playful.indexOf('playful expression') >= 0); ok(playful.indexOf('no comic symbols') < 0 && playful.indexOf('no text') < 0); });
   test('generator：文字記号抑制OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.suppressTextSymbols': false })); ok(c.indexOf('no Japanese text') < 0 && c.indexOf('no comic symbols') < 0); });
   test('generator：文字記号抑制ONで補助文を追加', function () { var s = patch(modelState(), { 'output.suppressTextSymbols': true }), c = G.compact(s); ok(c.indexOf('no text') >= 0 && c.indexOf('no comic symbols') >= 0 && c.indexOf('no sound effect symbols') >= 0); ok(G.structureJa(s).indexOf('文字・記号：抑制') >= 0); });
+  test('generator：撮影機材抑制OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.suppressPhotographyEquipment': false })); ok(c.indexOf('no visible photography equipment') < 0 && c.indexOf('no filming equipment') < 0); });
+  test('generator：撮影機材抑制ONでcamera語なしの補助文を追加', function () { var s = patch(modelState(), { 'output.suppressPhotographyEquipment': true }), c = G.compact(s); ok(c.indexOf('no visible photography equipment') >= 0 && c.indexOf('no photographer') >= 0 && c.indexOf('no filming equipment') >= 0); ok(!/\bcamera\b/i.test(c)); ok(G.structureJa(s).indexOf('撮影機材：抑制') >= 0); });
   test('generator：服保持OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.preserveClothing': false })); ok(c.indexOf('clothing intact') < 0 && c.indexOf('no bare torso') < 0); });
   test('generator：服保持ONで腰まわりまで覆う補助文を追加', function () { var s = patch(modelState(), { 'output.preserveClothing': true }), c = G.compact(s); ok(c.indexOf('fully clothed') >= 0 && c.indexOf('shirt remains down') >= 0 && c.indexOf('hips and buttocks covered by clothing') >= 0 && c.indexOf('no exposed buttocks') >= 0 && c.indexOf('no nudity') >= 0 && c.indexOf('not underwear-only') >= 0); ok(G.structureJa(s).indexOf('服装：保持') >= 0); });
   test('generator：服装自由入力を判定', function () { ok(G.hasClothingDescription('fitted white t-shirt, slim black pants')); ok(!G.hasClothingDescription('soft bedroom lighting')); });
@@ -206,6 +220,28 @@
   test('generator：自由入力に服装があれば自動服装例を重ねない', function () { var s = patch(modelState(), { 'pose.supportPose': 'hands_and_knees', 'output.preserveClothing': true, 'output.supportOutfitAssist': true, 'output.customText': 'fitted white t-shirt, slim black pants' }), c = G.compact(s); ok(c.indexOf('black lounge shorts') < 0); ok(c.endsWith('fitted white t-shirt, slim black pants')); });
   test('generator：四点支持以外では自動服装例なし', function () { var s = patch(modelState(), { 'output.preserveClothing': true, 'output.supportOutfitAssist': true }), c = G.compact(s); ok(c.indexOf('white t-shirt and black lounge shorts') < 0); });
   test('generator：四点支持は近い画角でも全身へ出力補正', function () { var s = patch(modelState(), { 'pose.supportPose': 'hands_and_knees', 'camera.shotSize': 'waist_up' }), c = G.compact(s), j = G.structureJa(s); ok(c.indexOf('full-body shot') >= 0 && c.indexOf('waist-up shot') < 0); ok(c.indexOf('both hands visible') >= 0 && c.indexOf('both knees visible') >= 0); ok(j.indexOf('四点支持のため出力を全身へ補正') >= 0); });
+
+  viewerHandPresetIds.forEach(function (id) {
+    test('手のやりとりプリセット：' + id + 'は専用state・カテゴリ・hard 0件', function () {
+      var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch);
+      ok(p); eq(p.meta.collection, 'relationship'); ok(p.meta.interactionTags.indexOf('hand_interaction') >= 0); ok(s.interaction.viewerHandInteraction !== 'none'); eq(s.interaction.target, 'viewer'); eq(s.subject.count, 1); eq(A.summary(s).hard, 0);
+    });
+  });
+  viewerHandVisiblePresetIds.forEach(function (id) {
+    test('Viewer手表示：' + id + 'は手前から片手だけを明記', function () {
+      var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s);
+      eq(s.interaction.viewerHandVisible, true); ok(c.indexOf('a single viewer hand entering from the foreground') >= 0); ok(c.indexOf('only one hand of the viewer visible') >= 0); ok(c.indexOf('no multiple viewer hands') >= 0);
+    });
+  });
+  ['relationship_offer_one_hand_to_viewer', 'relationship_offer_bite_to_viewer'].forEach(function (id) {
+    test('Viewer手不要：' + id + 'はViewer自身の手を描写しない', function () {
+      var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s);
+      eq(s.interaction.viewerHandVisible, false); ok(c.indexOf("viewer's hand") < 0 && c.indexOf('viewer hand entering') < 0 && c.indexOf('hand of the viewer') < 0);
+    });
+  });
+  test('Viewer手：通常プリセットではViewer手描写を出さない', function () { var c = G.compact(S.applyPatch(S.initial(), D.presets.filter(function (p) { return p.id === 'basic_front'; })[0].patch)); ok(c.indexOf("viewer's hand") < 0 && c.indexOf('viewer hand entering') < 0); });
+  test('Viewer手：既存の腕指定と自由入力を上書きしない', function () { var s = patch(modelState(), { 'interaction.target': 'viewer', 'interaction.viewerHandInteraction': 'feeding', 'interaction.viewerHandVisible': false, 'pose.arms.primary.action': 'hand_on_hip', 'output.customText': 'a strawberry on a small fork' }), c = G.compact(s); eq(s.pose.arms.primary.action, 'hand_on_hip'); ok(c.indexOf('hand resting on the hip') >= 0); ok(c.endsWith('a strawberry on a small fork')); ok(c.indexOf('holding a spoon') < 0); });
+  test('Viewer手：feedingは自由入力なしの場合だけスプーンを補助', function () { var s = patch(modelState(), { 'interaction.target': 'viewer', 'interaction.viewerHandInteraction': 'feeding', 'interaction.viewerHandVisible': false }), c = G.compact(s); ok(c.indexOf('offering a small bite of food toward the viewer') >= 0 && c.indexOf('holding a spoon near the foreground') >= 0); });
 
   rearViewPresetIds.forEach(function (id) {
     test('背面プリセット：' + id + 'は背面条件を満たす', function () {

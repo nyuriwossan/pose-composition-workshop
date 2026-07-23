@@ -6,7 +6,7 @@
   var main = $('main'), sticky = $('stickySummary'), nav = $('bottomNav'), meter = $('stepMeter');
   var draft = Store.loadDraft();
   var state = draft || S.initial();
-  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', collectionFilter: 'all', moodFilter: 'all', sceneFilter: 'all', viewerOnly: false };
+  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', collectionFilter: 'all', moodFilter: 'all', sceneFilter: 'all', interactionFilter: 'all', viewerOnly: false };
   var stepInfo = [
     null,
     { title: '姿勢と動作', copy: '身体を支える基本状態を一つ選びます。' },
@@ -177,7 +177,8 @@
     var output = card('プロンプト出力', '標準はカンマ区切りの構造化プロンプトです。', tabs + '<pre class="output-box" id="outputBox">' + esc(outputText()) + '</pre><div class="sheet-actions"><button class="btn btn--accent" data-action="copy-output"' + (!outputText() ? ' disabled' : '') + '>この出力をコピー</button><button class="btn" data-action="open-save">名前を付けて保存</button><button class="btn btn--danger" data-action="reset">リセット</button></div>');
     var supportOutfitControl = state.pose.supportPose === 'hands_and_knees' && state.output.preserveClothing ? '<button type="button" class="chip" data-output-toggle="supportOutfitAssist" aria-pressed="' + state.output.supportOutfitAssist + '">白T＋黒ショーツで補助</button>' : '';
     var supportOutfitNote = state.pose.supportPose === 'hands_and_knees' ? '<p class="hint">四点支持では「服を保持する」ON時に、服装未指定なら白Tシャツ＋黒のラウンジショーツを補助できます。</p>' : '';
-    var outputAssist = card('出力補助設定', '必要なときだけ加える任意の抑制語です。初期値はOFFです。', '<div class="chip-grid"><button type="button" class="chip" data-output-toggle="suppressTextSymbols" aria-pressed="' + state.output.suppressTextSymbols + '">文字・記号を抑える</button><button type="button" class="chip" data-output-toggle="preserveClothing" aria-pressed="' + state.output.preserveClothing + '">服を保持する</button>' + supportOutfitControl + '</div>' + supportOutfitNote);
+    var equipmentNote = state.output.suppressPhotographyEquipment ? '<p class="hint">一部の生成モデルが視点指定を撮影機材として描く問題を抑えます。</p>' : '';
+    var outputAssist = card('出力補助設定', '必要なときだけ加える任意の抑制語です。初期値はOFFです。', '<div class="chip-grid"><button type="button" class="chip" data-output-toggle="suppressTextSymbols" aria-pressed="' + state.output.suppressTextSymbols + '">文字・記号を抑える</button><button type="button" class="chip" data-output-toggle="suppressPhotographyEquipment" aria-pressed="' + state.output.suppressPhotographyEquipment + '">撮影機材を映さない</button><button type="button" class="chip" data-output-toggle="preserveClothing" aria-pressed="' + state.output.preserveClothing + '">服を保持する</button>' + supportOutfitControl + '</div>' + equipmentNote + supportOutfitNote);
     var custom = card('自由入力', '内容を改変せず、出力の末尾へ追加します。', '<label class="field-label" for="customText">追加したい英語</label><textarea id="customText" data-custom placeholder="例: soft fabric movement">' + esc(state.output.customText) + '</textarea>');
     main.innerHTML = heading(6) + banner + renderIssues(false) + output + outputAssist + custom;
   }
@@ -209,12 +210,13 @@
   }
   function closeSheet() { $('sheetBackdrop').hidden = true; $('bottomSheet').hidden = true; $('sheetContent').innerHTML = ''; }
   function presetSheet() {
-    var filterOptions = { collection: view.collectionFilter, mood: view.moodFilter, scene: view.sceneFilter, viewerOnly: view.viewerOnly };
+    var filterOptions = { collection: view.collectionFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
     var visiblePresets = D.filterPresets(D.presets, view.presetFilter, filterOptions);
     var builtins = visiblePresets.map(function (p) {
       var meta = p.meta || {}, cardTags = [];
       if ((meta.audienceTags || []).indexOf('viewer_perspective') >= 0) cardTags.push(D.presetAudienceTagLabels.viewer_perspective);
       if ((meta.moodTags || []).length && D.presetMoodTagLabels[meta.moodTags[0]]) cardTags.push(D.presetMoodTagLabels[meta.moodTags[0]]);
+      if ((meta.interactionTags || []).length && D.presetInteractionTagLabels[meta.interactionTags[0]]) cardTags.push(D.presetInteractionTagLabels[meta.interactionTags[0]]);
       if ((meta.sceneTags || []).length && D.presetSceneTagLabels[meta.sceneTags[0]]) cardTags.push(D.presetSceneTagLabels[meta.sceneTags[0]]);
       var tags = cardTags.slice(0, 3).map(function (tag) { return '<span class="preset-tag">' + esc(tag) + '</span>'; }).join('');
       return '<button class="preset-card" type="button" data-load-preset="' + attr(p.id) + '"><strong>' + esc(p.nameJa) + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
@@ -225,7 +227,7 @@
       var filterRow = function (title, values, labels, active, dataName) {
         return '<div class="relationship-filter-row"><small>' + esc(title) + '</small><div class="tag-filters" role="group" aria-label="' + esc(title) + 'で絞り込み"><button type="button" data-' + dataName + '="all" aria-pressed="' + (active === 'all') + '">すべて</button>' + values.map(function (id) { return '<button type="button" data-' + dataName + '="' + attr(id) + '" aria-pressed="' + (active === id) + '">' + esc(labels[id]) + '</button>'; }).join('') + '</div></div>';
       };
-      relationshipFilters = '<div class="relationship-filters">' + filterRow('雰囲気', Object.keys(D.presetMoodTagLabels), D.presetMoodTagLabels, view.moodFilter, 'mood-filter') + filterRow('シーン', Object.keys(D.presetSceneTagLabels), D.presetSceneTagLabels, view.sceneFilter, 'scene-filter') + '</div>';
+      relationshipFilters = '<div class="relationship-filters">' + filterRow('雰囲気', Object.keys(D.presetMoodTagLabels), D.presetMoodTagLabels, view.moodFilter, 'mood-filter') + filterRow('シーン', Object.keys(D.presetSceneTagLabels), D.presetSceneTagLabels, view.sceneFilter, 'scene-filter') + filterRow('やりとり', Object.keys(D.presetInteractionTagLabels), D.presetInteractionTagLabels, view.interactionFilter, 'interaction-filter') + '</div>';
     }
     var filters = '<div class="collection-filters" role="group" aria-label="プリセットカテゴリで絞り込み">' + D.renderPresetCollectionFilters(view.collectionFilter, D.presets) + '</div><div class="preset-filters" role="group" aria-label="撮影範囲で絞り込み">' + D.renderPresetFramingFilters(view.presetFilter, collectionScoped) + '</div>' + relationshipFilters + '<div class="preset-filter-tools"><span aria-live="polite">' + visiblePresets.length + '件を表示</span></div>';
     var users = Store.listPresets();
@@ -271,9 +273,10 @@
     }
     if (target.dataset.expand) { view.expanded[target.dataset.expand] = true; render(); return; }
     if (target.dataset.presetFilter) { view.presetFilter = target.dataset.presetFilter; presetSheet(); return; }
-    if (target.dataset.collectionFilter) { var reset = D.normalizeRelationshipPresetFilters(target.dataset.collectionFilter, 'all', 'all'); view.collectionFilter = target.dataset.collectionFilter; view.moodFilter = reset.mood; view.sceneFilter = reset.scene; view.viewerOnly = false; presetSheet(); return; }
+    if (target.dataset.collectionFilter) { var reset = D.normalizeRelationshipPresetFilters(target.dataset.collectionFilter, 'all', 'all', 'all'); view.collectionFilter = target.dataset.collectionFilter; view.moodFilter = reset.mood; view.sceneFilter = reset.scene; view.interactionFilter = reset.interaction; view.viewerOnly = false; presetSheet(); return; }
     if (target.dataset.moodFilter) { view.moodFilter = target.dataset.moodFilter; presetSheet(); return; }
     if (target.dataset.sceneFilter) { view.sceneFilter = target.dataset.sceneFilter; presetSheet(); return; }
+    if (target.dataset.interactionFilter) { view.interactionFilter = target.dataset.interactionFilter; presetSheet(); return; }
     if (target.dataset.viewerOnly) { view.viewerOnly = !view.viewerOnly; presetSheet(); return; }
     if (target.dataset.flow) { applyFlow(target.dataset.flow); return; }
     if (target.dataset.outputToggle) {

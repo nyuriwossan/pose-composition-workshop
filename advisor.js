@@ -10,11 +10,12 @@
   function armDef(id, combined) { return S.option(combined ? D.combinedArms : D.armActions, id); }
   function handUsage(state) {
     var arms = state.pose.arms;
+    var interactionHand = state.interaction && state.interaction.target === 'viewer' && state.interaction.viewerHandInteraction !== 'none' ? 1 : 0;
     if (arms.mode === 'combined' && arms.combined) {
       var combined = armDef(arms.combined, true);
-      return combined ? combined.resources.hands : 0;
+      return (combined ? combined.resources.hands : 0) + interactionHand;
     }
-    return ['primary', 'secondary'].reduce(function (sum, slot) {
+    return interactionHand + ['primary', 'secondary'].reduce(function (sum, slot) {
       var item = armDef(arms[slot].action, false);
       return sum + (item ? item.resources.hands : 0);
     }, 0);
@@ -75,6 +76,7 @@
     if (s.interaction.approach === 'lean_away' && s.pose.torso.lean !== 'backward') out.push(issue('viewer_lean_away_body_mismatch', 'info', 'interaction', '身を引く動きと上半身の傾きが揃っていません', '後方への傾きを加えると、相手から身を引く動きが伝わりやすくなります。', ['interaction.approach', 'pose.torso.lean'], [
       { labelJa: '上半身を後ろへ傾ける', patch: { 'pose.torso.lean': 'backward' } }
     ]));
+    if (s.interaction.viewerHandInteraction !== 'none' && s.interaction.viewerHandVisible) out.push(issue('viewer_hand_generation_tip', 'info', 'interaction', 'Viewerの手を含む構図は指や腕が崩れることがあります', 'Viewerの手は手前から片手だけ表示します。アップまたは半身、シンプルな背景にし、別の手振りを重ねないと安定しやすくなります。', ['interaction.viewerHandInteraction', 'interaction.viewerHandVisible', 'camera.shotSize', 'pose.arms'], []));
   }
   function check(raw) {
     var s = S.normalize(raw);
@@ -164,6 +166,7 @@
     ]));
     visibilityIssues(s, out);
     interactionIssues(s, out);
+    if (s.output.suppressPhotographyEquipment) out.push(issue('photography_equipment_suppression', 'info', 'output', '撮影機材の誤描画を抑えます', '一部の生成モデルが視点指定を撮影機材として描く問題を抑える補助文を出力します。', ['output.suppressPhotographyEquipment'], []));
 
     var ignored = s.meta.ignoredWarnings || [];
     out.forEach(function (item) { item.ignored = item.severity !== 'hard' && ignored.indexOf(item.id) >= 0; });

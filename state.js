@@ -53,9 +53,9 @@
         expression: 'none'
       },
       camera: { shotSize: null, elevation: 'eye_level', roll: 'level' },
-      interaction: { target: 'none', distance: 'normal', approach: 'none' },
+      interaction: { target: 'none', distance: 'normal', approach: 'none', viewerHandInteraction: 'none', viewerHandVisible: false },
       composition: { subjectPlacement: 'centered', negativeSpace: 'none', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' },
-      output: { includeSolo: true, suppressTextSymbols: false, preserveClothing: false, supportOutfitAssist: true, backDesign: 'none', customText: '' },
+      output: { includeSolo: true, suppressTextSymbols: false, suppressPhotographyEquipment: false, preserveClothing: false, supportOutfitAssist: true, backDesign: 'none', customText: '' },
       meta: { ignoredWarnings: [], updatedAt: null }
     };
   }
@@ -101,9 +101,13 @@
     s.interaction.target = known(D.interactionTargets, s.interaction.target, 'none');
     s.interaction.distance = known(D.interactionDistances, s.interaction.distance, 'normal');
     s.interaction.approach = known(D.interactionApproaches, s.interaction.approach, 'none');
+    s.interaction.viewerHandInteraction = known(D.viewerHandInteractions, s.interaction.viewerHandInteraction, 'none');
+    s.interaction.viewerHandVisible = s.interaction.viewerHandVisible === true;
     if (s.interaction.target === 'none') {
       s.interaction.distance = 'normal';
       s.interaction.approach = 'none';
+      s.interaction.viewerHandInteraction = 'none';
+      s.interaction.viewerHandVisible = false;
     }
     s.composition.subjectPlacement = known(D.placements, s.composition.subjectPlacement, 'centered');
     s.composition.negativeSpace = known(D.negativeSpaces, s.composition.negativeSpace, 'none');
@@ -113,6 +117,7 @@
     s.composition.rhythm = known(D.rhythms, s.composition.rhythm, 'stable');
     s.output.includeSolo = s.output.includeSolo !== false;
     s.output.suppressTextSymbols = s.output.suppressTextSymbols === true;
+    s.output.suppressPhotographyEquipment = s.output.suppressPhotographyEquipment === true;
     s.output.preserveClothing = s.output.preserveClothing === true;
     s.output.supportOutfitAssist = s.output.supportOutfitAssist !== false;
     s.output.backDesign = known(D.backDesigns, s.output.backDesign, 'none');

@@ -85,8 +85,8 @@
     if (supportPose && supportPose.id !== 'none') {
       if (supportPose.id === 'hands_and_knees') {
         var supportSurface = s.pose.support.type === 'bed_surface' ? 'the bed' : 'the supporting surface';
-        push(b.subjectPosture.compact, 'on hands and knees, both palms flat on ' + supportSurface + ', both knees on ' + supportSurface + ', weight supported by both hands and both knees, hips raised, torso leaning forward, full body visible, both hands visible, both knees visible, not sitting, not kneeling upright, not lying flat, not standing, not one knee raised, no front-facing torso, no full-body twist toward the camera');
-        push(b.subjectPosture.detailed, 'The figure stays on hands and knees with both palms flat on ' + supportSurface + ' and both knees on ' + supportSurface + '. The weight is supported by both hands and both knees, the hips remain raised, and the torso leans forward. Keep the full body, both hands, and both knees visible; do not turn the pose into sitting, upright kneeling, lying flat, standing, a one-knee-raised pose, a front-facing torso, or a full-body twist toward the camera.');
+        push(b.subjectPosture.compact, 'on hands and knees, both palms flat on ' + supportSurface + ', both knees on ' + supportSurface + ', weight supported by both hands and both knees, hips raised, torso leaning forward, full body visible, both hands visible, both knees visible, not sitting, not kneeling upright, not lying flat, not standing, not one knee raised, no front-facing torso, no full-body twist toward the viewer');
+        push(b.subjectPosture.detailed, 'The figure stays on hands and knees with both palms flat on ' + supportSurface + ' and both knees on ' + supportSurface + '. The weight is supported by both hands and both knees, the hips remain raised, and the torso leans forward. Keep the full body, both hands, and both knees visible; do not turn the pose into sitting, upright kneeling, lying flat, standing, a one-knee-raised pose, a front-facing torso, or a full-body twist toward the viewer.');
         push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa + '（両手・両膝・全身を表示）');
       } else {
         push(b.subjectPosture.compact, supportPose.compact); push(b.subjectPosture.detailed, supportPose.detailed); push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa);
@@ -110,8 +110,8 @@
         push(b.bodyFlow.detailed, rearView.detailed);
         push(b.bodyFlow.ja, '背面の見せ方：' + rearView.labelJa);
         if (['back_and_waist', 'full_back_line', 'rear_pose_emphasis'].indexOf(rearView.id) >= 0 && s.pose.head.yaw === 'over_shoulder') {
-          push(b.bodyFlow.compact, s.pose.supportPose === 'hands_and_knees' ? 'only the head turned toward the viewer, torso and hips remain facing away' : 'only the head turned toward the viewer, no front-facing torso, no full-body twist toward the camera');
-          push(b.bodyFlow.detailed, s.pose.supportPose === 'hands_and_knees' ? 'Only the head turns toward the viewer; the torso and hips remain facing away.' : 'Only the head turns toward the viewer; the torso and hips remain facing away. Do not rotate the full torso toward the camera.');
+          push(b.bodyFlow.compact, s.pose.supportPose === 'hands_and_knees' ? 'only the head turned toward the viewer, torso and hips remain facing away' : 'only the head turned toward the viewer, no front-facing torso, no full-body twist toward the viewer');
+          push(b.bodyFlow.detailed, s.pose.supportPose === 'hands_and_knees' ? 'Only the head turns toward the viewer; the torso and hips remain facing away.' : 'Only the head turns toward the viewer; the torso and hips remain facing away. Do not rotate the full torso toward the viewer.');
           push(b.bodyFlow.ja, '背面拘束：顔だけ振り返り、胴体と骨盤は奥向きを維持');
         }
       }
@@ -156,10 +156,25 @@
     if (s.interaction.target === 'viewer') {
       var distance = selected(D.interactionDistances, s.interaction.distance);
       var approach = selected(D.interactionApproaches, s.interaction.approach);
+      var viewerHandInteraction = selected(D.viewerHandInteractions, s.interaction.viewerHandInteraction);
       var armReaches = s.interaction.approach === 'reach_toward' && [s.pose.arms.primary.action, s.pose.arms.secondary.action].some(reachesViewer);
       if (distance) { push(b.interaction.compact, distance.compact); push(b.interaction.detailed, distance.detailed); push(b.interaction.ja, '距離：' + distance.labelJa); }
       if (approach && !armReaches) { push(b.interaction.compact, approach.compact); push(b.interaction.detailed, approach.detailed); }
       if (approach) push(b.interaction.ja, '相手への動き：' + approach.labelJa);
+      if (viewerHandInteraction && viewerHandInteraction.id !== 'none') {
+        push(b.interaction.compact, viewerHandInteraction.compact);
+        push(b.interaction.detailed, viewerHandInteraction.detailed);
+        push(b.interaction.ja, '手のやりとり：' + viewerHandInteraction.labelJa);
+        if (viewerHandInteraction.id === 'feeding' && !s.output.customText.trim()) {
+          push(b.interaction.compact, 'holding a spoon near the foreground');
+          push(b.interaction.detailed, 'A spoon is held near the foreground.');
+        }
+        if (s.interaction.viewerHandVisible) {
+          push(b.interaction.compact, 'a single viewer hand entering from the foreground, only one hand of the viewer visible, no extra hands, no duplicated arms, no multiple viewer hands');
+          push(b.interaction.detailed, 'Show only one hand of the viewer entering from the foreground; do not add extra hands, duplicated arms, or multiple viewer hands.');
+          push(b.interaction.ja, 'Viewerの手：手前から片手のみ表示');
+        } else push(b.interaction.ja, 'Viewerの手：表示しない');
+      }
       push(b.interaction.ja, '対象：画面外の相手');
     }
 
@@ -185,6 +200,11 @@
       push(b.outputAssist.compact, 'no text, no letters, no Japanese text, no speech bubbles, no comic symbols, no captions, no sound effect symbols');
       push(b.outputAssist.detailed, 'Do not include text, letters, Japanese text, speech bubbles, comic symbols, captions, or sound effect symbols.');
       push(b.outputAssist.ja, '文字・記号：抑制');
+    }
+    if (s.output.suppressPhotographyEquipment) {
+      push(b.outputAssist.compact, 'no visible photography equipment, no photographer, no filming equipment');
+      push(b.outputAssist.detailed, 'Do not show visible photography equipment, a photographer, or filming equipment.');
+      push(b.outputAssist.ja, '撮影機材：抑制');
     }
     if (s.pose.supportPose === 'hands_and_knees' && s.output.preserveClothing && s.output.supportOutfitAssist && (!backDesign || backDesign.id === 'none') && !hasClothingDescription(s.output.customText)) {
       push(b.outputAssist.compact, 'wearing a white t-shirt and black lounge shorts, shorts clearly visible');
