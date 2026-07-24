@@ -56,7 +56,7 @@
       interaction: { target: 'none', distance: 'normal', approach: 'none', viewerHandInteraction: 'none', viewerHandVisible: false },
       restraint: { type: 'none', placement: 'none', anchor: 'none', tension: 'loose', freeArm: 'none' },
       composition: { subjectPlacement: 'centered', negativeSpace: 'none', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' },
-      output: { includeSolo: true, suppressTextSymbols: false, suppressPhotographyEquipment: false, preserveClothing: false, supportOutfitAssist: true, backDesign: 'none', customText: '' },
+      output: { includeSolo: true, includeNegativePrompt: false, suppressTextSymbols: false, suppressPhotographyEquipment: false, preserveClothing: false, supportOutfitAssist: true, backDesign: 'none', customText: '' },
       meta: { ignoredWarnings: [], updatedAt: null }
     };
   }
@@ -122,6 +122,7 @@
     s.composition.depth = known(D.depths, s.composition.depth, 'separated');
     s.composition.rhythm = known(D.rhythms, s.composition.rhythm, 'stable');
     s.output.includeSolo = s.output.includeSolo !== false;
+    s.output.includeNegativePrompt = s.output.includeNegativePrompt === true;
     s.output.suppressTextSymbols = s.output.suppressTextSymbols === true;
     s.output.suppressPhotographyEquipment = s.output.suppressPhotographyEquipment === true;
     s.output.preserveClothing = s.output.preserveClothing === true;

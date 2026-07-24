@@ -52,7 +52,7 @@
       r.placement === 'one_wrist' ? 'one wrist' : r.placement === 'ankles' ? 'ankles' : 'arms and torso';
     var material = {
       rope: 'rope wrapped around ' + (target === 'one wrist' ? 'one wrist only' : 'the ' + target + ' only'),
-      chain: target === 'arms and torso' ? 'chains clearly visible around the arms and torso, not the neck' : 'chain secured around ' + (target === 'one wrist' ? 'one wrist only' : 'the ' + target + ' only'),
+      chain: target === 'arms and torso' ? 'chains clearly visible around the upper arms and torso, neck fully clear' : 'chain secured around ' + (target === 'one wrist' ? 'one wrist only' : 'the ' + target + ' only'),
       cuffs: target === 'one wrist' ? 'a cuff secured around one wrist only' : 'cuffs secured around the ' + target + ' only',
       straps: 'straps secured around ' + (target === 'one wrist' ? 'one wrist only' : 'the ' + target + ' only')
     }[r.type];
@@ -77,35 +77,32 @@
     push(ja, '固定状態：' + selected(D.restraintTensions, r.tension).labelJa);
 
     if (r.placement === 'one_wrist') {
-      push(compact, 'the other arm free and relaxed');
       push(compact, 'the other arm free and visible, the restrained hand and free hand both visible');
       push(detailed, 'The other arm remains free, relaxed, and visible; keep both the restrained hand and the free hand visible.');
       push(ja, '自由な腕：' + (r.freeArm === 'none' ? '片腕を自由に保つ' : selected(D.restraintFreeArms, r.freeArm).labelJa));
     }
     if (r.placement === 'wrists_front') push(compact, s.pose.posture === 'kneeling' ? 'bound hands resting near the lap' : 'bound hands held near the waist');
     if (r.placement === 'wrists_behind') {
-      push(compact, 'both wrists clearly visible behind the back, the bound hands visible behind the waist, elbows slightly bent behind the back, wrists close together behind the waist, natural shoulder alignment, upper arms remain attached naturally to the shoulders, no dislocated arms');
-      push(detailed, 'Keep both wrists clearly visible behind the back and the bound hands visible behind the waist. The elbows are slightly bent, the wrists stay close together behind the waist, the shoulders align naturally, and the upper arms remain attached naturally to the shoulders without dislocation.');
+      push(compact, 'bound hands clearly visible behind the waist, elbows slightly bent, wrists close together, natural shoulder and arm alignment');
+      push(detailed, 'The bound hands remain clearly visible behind the waist, with slightly bent elbows, close wrists, and natural shoulder and arm alignment.');
     }
     if (r.placement === 'wrists_overhead') {
-      push(compact, 'both feet firmly on the floor, body fully supported by the legs, not suspended, not hanging');
-      push(compact, 'both feet clearly on the floor, body weight supported by the legs, no hanging body');
-      push(detailed, 'Both feet remain clearly on the floor, the body weight is supported by the legs, and there is no hanging body.');
+      push(compact, 'both feet clearly planted on the floor, body weight fully supported by the legs');
+      push(detailed, 'Both feet remain clearly planted on the floor, with the legs fully supporting the body weight.');
     }
     if (r.placement === 'chair_armrests') {
       push(compact, 'seated upright in a chair, feet resting on the floor');
-      push(compact, 'each wrist secured to a separate visible chair armrest, both hands visible, chair armrests clearly visible');
+      push(compact, 'both hands and both chair armrests clearly visible');
       push(detailed, 'Each wrist is secured to a separate visible chair armrest; keep both hands and both chair armrests clearly visible.');
     }
-    if (['wrists_front', 'wrists_overhead'].indexOf(r.placement) >= 0) push(compact, 'both hands visible');
     if (wristPlacement) {
-      push(compact, 'fingers visible, hands anatomically complete, no missing hands, no missing fingers, no merged fingers, no cropped wrists, the bound hands remain visible');
-      push(detailed, 'Keep the fingers visible and the hands anatomically complete, with no missing hands, missing or merged fingers, or cropped wrists. The bound hands remain visible.');
+      push(compact, 'both bound hands anatomically complete and fully visible, all fingers clearly separated');
+      push(detailed, 'The bound hands remain fully visible and anatomically complete, with every finger clearly separated.');
       push(ja, '手指：手首から先・指・拘束された手を明瞭に表示');
     }
     if (chain) {
-      push(compact, 'chain links clearly visible, chain remains outside the body and clothing, chain does not emerge from the body, chain does not pass through the body, chain does not pass through the clothing, no floating chain, no chain growing from the skin, no chain fused with the outfit');
-      push(detailed, 'Keep every chain link clearly visible and outside the body and clothing. The chain must not emerge from skin, pass through the body or clothing, float without support, grow from the skin, or fuse with the outfit.');
+      push(compact, 'chain links clearly visible, chain routed outside the body and clothing as a separate object');
+      push(detailed, 'Every chain link remains clearly visible, with the chain routed outside the body and clothing as a separate object.');
       var visibleAnchor = {
         wall: 'chain clearly attached to a visible restraint point, attached to a visible wall ring',
         pillar: 'chain clearly attached to a visible restraint point, secured to a visible pillar fixture',
@@ -117,14 +114,14 @@
         push(detailed, 'The chain is connected to a clearly visible restraint point at the selected anchor.');
       }
       if (r.placement === 'torso_and_arms') {
-        push(compact, 'chains clearly visible across the front of the torso, chains remain outside the clothing, no hidden chain routes through the back or sleeves');
-        push(detailed, 'Keep the chain route visible across the front of the torso and outside the clothing; do not hide chain routes through the back, sleeves, or clothing folds.');
+        push(compact, 'one or two chain routes clearly visible across the front of the torso and outside the clothing');
+        push(detailed, 'One or two chain routes remain clearly visible across the front of the torso and outside the clothing.');
       }
       push(ja, '鎖補助：鎖の輪・接続先・衣装外の経路を明示');
     }
 
-    push(compact, 'restraints clearly wrapped around the intended body part, restraints separate from the skin and clothing, restraints clearly visible, no duplicated restraints, no extra arms, no extra hands, no rope fused with the body, no chain passing through the body, no restraints around the neck, no injury, no bruises, no blood, no broken limbs');
-    push(detailed, 'Keep the restraints clearly wrapped around only the intended body part, separate from skin and clothing, and clearly visible. Do not duplicate restraints or limbs, fuse rope with the body, pass chains through the body, place restraints around the neck, or show injury, bruises, blood, or broken limbs.');
+    push(compact, 'one clear restraint setup, restraint separate from skin and clothing, clean uninjured skin, natural complete limbs');
+    push(detailed, 'One clear restraint setup remains visibly separate from skin and clothing. The skin is clean and uninjured, and the limbs are natural and complete.');
     push(ja, '破綻抑制：対象部位だけ・首への拘束なし・非流血・非損傷');
     return { compact: compact, detailed: detailed, ja: ja };
   }
@@ -199,8 +196,8 @@
     if (supportPose && supportPose.id !== 'none') {
       if (supportPose.id === 'hands_and_knees') {
         var supportSurface = s.pose.support.type === 'bed_surface' ? 'the bed' : 'the supporting surface';
-        push(b.subjectPosture.compact, 'on hands and knees, both palms flat on ' + supportSurface + ', both knees on ' + supportSurface + ', weight supported by both hands and both knees, hips raised, torso leaning forward, full body visible, both hands visible, both knees visible, not sitting, not kneeling upright, not lying flat, not standing, not one knee raised, no front-facing torso, no full-body twist toward the viewer');
-        push(b.subjectPosture.detailed, 'The figure stays on hands and knees with both palms flat on ' + supportSurface + ' and both knees on ' + supportSurface + '. The weight is supported by both hands and both knees, the hips remain raised, and the torso leans forward. Keep the full body, both hands, and both knees visible; do not turn the pose into sitting, upright kneeling, lying flat, standing, a one-knee-raised pose, a front-facing torso, or a full-body twist toward the viewer.');
+        push(b.subjectPosture.compact, 'on hands and knees, both palms flat on ' + supportSurface + ', both knees on ' + supportSurface + ', weight supported by all four points, hips raised, torso leaning forward, full body visible, both hands visible, both knees visible');
+        push(b.subjectPosture.detailed, 'The figure stays on hands and knees with both palms and both knees on ' + supportSurface + '. All four points support the weight, the hips remain raised, the torso leans forward, and the full body keeps both hands and both knees visible.');
         push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa + '（両手・両膝・全身を表示）');
       } else {
         push(b.subjectPosture.compact, supportPose.compact); push(b.subjectPosture.detailed, supportPose.detailed); push(b.subjectPosture.ja, '支持姿勢：' + supportPose.labelJa);
@@ -224,8 +221,8 @@
         push(b.bodyFlow.detailed, rearView.detailed);
         push(b.bodyFlow.ja, '背面の見せ方：' + rearView.labelJa);
         if (['back_and_waist', 'full_back_line', 'rear_pose_emphasis'].indexOf(rearView.id) >= 0 && s.pose.head.yaw === 'over_shoulder') {
-          push(b.bodyFlow.compact, s.pose.supportPose === 'hands_and_knees' ? 'only the head turned toward the viewer, torso and hips remain facing away' : 'only the head turned toward the viewer, no front-facing torso, no full-body twist toward the viewer');
-          push(b.bodyFlow.detailed, s.pose.supportPose === 'hands_and_knees' ? 'Only the head turns toward the viewer; the torso and hips remain facing away.' : 'Only the head turns toward the viewer; the torso and hips remain facing away. Do not rotate the full torso toward the viewer.');
+          push(b.bodyFlow.compact, 'only the head turned toward the viewer, torso and hips remain facing away');
+          push(b.bodyFlow.detailed, 'Only the head turns toward the viewer while the torso and hips remain facing away.');
           push(b.bodyFlow.ja, '背面拘束：顔だけ振り返り、胴体と骨盤は奥向きを維持');
         }
       }
@@ -288,8 +285,8 @@
           push(b.interaction.detailed, 'A spoon is held near the foreground.');
         }
         if (s.interaction.viewerHandVisible) {
-          push(b.interaction.compact, 'a single viewer hand entering from the foreground, only one hand of the viewer visible, no extra hands, no duplicated arms, no multiple viewer hands');
-          push(b.interaction.detailed, 'Show only one hand of the viewer entering from the foreground; do not add extra hands, duplicated arms, or multiple viewer hands.');
+          push(b.interaction.compact, 'a single anatomically complete viewer hand entering from the foreground');
+          push(b.interaction.detailed, 'A single anatomically complete viewer hand enters from the foreground.');
           push(b.interaction.ja, 'Viewerの手：手前から片手のみ表示');
         } else push(b.interaction.ja, 'Viewerの手：表示しない');
       }
@@ -315,13 +312,13 @@
       push(b.outputAssist.ja, '背面衣装：' + backDesign.labelJa);
     }
     if (s.output.suppressTextSymbols) {
-      push(b.outputAssist.compact, 'no text, no letters, no Japanese text, no speech bubbles, no comic symbols, no captions, no sound effect symbols');
-      push(b.outputAssist.detailed, 'Do not include text, letters, Japanese text, speech bubbles, comic symbols, captions, or sound effect symbols.');
+      push(b.outputAssist.compact, 'clean unmarked background, plain graphic-free presentation');
+      push(b.outputAssist.detailed, 'Use a clean unmarked background and a plain graphic-free presentation.');
       push(b.outputAssist.ja, '文字・記号：抑制');
     }
     if (s.output.suppressPhotographyEquipment) {
-      push(b.outputAssist.compact, 'no visible photography equipment, no photographer, no filming equipment');
-      push(b.outputAssist.detailed, 'Do not show visible photography equipment, a photographer, or filming equipment.');
+      push(b.outputAssist.compact, 'unobstructed first-person viewpoint, subject fully visible');
+      push(b.outputAssist.detailed, 'Use an unobstructed first-person viewpoint with the subject fully visible.');
       push(b.outputAssist.ja, '撮影機材：抑制');
     }
     if (s.pose.supportPose === 'hands_and_knees' && s.output.preserveClothing && s.output.supportOutfitAssist && (!backDesign || backDesign.id === 'none') && !hasClothingDescription(s.output.customText)) {
@@ -330,8 +327,8 @@
       push(b.outputAssist.ja, '四点支持の服装補助：白Tシャツ＋黒のラウンジショーツ');
     }
     if (s.output.preserveClothing) {
-      push(b.outputAssist.compact, 'fully clothed, clothing intact, clothes remain on, shirt remains down, clothes fully cover the hips and buttocks, hips and buttocks covered by clothing, no bare torso, no shirt removal, no exposed buttocks, no nudity, not underwear-only');
-      push(b.outputAssist.detailed, 'Keep the character fully clothed with the shirt remaining down. Clothing must fully cover the hips and buttocks; do not show a bare torso, shirt removal, exposed buttocks, nudity, or an underwear-only outfit.');
+      push(b.outputAssist.compact, 'fully clothed, clothing intact, shirt resting naturally, clothing fully covering the torso, hips, and buttocks');
+      push(b.outputAssist.detailed, 'The character remains fully clothed, with intact clothing resting naturally and fully covering the torso, hips, and buttocks.');
       push(b.outputAssist.ja, '服装：保持');
     }
     if (s.output.customText) {
@@ -365,5 +362,23 @@
     });
     return lines.join('\n\n');
   }
-  PCW.generator = { blocks: blocks, compact: compact, detailed: detailed, structureJa: structureJa, hasClothingDescription: hasClothingDescription, restraintActive: restraintActive };
+  function negative(raw) {
+    var s = S.normalize(raw), out = [];
+    if (!s.output.includeNegativePrompt) return '';
+    function add(values) { values.forEach(function (value) { push(out, value); }); }
+    if (restraintActive(s)) {
+      add(['blood', 'wounds', 'bruises', 'broken limbs', 'extra arms', 'extra hands', 'missing fingers', 'fused fingers', 'cropped wrists', 'duplicated restraints', 'restraints around neck']);
+      if (s.restraint.type === 'chain') add(['floating chain', 'chain fused with body', 'chain passing through body', 'chain passing through clothing']);
+      if (s.restraint.placement === 'wrists_behind') add(['dislocated arms']);
+      if (s.restraint.placement === 'wrists_overhead') add(['suspended body', 'hanging body']);
+    }
+    if (s.pose.supportPose === 'hands_and_knees') add(['sitting pose', 'upright kneeling', 'lying flat', 'standing pose', 'one knee raised']);
+    if (s.pose.rearViewEmphasis !== 'none' && s.pose.head.yaw === 'over_shoulder') add(['front-facing torso', 'full-body twist']);
+    if (s.interaction.viewerHandVisible) add(['multiple viewer hands', 'duplicated arms', 'extra hands']);
+    if (s.output.suppressTextSymbols) add(['text', 'letters', 'Japanese text', 'speech bubbles', 'comic symbols', 'captions', 'sound effect symbols']);
+    if (s.output.suppressPhotographyEquipment) add(['photography equipment', 'filming equipment', 'photographer', 'tripod', 'microphone']);
+    if (s.output.preserveClothing) add(['nudity', 'bare torso', 'exposed buttocks', 'shirt removal', 'underwear-only outfit']);
+    return out.join(', ');
+  }
+  PCW.generator = { blocks: blocks, compact: compact, detailed: detailed, structureJa: structureJa, negative: negative, hasClothingDescription: hasClothingDescription, restraintActive: restraintActive };
 })(window);

@@ -162,6 +162,7 @@ h1 { margin: 0; font-family: Georgia, "Yu Mincho", serif; font-size: clamp(2rem,
 .output-tab { flex: 1; min-height: 44px; padding: 8px 5px; border: 0; border-radius: 10px; background: transparent; font-size: .72rem; font-weight: 800; cursor: pointer; }
 .output-tab[aria-selected="true"] { background: var(--paper-strong); box-shadow: 0 2px 8px rgba(43, 35, 25, .1); }
 .output-box { min-height: 150px; margin: 12px 0; padding: 15px; border: 1px solid var(--line); border-radius: 14px; background: #24231f; color: #f8f3e8; font: 500 .84rem/1.7 ui-monospace, SFMono-Regular, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.output-box--negative { min-height: 88px; background: #3a312f; }
 .complete-banner { margin-bottom: 12px; padding: 12px 14px; border-radius: 14px; background: var(--green-soft); color: #2f604c; font-size: .8rem; font-weight: 800; }
 .complete-banner.is-incomplete { background: var(--accent-soft); color: var(--accent-dark); }
 label.field-label { display: block; margin-bottom: 7px; font-size: .78rem; font-weight: 800; }

@@ -193,19 +193,21 @@
     if (view.outputTab === 'structure') return G.structureJa(state);
     return G.compact(state);
   }
+  function negativeOutputText() { return G.negative(state); }
   function renderStep6() {
     var complete = A.isComplete(state);
     var banner = '<div class="complete-banner' + (complete ? '' : ' is-incomplete') + '">' + (complete ? '設計完了：出力をコピーできます。' : '未完了：基本姿勢・撮影範囲・hard警告を確認してください。') + '</div>';
     var tabs = '<div class="output-tabs" role="tablist" aria-label="出力形式">' + [
       ['compact', '構造化'], ['detailed', '詳細英文'], ['structure', '日本語構造']
     ].map(function (x) { return '<button class="output-tab" role="tab" type="button" data-output-tab="' + x[0] + '" aria-selected="' + (view.outputTab === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>';
-    var output = card('プロンプト出力', '標準はカンマ区切りの構造化プロンプトです。', tabs + '<pre class="output-box" id="outputBox">' + esc(outputText()) + '</pre><div class="sheet-actions"><button class="btn btn--accent" data-action="copy-output"' + (!outputText() ? ' disabled' : '') + '>この出力をコピー</button><button class="btn" data-action="open-save">名前を付けて保存</button><button class="btn btn--danger" data-action="reset">リセット</button></div>');
+    var output = card('Positive prompt', '必要な姿勢・見え方を肯定形でまとめます。単独でも使える出力です。', tabs + '<pre class="output-box" id="outputBox">' + esc(outputText()) + '</pre><div class="sheet-actions"><button class="btn btn--accent" data-action="copy-output"' + (!outputText() ? ' disabled' : '') + '>Positiveをコピー</button><button class="btn" data-action="open-save">名前を付けて保存</button><button class="btn btn--danger" data-action="reset">リセット</button></div>');
+    var negative = state.output.includeNegativePrompt ? card('Negative prompt', '補助的な除外語だけを短く分離しています。生成モデルに必要な場合だけ併用してください。', '<pre class="output-box output-box--negative" id="negativeOutputBox">' + esc(negativeOutputText()) + '</pre><div class="sheet-actions"><button class="btn" data-action="copy-negative"' + (!negativeOutputText() ? ' disabled' : '') + '>Negativeをコピー</button></div>') : '';
     var supportOutfitControl = state.pose.supportPose === 'hands_and_knees' && state.output.preserveClothing ? '<button type="button" class="chip" data-output-toggle="supportOutfitAssist" aria-pressed="' + state.output.supportOutfitAssist + '">白T＋黒ショーツで補助</button>' : '';
     var supportOutfitNote = state.pose.supportPose === 'hands_and_knees' ? '<p class="hint">四点支持では「服を保持する」ON時に、服装未指定なら白Tシャツ＋黒のラウンジショーツを補助できます。</p>' : '';
     var equipmentNote = state.output.suppressPhotographyEquipment ? '<p class="hint">一部の生成モデルが視点指定を撮影機材として描く問題を抑えます。</p>' : '';
-    var outputAssist = card('出力補助設定', '必要なときだけ加える任意の抑制語です。初期値はOFFです。', '<div class="chip-grid"><button type="button" class="chip" data-output-toggle="suppressTextSymbols" aria-pressed="' + state.output.suppressTextSymbols + '">文字・記号を抑える</button><button type="button" class="chip" data-output-toggle="suppressPhotographyEquipment" aria-pressed="' + state.output.suppressPhotographyEquipment + '">撮影機材を映さない</button><button type="button" class="chip" data-output-toggle="preserveClothing" aria-pressed="' + state.output.preserveClothing + '">服を保持する</button>' + supportOutfitControl + '</div>' + equipmentNote + supportOutfitNote);
+    var outputAssist = card('出力補助設定', 'Positiveは完成状態の肯定文へ変換します。必要ならNegativeを別欄で追加できます。初期値はOFFです。', '<div class="chip-grid"><button type="button" class="chip" data-output-toggle="includeNegativePrompt" aria-pressed="' + state.output.includeNegativePrompt + '">ネガティブプロンプトを出力する</button><button type="button" class="chip" data-output-toggle="suppressTextSymbols" aria-pressed="' + state.output.suppressTextSymbols + '">文字・記号を抑える</button><button type="button" class="chip" data-output-toggle="suppressPhotographyEquipment" aria-pressed="' + state.output.suppressPhotographyEquipment + '">撮影機材を映さない</button><button type="button" class="chip" data-output-toggle="preserveClothing" aria-pressed="' + state.output.preserveClothing + '">服を保持する</button>' + supportOutfitControl + '</div><p class="hint">Positive内の否定命令はモデルによって逆効果になるため、必要な除外語は任意のNegativeへ分離します。</p>' + equipmentNote + supportOutfitNote);
     var custom = card('自由入力', '内容を改変せず、出力の末尾へ追加します。', '<label class="field-label" for="customText">追加したい英語</label><textarea id="customText" data-custom placeholder="例: soft fabric movement">' + esc(state.output.customText) + '</textarea>');
-    main.innerHTML = heading(6) + banner + renderIssues(false) + output + outputAssist + custom;
+    main.innerHTML = heading(6) + banner + renderIssues(false) + output + negative + outputAssist + custom;
   }
   function renderMeter() {
     if (view.screen === 'start') return;
@@ -356,6 +358,7 @@
     if (action === 'next-step') { view.step = view.step === 6 ? 1 : view.step + 1; render(); global.scrollTo(0, 0); }
     if (action === 'open-output') { view.screen = 'builder'; view.step = 6; render(); global.scrollTo(0, 0); }
     if (action === 'copy-output') copyText(outputText());
+    if (action === 'copy-negative') copyText(negativeOutputText());
     if (action === 'open-save') saveSheet();
     if (action === 'save-user-preset') { var input = $('presetName'); Store.savePreset(input ? input.value : '', state); closeSheet(); toast('端末内に保存しました'); }
     if (action === 'reset') { if (global.confirm('現在の設計をリセットしますか？')) { Store.clearDraft(); draft = null; state = S.initial(); view.screen = 'start'; render(); } }
@@ -367,6 +370,7 @@
       state = S.applyPatch(state, { 'output.customText': event.target.value });
       Store.saveDraft(state);
       var box = $('outputBox'); if (box) box.textContent = outputText();
+      var negativeBox = $('negativeOutputBox'); if (negativeBox) negativeBox.textContent = negativeOutputText();
     }
   });
   $('sheetBackdrop').addEventListener('click', closeSheet);

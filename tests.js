@@ -30,7 +30,7 @@
   test('初期状態：基本姿勢は未選択', function () { eq(S.initial().pose.posture, null); });
   test('初期状態：手は個別モード', function () { eq(S.initial().pose.arms.mode, 'separate'); });
   test('初期状態：カメラは水平', function () { eq(S.initial().camera.roll, 'level'); });
-  test('初期状態：任意の出力補助はOFF、四点支持の服装補助は待機', function () { var o = S.initial().output; eq([o.suppressTextSymbols, o.suppressPhotographyEquipment, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, false, true, 'none']); });
+  test('初期状態：任意の出力補助とNegativeはOFF、四点支持の服装補助は待機', function () { var o = S.initial().output; eq([o.includeNegativePrompt, o.suppressTextSymbols, o.suppressPhotographyEquipment, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, false, false, true, 'none']); });
   test('初期状態：Viewerの手のやりとりは未指定', function () { var i = S.initial().interaction; eq([i.viewerHandInteraction, i.viewerHandVisible], ['none', false]); });
   test('初期状態：拘束・固定は無効', function () { eq(S.initial().restraint, { type: 'none', placement: 'none', anchor: 'none', tension: 'loose', freeArm: 'none' }); });
   test('deep merge：元の状態を書き換えない', function () { var a = S.initial(); var b = S.merge(a, { pose: { posture: 'standing' } }); eq(a.pose.posture, null); eq(b.pose.posture, 'standing'); });
@@ -117,7 +117,8 @@
   test('正規化：人物数を1へ戻す', function () { eq(S.normalize({ subject: { count: 9 } }).subject.count, 1); });
   test('正規化：旧保存に寝姿軸がなくても移行', function () { var s = S.normalize({ pose: { posture: 'reclining' } }); eq([s.pose.lyingOrientation, s.pose.supportPose], ['none', 'none']); });
   test('正規化：旧保存に背面・表情・雰囲気軸がなくても移行', function () { var s = S.normalize({ pose: { posture: 'standing' } }); eq([s.pose.rearViewEmphasis, s.pose.expression, s.pose.flowStyle], ['none', 'none', null]); });
-  test('正規化：旧保存に出力補助軸がなくても安全に移行', function () { var o = S.normalize({ output: { includeSolo: true } }).output; eq([o.suppressTextSymbols, o.suppressPhotographyEquipment, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, false, true, 'none']); });
+  test('正規化：旧保存に出力補助軸がなくても安全に移行', function () { var o = S.normalize({ output: { includeSolo: true } }).output; eq([o.includeNegativePrompt, o.suppressTextSymbols, o.suppressPhotographyEquipment, o.preserveClothing, o.supportOutfitAssist, o.backDesign], [false, false, false, false, true, 'none']); });
+  test('正規化：Negative出力設定を保持', function () { eq(S.normalize({ output: { includeNegativePrompt: true } }).output.includeNegativePrompt, true); });
   test('正規化：出力補助の真偽値を保持', function () { var o = S.normalize({ output: { suppressTextSymbols: true, preserveClothing: true } }).output; eq([o.suppressTextSymbols, o.preserveClothing], [true, true]); });
   test('正規化：未知の背面衣装はnoneへ戻る', function () { eq(S.normalize({ output: { backDesign: 'missing_clothes' } }).output.backDesign, 'none'); });
   test('正規化：未知の背面強調はnoneへ戻る', function () { eq(S.normalize({ pose: { rearViewEmphasis: 'backiest' } }).pose.rearViewEmphasis, 'none'); });
@@ -224,13 +225,13 @@
   });
   test('表情：全候補が4表示グループのいずれかに入る', function () { var groups = ids(D.expressionGroups); D.expressions.forEach(function (x) { ok(groups.indexOf(x.group) >= 0, x.id); }); });
   test('表情：切替は単一選択で視線を維持', function () { var s = patch(modelState(), { 'pose.gaze.direction': 'sidelong', 'pose.expression': 'bashful_smile' }); s = patch(s, { 'pose.expression': 'determined' }); eq([s.pose.expression, s.pose.gaze.direction], ['determined', 'sidelong']); ok(G.compact(s).indexOf('bashful smile') < 0 && G.compact(s).indexOf('determined expression') >= 0); });
-  test('generator：playful表情だけでは文字記号を抑制しない', function () { var playful = G.compact(patch(modelState(), { 'pose.expression': 'playful' })); ok(playful.indexOf('playful expression') >= 0); ok(playful.indexOf('no comic symbols') < 0 && playful.indexOf('no text') < 0); });
-  test('generator：文字記号抑制OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.suppressTextSymbols': false })); ok(c.indexOf('no Japanese text') < 0 && c.indexOf('no comic symbols') < 0); });
-  test('generator：文字記号抑制ONで補助文を追加', function () { var s = patch(modelState(), { 'output.suppressTextSymbols': true }), c = G.compact(s); ok(c.indexOf('no text') >= 0 && c.indexOf('no comic symbols') >= 0 && c.indexOf('no sound effect symbols') >= 0); ok(G.structureJa(s).indexOf('文字・記号：抑制') >= 0); });
-  test('generator：撮影機材抑制OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.suppressPhotographyEquipment': false })); ok(c.indexOf('no visible photography equipment') < 0 && c.indexOf('no filming equipment') < 0); });
-  test('generator：撮影機材抑制ONでcamera語なしの補助文を追加', function () { var s = patch(modelState(), { 'output.suppressPhotographyEquipment': true }), c = G.compact(s); ok(c.indexOf('no visible photography equipment') >= 0 && c.indexOf('no photographer') >= 0 && c.indexOf('no filming equipment') >= 0); ok(!/\bcamera\b/i.test(c)); ok(G.structureJa(s).indexOf('撮影機材：抑制') >= 0); });
-  test('generator：服保持OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.preserveClothing': false })); ok(c.indexOf('clothing intact') < 0 && c.indexOf('no bare torso') < 0); });
-  test('generator：服保持ONで腰まわりまで覆う補助文を追加', function () { var s = patch(modelState(), { 'output.preserveClothing': true }), c = G.compact(s); ok(c.indexOf('fully clothed') >= 0 && c.indexOf('shirt remains down') >= 0 && c.indexOf('hips and buttocks covered by clothing') >= 0 && c.indexOf('no exposed buttocks') >= 0 && c.indexOf('no nudity') >= 0 && c.indexOf('not underwear-only') >= 0); ok(G.structureJa(s).indexOf('服装：保持') >= 0); });
+  test('generator：playful表情だけでは文字記号補助を加えない', function () { var playful = G.compact(patch(modelState(), { 'pose.expression': 'playful' })); ok(playful.indexOf('playful expression') >= 0); ok(playful.indexOf('clean unmarked background') < 0); });
+  test('generator：文字記号抑制OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.suppressTextSymbols': false })); ok(c.indexOf('clean unmarked background') < 0); });
+  test('generator：文字記号抑制ONはPositiveを肯定形にする', function () { var s = patch(modelState(), { 'output.suppressTextSymbols': true }), c = G.compact(s); ok(c.indexOf('clean unmarked background') >= 0 && c.indexOf('graphic-free presentation') >= 0); ok(G.structureJa(s).indexOf('文字・記号：抑制') >= 0); });
+  test('generator：撮影機材抑制OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.suppressPhotographyEquipment': false })); ok(c.indexOf('unobstructed first-person viewpoint') < 0); });
+  test('generator：撮影機材抑制ONでcamera語なしの肯定文を追加', function () { var s = patch(modelState(), { 'output.suppressPhotographyEquipment': true }), c = G.compact(s); ok(c.indexOf('unobstructed first-person viewpoint') >= 0 && c.indexOf('subject fully visible') >= 0); ok(!/\bcamera\b/i.test(c)); ok(G.structureJa(s).indexOf('撮影機材：抑制') >= 0); });
+  test('generator：服保持OFFでは補助文なし', function () { var c = G.compact(patch(modelState(), { 'output.preserveClothing': false })); ok(c.indexOf('clothing intact') < 0); });
+  test('generator：服保持ONで腰まわりまで覆う肯定文を追加', function () { var s = patch(modelState(), { 'output.preserveClothing': true }), c = G.compact(s); ok(c.indexOf('fully clothed') >= 0 && c.indexOf('clothing intact') >= 0 && c.indexOf('clothing fully covering the torso, hips, and buttocks') >= 0); ok(G.structureJa(s).indexOf('服装：保持') >= 0); });
   test('generator：服装自由入力を判定', function () { ok(G.hasClothingDescription('fitted white t-shirt, slim black pants')); ok(!G.hasClothingDescription('soft bedroom lighting')); });
   test('generator：四点支持＋服保持で服装例を自動補助', function () { var s = patch(modelState(), { 'pose.supportPose': 'hands_and_knees', 'output.preserveClothing': true, 'output.supportOutfitAssist': true }), c = G.compact(s); ok(c.indexOf('white t-shirt and black lounge shorts') >= 0 && c.indexOf('shorts clearly visible') >= 0); });
   test('generator：四点支持でも服保持OFFなら服装例なし', function () { var s = patch(modelState(), { 'pose.supportPose': 'hands_and_knees', 'output.preserveClothing': false, 'output.supportOutfitAssist': true }), c = G.compact(s); ok(c.indexOf('white t-shirt and black lounge shorts') < 0); });
@@ -248,7 +249,7 @@
   viewerHandVisiblePresetIds.forEach(function (id) {
     test('Viewer手表示：' + id + 'は手前から片手だけを明記', function () {
       var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s);
-      eq(s.interaction.viewerHandVisible, true); ok(c.indexOf('a single viewer hand entering from the foreground') >= 0); ok(c.indexOf('only one hand of the viewer visible') >= 0); ok(c.indexOf('no multiple viewer hands') >= 0);
+      eq(s.interaction.viewerHandVisible, true); ok(c.indexOf('a single anatomically complete viewer hand entering from the foreground') >= 0);
     });
   });
   ['relationship_offer_one_hand_to_viewer', 'relationship_offer_bite_to_viewer'].forEach(function (id) {
@@ -272,15 +273,15 @@
     test('背中主役プリセット：' + id + 'は顔だけ振り返る拘束を維持', function () {
       var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch), compact = G.compact(s), detailed = G.detailed(s), ja = G.structureJa(s);
       eq(s.pose.pelvis.orientation, 'away_camera'); eq(s.pose.torso.relationToPelvis, 'aligned'); eq(s.pose.head.yaw, 'over_shoulder'); eq(s.pose.gaze.target, 'viewer'); ok(s.pose.rearViewEmphasis !== 'none'); eq(A.summary(s).hard, 0);
-      ok(compact.indexOf('only the head turned toward the viewer') >= 0 && compact.indexOf('no front-facing torso') >= 0 && compact.indexOf('torso kept facing away') >= 0 || compact.indexOf('torso remains facing away') >= 0);
+      ok(compact.indexOf('only the head turned toward the viewer') >= 0 && (compact.indexOf('torso kept facing away') >= 0 || compact.indexOf('torso remains facing away') >= 0));
       ok(detailed.indexOf('torso and hips remain facing away') >= 0); ok(ja.indexOf('背面拘束') >= 0); ok(compact && detailed && ja); ok((compact + detailed).indexOf('undefined') < 0 && (compact + detailed).indexOf('null') < 0 && compact.indexOf(',,') < 0);
     });
   });
-  test('背中主役：四つん這いは四点支持・全身・服装を固定', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_bed_hands_and_knees_look_back'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.posture, s.pose.supportPose, s.pose.lyingOrientation, s.camera.shotSize], ['kneeling', 'hands_and_knees', 'none', 'full_body']); eq([s.output.preserveClothing, s.output.supportOutfitAssist], [true, true]); ['both palms flat on the bed', 'both knees on the bed', 'weight supported by both hands and both knees', 'hips raised', 'full body visible', 'both hands visible', 'both knees visible', 'not sitting', 'not kneeling upright', 'not lying flat', 'not standing', 'not one knee raised', 'no front-facing torso', 'white t-shirt and black lounge shorts'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); }); });
-  test('背中主役：膝立ちは立位へ逃げない', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_bed_kneeling_upright_look_back'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.posture, s.pose.supportPose], ['kneeling', 'kneeling_upright']); ok(c.indexOf('kneeling upright') >= 0 && c.indexOf('not standing') >= 0); });
-  test('背中主役：ベッド前傾は前傾支持を維持', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_bed_forward_lean_back_turn'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.supportPose, s.pose.torso.lean], ['forward_lean_support', 'forward']); ok(c.indexOf('leaning forward while supporting the body with both hands') >= 0 && c.indexOf('not standing upright') >= 0); });
-  test('背中主役：家具支持はもたれ姿ではなく両手支持', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_furniture_hands_support_turn'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.support.type, s.pose.supportPose], ['leaning_surface', 'leaning_forward_on_hands']); ok(c.indexOf('supporting the body with both hands') >= 0 && c.indexOf('not lying flat') >= 0); });
-  test('背中主役：背中の開いた服は衣装を保持', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_open_back_outfit_turn'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.output.backDesign, s.output.preserveClothing], ['open_back_outfit', true]); ok(c.indexOf('open-back outfit') >= 0 && c.indexOf('fabric following the back line') >= 0 && c.indexOf('clothing intact') >= 0 && c.indexOf('no bare torso') >= 0); });
+  test('背中主役：四つん這いは四点支持・全身・服装を固定', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_bed_hands_and_knees_look_back'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.posture, s.pose.supportPose, s.pose.lyingOrientation, s.camera.shotSize], ['kneeling', 'hands_and_knees', 'none', 'full_body']); eq([s.output.preserveClothing, s.output.supportOutfitAssist], [true, true]); ['both palms flat on the bed', 'both knees on the bed', 'weight supported by all four points', 'hips raised', 'full body visible', 'both hands visible', 'both knees visible', 'white t-shirt and black lounge shorts'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); }); });
+  test('背中主役：膝立ちは立位へ逃げない肯定構造', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_bed_kneeling_upright_look_back'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.posture, s.pose.supportPose], ['kneeling', 'kneeling_upright']); ok(c.indexOf('upright kneeling posture') >= 0 && c.indexOf('torso lifted above both knees') >= 0); });
+  test('背中主役：ベッド前傾は前傾支持を維持', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_bed_forward_lean_back_turn'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.supportPose, s.pose.torso.lean], ['forward_lean_support', 'forward']); ok(c.indexOf('leaning forward with the upper body lifted and supported by both hands') >= 0); });
+  test('背中主役：家具支持はもたれ姿ではなく両手支持', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_furniture_hands_support_turn'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.pose.support.type, s.pose.supportPose], ['leaning_surface', 'leaning_forward_on_hands']); ok(c.indexOf('both hands supporting the lifted upper body') >= 0); });
+  test('背中主役：背中の開いた服は衣装を保持', function () { var p = D.presets.filter(function (x) { return x.id === 'relationship_open_back_outfit_turn'; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([s.output.backDesign, s.output.preserveClothing], ['open_back_outfit', true]); ok(c.indexOf('open-back outfit') >= 0 && c.indexOf('fabric following the back line') >= 0 && c.indexOf('clothing intact') >= 0); });
   test('顔隠し：腕動作は1本の手を使い顔付近に表示', function () {
     ['hand_covering_eyes', 'hand_covering_mouth'].forEach(function (id) { var item = S.option(D.armActions, id); eq(item.resources.hands, 1); ok(item.zones.indexOf('hands_near_face') >= 0); ok(!A.armHidden(item, 'upper_body')); });
   });
@@ -309,7 +310,7 @@
       'restraint.freeArm': 'none'
     }, values || {}));
   }
-  test('拘束出力：初期値では拘束語・成人指定・否定文を追加しない', function () { var c = G.compact(modelState()); ['adult character', 'restraints clearly', 'no restraints around the neck', 'no blood'].forEach(function (term) { ok(c.indexOf(term) < 0, term); }); });
+  test('拘束出力：初期値では拘束語・成人指定を追加しない', function () { var c = G.compact(modelState()); ['adult character', 'restraint visible', 'clean uninjured skin'].forEach(function (term) { ok(c.indexOf(term) < 0, term); }); });
   test('拘束出力：縄を両手首だけへ限定', function () { var c = G.compact(restraintState()); ok(c.indexOf('both wrists loosely bound together in front') >= 0 && c.indexOf('rope wrapped around the wrists only') >= 0); });
   test('拘束出力：鎖・手錠・ストラップを切り替え', function () {
     [['chain', 'chain secured around the wrists only'], ['cuffs', 'cuffs secured around the wrists only'], ['straps', 'straps secured around the wrists only']].forEach(function (row) { ok(G.compact(restraintState({ 'restraint.type': row[0] })).indexOf(row[1]) >= 0, row[0]); });
@@ -317,14 +318,14 @@
   test('拘束出力：固定先を壁・柱・頭上へ切り替え', function () {
     [['wall', 'secured to a wall fixture'], ['pillar', 'secured to a pillar'], ['overhead_fixture', 'attached to an overhead fixture']].forEach(function (row) { ok(G.compact(restraintState({ 'restraint.anchor': row[0] })).indexOf(row[1]) >= 0, row[0]); });
   });
-  test('拘束出力：拘束時だけ成人・非流血・首回避を追加', function () { var c = G.compact(restraintState()); ['adult character', 'no restraints around the neck', 'no injury', 'no bruises', 'no blood', 'no broken limbs'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); }); });
-  test('拘束出力：頭上固定は床支持と非吊り下げを明示', function () { var c = G.compact(restraintState({ 'restraint.type': 'cuffs', 'restraint.placement': 'wrists_overhead', 'restraint.anchor': 'overhead_fixture', 'restraint.tension': 'secured' })); ok(c.indexOf('both feet firmly on the floor') >= 0 && c.indexOf('not suspended') >= 0 && c.indexOf('not hanging') >= 0); });
-  test('拘束出力：片手首だけを固定し反対腕を自由にする', function () { var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'one_wrist', 'restraint.anchor': 'wall', 'restraint.freeArm': 'right' })); ok(c.indexOf('only one wrist restrained') >= 0 && c.indexOf('the other arm free and relaxed') >= 0); });
+  test('拘束出力：拘束時だけ成人・非損傷を肯定形で追加', function () { var c = G.compact(restraintState()); ['adult character', 'clean uninjured skin', 'natural complete limbs', 'one clear restraint setup'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); }); });
+  test('拘束出力：頭上固定は床と脚の支持を明示', function () { var c = G.compact(restraintState({ 'restraint.type': 'cuffs', 'restraint.placement': 'wrists_overhead', 'restraint.anchor': 'overhead_fixture', 'restraint.tension': 'secured' })); ok(c.indexOf('both feet clearly planted on the floor') >= 0 && c.indexOf('body weight fully supported by the legs') >= 0); });
+  test('拘束出力：片手首だけを固定し反対腕を自由にする', function () { var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'one_wrist', 'restraint.anchor': 'wall', 'restraint.freeArm': 'right' })); ok(c.indexOf('only one wrist restrained') >= 0 && c.indexOf('the other arm free and visible') >= 0); });
   test('拘束出力：椅子固定は座位・椅子・床の足を明示', function () { var p = D.presets.filter(function (x) { return x.id === 'special_chair_armrests_restraint'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch)); ok(c.indexOf('each wrist secured to a separate chair armrest') >= 0 && c.indexOf('seated upright in a chair') >= 0 && c.indexOf('feet resting on the floor') >= 0); });
-  test('拘束出力：装飾鎖は腕と胴体だけで首へ巻かない', function () { var p = D.presets.filter(function (x) { return x.id === 'special_decorative_chain_torso_standing'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch)); ok(c.indexOf('around the arms and torso') >= 0 && c.indexOf('not the neck') >= 0); });
+  test('拘束出力：装飾鎖は腕と胴体へ置き首を空ける', function () { var p = D.presets.filter(function (x) { return x.id === 'special_decorative_chain_torso_standing'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch)); ok(c.indexOf('around the upper arms and torso') >= 0 && c.indexOf('neck fully clear') >= 0); });
   test('拘束微改修：鎖使用時だけ鎖の輪と衣装外経路を補助', function () {
     var chain = G.compact(restraintState({ 'restraint.type': 'chain' })), rope = G.compact(restraintState({ 'restraint.type': 'rope' }));
-    ['chain links clearly visible', 'chain remains outside the body and clothing', 'no floating chain', 'no chain growing from the skin', 'no chain fused with the outfit'].forEach(function (term) { ok(chain.indexOf(term) >= 0, term); ok(rope.indexOf(term) < 0, 'rope / ' + term); });
+    ['chain links clearly visible', 'chain routed outside the body and clothing as a separate object'].forEach(function (term) { ok(chain.indexOf(term) >= 0, term); ok(rope.indexOf(term) < 0, 'rope / ' + term); });
   });
   test('拘束微改修：鎖＋壁固定で見える接続先を明示', function () {
     var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.anchor': 'wall' }));
@@ -336,11 +337,11 @@
   });
   test('拘束微改修：手首拘束で手と指の完全性を補助', function () {
     var c = G.compact(restraintState());
-    ['fingers visible', 'hands anatomically complete', 'no missing hands', 'no missing fingers', 'no merged fingers', 'no cropped wrists', 'the bound hands remain visible'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); });
+    ['both bound hands anatomically complete and fully visible', 'all fingers clearly separated'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); });
   });
   test('拘束微改修：後ろ手で手首・肘・肩の位置を明示', function () {
     var c = G.compact(restraintState({ 'restraint.placement': 'wrists_behind' }));
-    ['both wrists clearly visible behind the back', 'the bound hands visible behind the waist', 'elbows slightly bent behind the back', 'wrists close together behind the waist', 'natural shoulder alignment', 'upper arms remain attached naturally to the shoulders', 'no dislocated arms'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); });
+    ['bound hands clearly visible behind the waist', 'elbows slightly bent', 'wrists close together', 'natural shoulder and arm alignment'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); });
   });
   test('拘束微改修：片手首拘束で自由な腕と両手を表示', function () {
     var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'one_wrist', 'restraint.anchor': 'wall', 'restraint.freeArm': 'right' }));
@@ -348,19 +349,19 @@
   });
   test('拘束微改修：通常ポーズへ鎖専用・手指補助を混入しない', function () {
     var c = G.compact(modelState());
-    ['chain links clearly visible', 'no floating chain', 'hands anatomically complete', 'no cropped wrists'].forEach(function (term) { ok(c.indexOf(term) < 0, term); });
+    ['chain links clearly visible', 'chain routed outside the body', 'hands fully visible and anatomically complete'].forEach(function (term) { ok(c.indexOf(term) < 0, term); });
   });
   test('拘束微改修：装飾鎖は胸前の見える経路へ限定', function () {
     var p = D.presets.filter(function (x) { return x.id === 'special_decorative_chain_torso_standing'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch));
-    ok(c.indexOf('one or two chain passes across the front at chest height') >= 0 && c.indexOf('chains remain outside the clothing') >= 0 && c.indexOf('no hidden chain routes through the back or sleeves') >= 0);
+    ok(c.indexOf('one or two chain passes across the front at chest height') >= 0 && c.indexOf('one or two chain routes clearly visible across the front of the torso and outside the clothing') >= 0);
   });
   test('拘束微改修：椅子固定で左右の見える肘掛けと両手を明示', function () {
     var p = D.presets.filter(function (x) { return x.id === 'special_chair_armrests_restraint'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch));
-    ok(c.indexOf('each wrist secured to a separate visible chair armrest') >= 0 && c.indexOf('both hands visible') >= 0 && c.indexOf('chair armrests clearly visible') >= 0);
+    ok(c.indexOf('each wrist secured to a separate chair armrest') >= 0 && c.indexOf('both hands and both chair armrests clearly visible') >= 0);
   });
   test('拘束微改修：頭上固定で床・脚支持・非吊り下げを補強', function () {
     var p = D.presets.filter(function (x) { return x.id === 'special_wrists_overhead_standing'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch));
-    ok(c.indexOf('both feet clearly on the floor') >= 0 && c.indexOf('body weight supported by the legs') >= 0 && c.indexOf('no hanging body') >= 0);
+    ok(c.indexOf('both feet clearly planted on the floor') >= 0 && c.indexOf('body weight fully supported by the legs') >= 0);
   });
   test('拘束Advisor：四つん這い＋両手首拘束でhard', function () { ok(issueIds(restraintState({ 'pose.posture': 'kneeling', 'pose.supportPose': 'hands_and_knees' })).indexOf('restraint_both_hands_support_conflict') >= 0); });
   test('拘束Advisor：両手ハート＋両手首拘束でhard', function () { ok(issueIds(restraintState({ 'pose.arms.mode': 'combined', 'pose.arms.combined': 'heart_hands_near_face' })).indexOf('restraint_two_hand_gesture_conflict') >= 0); });
@@ -382,7 +383,41 @@
     ok(issueIds(s).indexOf('restraint_chain_one_wrist_rear_difficulty') >= 0);
   });
   specialPresetIds.forEach(function (id) {
-    test('特殊プリセット：' + id + 'は成人・非損傷・首拘束なし', function () { var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([p.meta.collection, p.meta.poseFamily], ['special', 'restraint']); eq(A.summary(s).hard, 0); ok(c.indexOf('adult character') >= 0 && c.indexOf('no restraints around the neck') >= 0 && c.indexOf('no blood') >= 0); ok(c.indexOf('around the neck') < 0 || c.indexOf('no restraints around the neck') >= 0); });
+    test('特殊プリセット：' + id + 'は成人・非損傷を肯定形で保持', function () { var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([p.meta.collection, p.meta.poseFamily], ['special', 'restraint']); eq(A.summary(s).hard, 0); ok(c.indexOf('adult character') >= 0 && c.indexOf('clean uninjured skin') >= 0 && c.indexOf('natural complete limbs') >= 0); });
+  });
+
+  test('Positive：自動生成部分にno／not／without／avoid／excludeを含まない', function () {
+    D.presets.forEach(function (preset) {
+      var s = S.applyPatch(S.initial(), preset.patch);
+      s = S.applyPatch(s, { 'output.customText': '' });
+      [G.compact(s), G.detailed(s)].forEach(function (text) { ok(!/(^|[\s,.])(no|not|without|avoid|exclude)\b/i.test(text), preset.id + ' / ' + text); });
+    });
+  });
+  test('Positive：自由入力は否定語を含めて原文のまま末尾へ残す', function () {
+    var custom = 'no text, not smiling, without hat, avoid blur, exclude logo';
+    var s = patch(modelState(), { 'output.customText': custom });
+    ok(G.compact(s).endsWith(custom)); ok(G.detailed(s).endsWith(custom));
+  });
+  test('Negative：初期値とOFFでは空', function () { eq(G.negative(modelState()), ''); eq(G.negative(patch(modelState(), { 'output.includeNegativePrompt': false })), ''); });
+  test('Negative：ONで拘束の安全・手指語を短く分離', function () {
+    var n = G.negative(restraintState({ 'output.includeNegativePrompt': true }));
+    ['blood', 'wounds', 'extra hands', 'missing fingers', 'fused fingers', 'duplicated restraints', 'restraints around neck'].forEach(function (term) { ok(n.indexOf(term) >= 0, term); });
+  });
+  test('Negative：鎖の経路・固定破綻語を分離', function () {
+    var n = G.negative(restraintState({ 'restraint.type': 'chain', 'restraint.anchor': 'wall', 'output.includeNegativePrompt': true }));
+    ['floating chain', 'chain fused with body', 'chain passing through body', 'chain passing through clothing'].forEach(function (term) { ok(n.indexOf(term) >= 0, term); });
+  });
+  test('Negative：四点支持・背面・Viewer手の補助語を分離', function () {
+    var n = G.negative(patch(modelState(), { 'pose.supportPose': 'hands_and_knees', 'pose.rearViewEmphasis': 'full_back_line', 'pose.head.yaw': 'over_shoulder', 'interaction.target': 'viewer', 'interaction.viewerHandInteraction': 'hand_holding', 'interaction.viewerHandVisible': true, 'output.includeNegativePrompt': true }));
+    ['sitting pose', 'lying flat', 'front-facing torso', 'full-body twist', 'multiple viewer hands'].forEach(function (term) { ok(n.indexOf(term) >= 0, term); });
+  });
+  test('Negative：文字・機材・服保持オプションを必要時だけ分離', function () {
+    var n = G.negative(patch(modelState(), { 'output.includeNegativePrompt': true, 'output.suppressTextSymbols': true, 'output.suppressPhotographyEquipment': true, 'output.preserveClothing': true }));
+    ['Japanese text', 'comic symbols', 'photography equipment', 'tripod', 'nudity', 'underwear-only outfit'].forEach(function (term) { ok(n.indexOf(term) >= 0, term); });
+  });
+  test('Negative：Positive単独でも背面と四点支持の意味が残る', function () {
+    var s = patch(modelState(), { 'pose.supportPose': 'hands_and_knees', 'pose.rearViewEmphasis': 'full_back_line', 'pose.head.yaw': 'over_shoulder' }), c = G.compact(s);
+    ['both palms flat', 'both knees on', 'weight supported by all four points', 'only the head turned toward the viewer', 'torso and hips remain facing away'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); });
   });
 
   D.presets.forEach(function (preset) {
