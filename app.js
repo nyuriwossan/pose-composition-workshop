@@ -6,7 +6,7 @@
   var main = $('main'), sticky = $('stickySummary'), nav = $('bottomNav'), meter = $('stepMeter');
   var draft = Store.loadDraft();
   var state = draft || S.initial();
-  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', collectionFilter: 'all', moodFilter: 'all', sceneFilter: 'all', interactionFilter: 'all', viewerOnly: false };
+  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', collectionFilter: 'all', poseFamilyFilter: 'all', moodFilter: 'all', sceneFilter: 'all', interactionFilter: 'all', viewerOnly: false };
   var stepInfo = [
     null,
     { title: '姿勢と動作', copy: '身体を支える基本状態を一つ選びます。' },
@@ -88,7 +88,7 @@
       '<button class="entry-card" data-entry="guided"><span class="entry-number">01</span><span><strong>かんたんに作る</strong><small>質問に沿って、自然な設計を組み立てます</small></span><span class="entry-arrow">›</span></button>' +
       '<button class="entry-card" data-entry="preset"><span class="entry-number">02</span><span><strong>プリセットから作る</strong><small>整合済みの' + D.presets.length + '種類から始めます</small></span><span class="entry-arrow">›</span></button>' +
       '<button class="entry-card" data-entry="detail"><span class="entry-number">03</span><span><strong>細かく設計する</strong><small>身体・視線・構図の各軸を調整します</small></span><span class="entry-arrow">›</span></button>' +
-      '</div>' + resume + '<p class="hint">一人用・小道具なし・厳密な左右指定なし。すべて端末内で動作します。</p>';
+      '</div>' + resume + '<p class="hint">一人用・Viewer基準・厳密な左右指定なし。すべて端末内で動作します。</p>';
   }
   function renderStep1() {
     var posture = card('どんな姿勢ですか', '基本姿勢は一つだけ選びます。', chips('pose.posture', D.postures, { basicOnly: state.entryMode !== 'detail', max: 6, expandKey: 'postures' }));
@@ -124,7 +124,22 @@
     var separate = card('片方ずつ決める', '片方の手と、反対の手を別々に設定します。',
       '<div class="subsection"><h3>片方の手</h3>' + chips('pose.arms.primary.action', D.armActions, { postureAware: true, max: 8, expandKey: 'primaryArm' }) + '</div>' +
       '<div class="subsection"><h3>反対の手</h3>' + chips('pose.arms.secondary.action', D.armActions, { postureAware: true, max: 8, expandKey: 'secondaryArm' }) + '</div>');
-    main.innerHTML = heading(3) + combined + separate + renderIssues(true);
+    var restraintActive = state.restraint.type !== 'none';
+    var restraint = card('拘束・固定（任意）', '既存ポーズへ重ねる、成人キャラクター向けの非流血・非損傷演出です。',
+      '<p class="restraint-notice">首への拘束、吊り下げ、傷、流血を出力しません。</p>' +
+      '<div class="subsection"><h3>拘束具</h3>' + chips('restraint.type', D.restraintTypes, { max: 5, expandKey: 'restraintType' }) + '</div>' +
+      (restraintActive ? '<div class="subsection"><h3>拘束位置</h3>' + chips('restraint.placement', D.restraintPlacements, { max: 8, expandKey: 'restraintPlacement' }) + '</div>' +
+      '<div class="subsection"><h3>固定先</h3>' + chips('restraint.anchor', D.restraintAnchors, { max: 5, expandKey: 'restraintAnchor' }) + '</div>' +
+      '<div class="subsection"><h3>固定の状態</h3>' + chips('restraint.tension', D.restraintTensions, { max: 3, expandKey: 'restraintTension' }) + '</div>' +
+      (state.restraint.placement === 'one_wrist' ? '<div class="subsection"><h3>自由な腕</h3>' + chips('restraint.freeArm', D.restraintFreeArms, { max: 3, expandKey: 'restraintFreeArm' }) + '</div>' : '') :
+      '<p class="hint">「縄」「鎖」「手錠」「ストラップ」を選ぶと、拘束位置と固定先を設定できます。</p>'));
+    main.innerHTML = heading(3) + combined + separate + restraint + renderIssues(true);
+  }
+  function renderExpressionGroups() {
+    return D.expressionGroups.map(function (group) {
+      var list = D.expressions.filter(function (item) { return item.group === group.id; });
+      return '<div class="subsection expression-group"><h3>' + esc(group.labelJa) + '</h3>' + chips('pose.expression', list, { max: 99, expandKey: 'expression-' + group.id }) + '</div>';
+    }).join('');
   }
   function renderStep4() {
     var face = card('顔の向き', 'カメラの高さではなく、顔とカメラの水平関係です。', chips('pose.head.yaw', D.headYaws, { max: 4, expandKey: 'yaw' }) +
@@ -133,7 +148,7 @@
     var gaze = card('目が見る方向', '顔を横へ向けながら、目だけこちらを見る指定もできます。', chips('pose.gaze.target', D.gazeTargets, { max: 7, expandKey: 'gazeTarget' }) +
       '<div class="subsection"><h3>視線の性質</h3>' + chips('pose.gaze.direction', D.gazeDirections, { max: 6, expandKey: 'gazeDirection' }) + '</div>' +
       '<div class="subsection"><h3>目の状態</h3>' + chips('pose.gaze.eyes', D.eyeStates, { max: 2, expandKey: 'eyes' }) + '</div>');
-    var expression = card('表情', 'ポーズとは独立した単一選択です。', chips('pose.expression', D.expressions, { max: 9, expandKey: 'expressions' }));
+    var expression = card('表情', 'ポーズとは独立した単一選択です。視線の向きは変更しません。', renderExpressionGroups());
     main.innerHTML = heading(4) + face + gaze + expression + renderIssues(true);
   }
   function renderStep5() {
@@ -210,7 +225,7 @@
   }
   function closeSheet() { $('sheetBackdrop').hidden = true; $('bottomSheet').hidden = true; $('sheetContent').innerHTML = ''; }
   function presetSheet() {
-    var filterOptions = { collection: view.collectionFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
+    var filterOptions = { collection: view.collectionFilter, poseFamily: view.poseFamilyFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
     var visiblePresets = D.filterPresets(D.presets, view.presetFilter, filterOptions);
     var builtins = visiblePresets.map(function (p) {
       var meta = p.meta || {}, cardTags = [];
@@ -218,10 +233,14 @@
       if ((meta.moodTags || []).length && D.presetMoodTagLabels[meta.moodTags[0]]) cardTags.push(D.presetMoodTagLabels[meta.moodTags[0]]);
       if ((meta.interactionTags || []).length && D.presetInteractionTagLabels[meta.interactionTags[0]]) cardTags.push(D.presetInteractionTagLabels[meta.interactionTags[0]]);
       if ((meta.sceneTags || []).length && D.presetSceneTagLabels[meta.sceneTags[0]]) cardTags.push(D.presetSceneTagLabels[meta.sceneTags[0]]);
+      if (meta.poseFamily && D.presetPoseFamilyLabels[meta.poseFamily]) cardTags.push(D.presetPoseFamilyLabels[meta.poseFamily]);
       var tags = cardTags.slice(0, 3).map(function (tag) { return '<span class="preset-tag">' + esc(tag) + '</span>'; }).join('');
       return '<button class="preset-card" type="button" data-load-preset="' + attr(p.id) + '"><strong>' + esc(p.nameJa) + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
     }).join('');
-    var collectionScoped = D.filterPresets(D.presets, 'all', { collection: view.collectionFilter });
+    var commonOptions = { collection: view.collectionFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
+    var familyScoped = D.filterPresets(D.presets, view.presetFilter, commonOptions);
+    var framingOptions = { collection: view.collectionFilter, poseFamily: view.poseFamilyFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
+    var framingScoped = D.filterPresets(D.presets, 'all', framingOptions);
     var relationshipFilters = '';
     if (view.collectionFilter === 'relationship') {
       var filterRow = function (title, values, labels, active, dataName) {
@@ -229,7 +248,18 @@
       };
       relationshipFilters = '<div class="relationship-filters">' + filterRow('雰囲気', Object.keys(D.presetMoodTagLabels), D.presetMoodTagLabels, view.moodFilter, 'mood-filter') + filterRow('シーン', Object.keys(D.presetSceneTagLabels), D.presetSceneTagLabels, view.sceneFilter, 'scene-filter') + filterRow('やりとり', Object.keys(D.presetInteractionTagLabels), D.presetInteractionTagLabels, view.interactionFilter, 'interaction-filter') + '</div>';
     }
-    var filters = '<div class="collection-filters" role="group" aria-label="プリセットカテゴリで絞り込み">' + D.renderPresetCollectionFilters(view.collectionFilter, D.presets) + '</div><div class="preset-filters" role="group" aria-label="撮影範囲で絞り込み">' + D.renderPresetFramingFilters(view.presetFilter, collectionScoped) + '</div>' + relationshipFilters + '<div class="preset-filter-tools"><span aria-live="polite">' + visiblePresets.length + '件を表示</span></div>';
+    var selected = [];
+    if (view.collectionFilter !== 'all') selected.push((D.presetCollections[view.collectionFilter] || {}).labelJa);
+    if (view.poseFamilyFilter !== 'all') selected.push(D.presetPoseFamilyLabels[view.poseFamilyFilter]);
+    if (view.presetFilter !== 'all') selected.push({ up: 'アップ', half: '半身', full: '全身' }[view.presetFilter]);
+    if (view.moodFilter !== 'all') selected.push(D.presetMoodTagLabels[view.moodFilter]);
+    if (view.sceneFilter !== 'all') selected.push(D.presetSceneTagLabels[view.sceneFilter]);
+    if (view.interactionFilter !== 'all') selected.push(D.presetInteractionTagLabels[view.interactionFilter]);
+    var selectedText = selected.length ? selected.join(' × ') : '条件なし';
+    var filters = '<div class="collection-filters" role="group" aria-label="プリセット用途カテゴリで絞り込み">' + D.renderPresetCollectionFilters(view.collectionFilter, D.presets) + '</div>' +
+      '<div class="family-filter-block"><small>ポーズ系統</small><div class="tag-filters family-filters" role="group" aria-label="ポーズ系統で絞り込み">' + D.renderPresetPoseFamilyFilters(view.poseFamilyFilter, familyScoped) + '</div></div>' +
+      '<div class="preset-filters" role="group" aria-label="撮影範囲で絞り込み">' + D.renderPresetFramingFilters(view.presetFilter, framingScoped) + '</div>' + relationshipFilters +
+      '<div class="preset-filter-tools"><span aria-live="polite">' + visiblePresets.length + '件を表示</span><span class="selected-filters">選択中：' + esc(selectedText) + '</span><button type="button" class="btn btn--quiet" data-action="clear-preset-filters"' + (!selected.length ? ' disabled' : '') + '>絞り込み解除</button></div>';
     var users = Store.listPresets();
     var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(function (p) { return '<div class="user-preset"><button class="btn" data-load-user="' + attr(p.id) + '">' + esc(p.name) + '</button><button class="btn btn--danger" aria-label="' + esc(p.name) + 'を削除" data-delete-user="' + attr(p.id) + '">削除</button></div>'; }).join('') : '';
     openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + filters + '<div class="preset-list">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
@@ -273,7 +303,8 @@
     }
     if (target.dataset.expand) { view.expanded[target.dataset.expand] = true; render(); return; }
     if (target.dataset.presetFilter) { view.presetFilter = target.dataset.presetFilter; presetSheet(); return; }
-    if (target.dataset.collectionFilter) { var reset = D.normalizeRelationshipPresetFilters(target.dataset.collectionFilter, 'all', 'all', 'all'); view.collectionFilter = target.dataset.collectionFilter; view.moodFilter = reset.mood; view.sceneFilter = reset.scene; view.interactionFilter = reset.interaction; view.viewerOnly = false; presetSheet(); return; }
+    if (target.dataset.collectionFilter) { var reset = D.normalizeRelationshipPresetFilters(target.dataset.collectionFilter, 'all', 'all', 'all'); view.collectionFilter = target.dataset.collectionFilter; view.poseFamilyFilter = 'all'; view.moodFilter = reset.mood; view.sceneFilter = reset.scene; view.interactionFilter = reset.interaction; view.viewerOnly = false; presetSheet(); return; }
+    if (target.dataset.poseFamilyFilter) { view.poseFamilyFilter = target.dataset.poseFamilyFilter; presetSheet(); return; }
     if (target.dataset.moodFilter) { view.moodFilter = target.dataset.moodFilter; presetSheet(); return; }
     if (target.dataset.sceneFilter) { view.sceneFilter = target.dataset.sceneFilter; presetSheet(); return; }
     if (target.dataset.interactionFilter) { view.interactionFilter = target.dataset.interactionFilter; presetSheet(); return; }
@@ -319,6 +350,7 @@
     if (action === 'save-user-preset') { var input = $('presetName'); Store.savePreset(input ? input.value : '', state); closeSheet(); toast('端末内に保存しました'); }
     if (action === 'reset') { if (global.confirm('現在の設計をリセットしますか？')) { Store.clearDraft(); draft = null; state = S.initial(); view.screen = 'start'; render(); } }
     if (action === 'close-sheet') closeSheet();
+    if (action === 'clear-preset-filters') { view.presetFilter = 'all'; view.collectionFilter = 'all'; view.poseFamilyFilter = 'all'; view.moodFilter = 'all'; view.sceneFilter = 'all'; view.interactionFilter = 'all'; view.viewerOnly = false; presetSheet(); }
   });
   document.addEventListener('input', function (event) {
     if (event.target.matches('[data-custom]')) {

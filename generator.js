@@ -15,6 +15,85 @@
   function hasClothingDescription(text) {
     return /\b(t-?shirt|shirt|shorts?|pants?|trousers?|jeans?|skirt|dress|outfit|clothes?|jacket|hoodie|sweater|top|uniform)\b/i.test(String(text || ''));
   }
+  function restraintActive(s) {
+    return !!(s.restraint && s.restraint.type !== 'none' && s.restraint.placement !== 'none');
+  }
+  function restraintBlock(s) {
+    var compact = [], detailed = [], ja = [];
+    if (!restraintActive(s)) return { compact: compact, detailed: detailed, ja: ja };
+    var r = s.restraint;
+    var loose = r.tension === 'loose', decorative = r.tension === 'decorative';
+    var placement = {
+      wrists_front: loose ? 'both wrists loosely bound together in front' : 'both wrists securely bound together in front',
+      wrists_behind: loose ? 'both wrists loosely bound behind the back' : 'both wrists bound behind the back',
+      wrists_overhead: 'both wrists secured overhead, arms raised above the head',
+      one_wrist: 'one wrist restrained, only one wrist restrained',
+      chair_armrests: 'each wrist secured to a separate chair armrest',
+      ankles: loose ? 'both ankles loosely bound together' : 'both ankles securely bound together',
+      torso_and_arms: decorative ? 'loose restraints arranged around the arms and torso as a dramatic restraint' : 'restraints wrapped around the arms and torso'
+    }[r.placement];
+    push(compact, 'adult character');
+    push(detailed, 'The character is an adult.');
+    push(ja, '対象：成人キャラクター');
+    push(compact, placement);
+    push(detailed, {
+      wrists_front: 'Both wrists are bound together in front near the waist.',
+      wrists_behind: 'Both wrists are bound behind the back, with the bound hands visible behind the waist.',
+      wrists_overhead: 'Both wrists are secured overhead while both feet stay firmly on the floor and the legs fully support the body.',
+      one_wrist: 'Only one wrist is restrained.',
+      chair_armrests: 'Each wrist is secured separately to a chair armrest.',
+      ankles: 'Both ankles are bound together while the hands remain free.',
+      torso_and_arms: 'The restraints are arranged around the arms and torso as a non-injurious dramatic effect.'
+    }[r.placement]);
+    push(ja, '拘束位置：' + selected(D.restraintPlacements, r.placement).labelJa);
+
+    var target = ['wrists_front', 'wrists_behind', 'wrists_overhead', 'chair_armrests'].indexOf(r.placement) >= 0 ? 'wrists' :
+      r.placement === 'one_wrist' ? 'one wrist' : r.placement === 'ankles' ? 'ankles' : 'arms and torso';
+    var material = {
+      rope: 'rope wrapped around ' + (target === 'one wrist' ? 'one wrist only' : 'the ' + target + ' only'),
+      chain: target === 'arms and torso' ? 'chains clearly visible around the arms and torso, not the neck' : 'chain secured around ' + (target === 'one wrist' ? 'one wrist only' : 'the ' + target + ' only'),
+      cuffs: target === 'one wrist' ? 'a cuff secured around one wrist only' : 'cuffs secured around the ' + target + ' only',
+      straps: 'straps secured around ' + (target === 'one wrist' ? 'one wrist only' : 'the ' + target + ' only')
+    }[r.type];
+    push(compact, material);
+    push(detailed, {
+      rope: 'Rope is wrapped only around the intended ' + target + '.',
+      chain: 'The chain remains clearly visible and is attached only to the intended ' + target + '.',
+      cuffs: 'The cuffs are secured only around the intended ' + target + '.',
+      straps: 'The straps are secured only around the intended ' + target + '.'
+    }[r.type]);
+    push(ja, '拘束具：' + selected(D.restraintTypes, r.type).labelJa);
+
+    var anchor = {
+      wall: 'secured to a wall fixture',
+      pillar: 'secured to a pillar',
+      chair: r.placement === 'chair_armrests' ? '' : 'secured to a chair',
+      overhead_fixture: 'attached to an overhead fixture'
+    }[r.anchor] || '';
+    push(compact, anchor);
+    if (anchor) push(detailed, 'The restraint is ' + anchor + '.');
+    if (r.anchor !== 'none') push(ja, '固定先：' + selected(D.restraintAnchors, r.anchor).labelJa);
+    push(ja, '固定状態：' + selected(D.restraintTensions, r.tension).labelJa);
+
+    if (r.placement === 'one_wrist') {
+      push(compact, 'the other arm free and relaxed');
+      push(detailed, 'The other arm remains free and relaxed.');
+      push(ja, '自由な腕：' + (r.freeArm === 'none' ? '片腕を自由に保つ' : selected(D.restraintFreeArms, r.freeArm).labelJa));
+    }
+    if (r.placement === 'wrists_front') push(compact, s.pose.posture === 'kneeling' ? 'bound hands resting near the lap' : 'bound hands held near the waist');
+    if (r.placement === 'wrists_behind') push(compact, 'bound hands visible behind the waist');
+    if (r.placement === 'wrists_overhead') {
+      push(compact, 'both feet firmly on the floor, body fully supported by the legs, not suspended, not hanging');
+      push(detailed, 'Both feet remain firmly on the floor, the body is fully supported by the legs, and the character is not suspended or hanging.');
+    }
+    if (r.placement === 'chair_armrests') push(compact, 'seated upright in a chair, feet resting on the floor');
+    if (['wrists_front', 'wrists_overhead', 'chair_armrests'].indexOf(r.placement) >= 0) push(compact, 'both hands visible');
+
+    push(compact, 'restraints clearly wrapped around the intended body part, restraints separate from the skin and clothing, restraints clearly visible, no duplicated restraints, no extra arms, no extra hands, no rope fused with the body, no chain passing through the body, no restraints around the neck, no injury, no bruises, no blood, no broken limbs');
+    push(detailed, 'Keep the restraints clearly wrapped around only the intended body part, separate from skin and clothing, and clearly visible. Do not duplicate restraints or limbs, fuse rope with the body, pass chains through the body, place restraints around the neck, or show injury, bruises, blood, or broken limbs.');
+    push(ja, '破綻抑制：対象部位だけ・首への拘束なし・非流血・非損傷');
+    return { compact: compact, detailed: detailed, ja: ja };
+  }
   function armBlock(s) {
     var compact = [], detailed = [];
     var arms = s.pose.arms;
@@ -53,6 +132,7 @@
       lowerBody: { compact: [], detailed: [], ja: [] },
       bodyFlow: { compact: [], detailed: [], ja: [] },
       arms: { compact: [], detailed: [], ja: [] },
+      restraint: { compact: [], detailed: [], ja: [] },
       head: { compact: [], detailed: [], ja: [] },
       gaze: { compact: [], detailed: [], ja: [] },
       interaction: { compact: [], detailed: [], ja: [] },
@@ -137,6 +217,10 @@
       if (pa) push(b.arms.ja, '片方の手：' + pa.labelJa + (PCW.advisor.armHidden(pa, s.camera.shotSize) ? '（画角外・保持中）' : ''));
       if (sa) push(b.arms.ja, '反対の手：' + sa.labelJa + (PCW.advisor.armHidden(sa, s.camera.shotSize) ? '（画角外・保持中）' : ''));
     }
+    var rb = restraintBlock(s);
+    rb.compact.forEach(function (x) { push(b.restraint.compact, x); });
+    rb.detailed.forEach(function (x) { push(b.restraint.detailed, x); });
+    rb.ja.forEach(function (x) { push(b.restraint.ja, x); });
 
     [[D.headYaws, s.pose.head.yaw, '顔'], [D.headPitches, s.pose.head.pitch, '顎'], [D.headTilts, s.pose.head.tilt, '首']].forEach(function (row) {
       var item = selected(row[0], row[1]);
@@ -240,12 +324,12 @@
     return groups.join(' ').replace(/\.\.+/g, '.').trim();
   }
   function structureJa(raw) {
-    var b = blocks(raw), names = { subjectPosture: '姿勢', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', outputAssist: '出力補助', custom: '自由入力' };
+    var b = blocks(raw), names = { subjectPosture: '姿勢', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', restraint: '拘束・固定', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', outputAssist: '出力補助', custom: '自由入力' };
     var lines = [];
     Object.keys(b).forEach(function (key) {
       if (b[key].ja.length) lines.push('【' + names[key] + '】\n' + b[key].ja.join('\n'));
     });
     return lines.join('\n\n');
   }
-  PCW.generator = { blocks: blocks, compact: compact, detailed: detailed, structureJa: structureJa, hasClothingDescription: hasClothingDescription };
+  PCW.generator = { blocks: blocks, compact: compact, detailed: detailed, structureJa: structureJa, hasClothingDescription: hasClothingDescription, restraintActive: restraintActive };
 })(window);

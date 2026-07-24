@@ -78,6 +78,48 @@
     ]));
     if (s.interaction.viewerHandInteraction !== 'none' && s.interaction.viewerHandVisible) out.push(issue('viewer_hand_generation_tip', 'info', 'interaction', 'Viewerの手を含む構図は指や腕が崩れることがあります', 'Viewerの手は手前から片手だけ表示します。アップまたは半身、シンプルな背景にし、別の手振りを重ねないと安定しやすくなります。', ['interaction.viewerHandInteraction', 'interaction.viewerHandVisible', 'camera.shotSize', 'pose.arms'], []));
   }
+  function restraintActive(s) {
+    return !!(s.restraint && s.restraint.type !== 'none' && s.restraint.placement !== 'none');
+  }
+  function restraintIssues(s, out) {
+    if (!restraintActive(s)) return;
+    var placement = s.restraint.placement;
+    var bilateralWrists = ['wrists_front', 'wrists_behind', 'wrists_overhead', 'chair_armrests'].indexOf(placement) >= 0;
+    var supportUsesBothHands = ['hands_and_knees', 'forward_lean_support', 'leaning_forward_on_hands'].indexOf(s.pose.supportPose) >= 0 ||
+      s.pose.arms.mode === 'combined' && s.pose.arms.combined === 'supporting_upper_body';
+    var combinedHands = s.pose.arms.mode === 'combined' && !!s.pose.arms.combined;
+    var individualActions = [s.pose.arms.primary.action, s.pose.arms.secondary.action].filter(Boolean);
+    var viewerHandAction = s.interaction.viewerHandInteraction && s.interaction.viewerHandInteraction !== 'none';
+    if (bilateralWrists && supportUsesBothHands) out.push(issue('restraint_both_hands_support_conflict', 'hard', 'restraint', '両手の支持姿勢と両手首の拘束は併用できません', 'このポーズでは両手を身体の支持に使用するため、両手首の拘束と併用できません。', ['restraint.placement', 'pose.supportPose', 'pose.arms'], [
+      { labelJa: '拘束位置を解除', patch: { 'restraint.placement': 'none' } },
+      { labelJa: '両手支持を解除', patch: { 'pose.supportPose': 'none', 'pose.arms.combined': null, 'pose.arms.mode': 'separate' } }
+    ]));
+    if (bilateralWrists && combinedHands) out.push(issue('restraint_two_hand_gesture_conflict', 'hard', 'restraint', '両手を使う仕草と両手首の拘束は併用できません', '両手ハートや両手で顔を隠す動作は、両手首を固定した状態では成立しません。', ['restraint.placement', 'pose.arms.combined'], [
+      { labelJa: '両手の仕草を解除', patch: { 'pose.arms.mode': 'separate', 'pose.arms.combined': null } }
+    ]));
+    if (bilateralWrists && viewerHandAction) out.push(issue('restraint_viewer_hand_conflict', 'hard', 'restraint', 'Viewerとの手のやりとりと両手首の拘束は併用できません', 'Viewerの手を引く・支える・一口差し出す動作には自由な手が必要です。', ['restraint.placement', 'interaction.viewerHandInteraction'], [
+      { labelJa: '手のやりとりを解除', patch: { 'interaction.viewerHandInteraction': 'none', 'interaction.viewerHandVisible': false } }
+    ]));
+    if (placement === 'wrists_behind' && individualActions.some(function (id) { return id !== 'behind_back' && id !== 'relaxed_at_side'; })) out.push(issue('restraint_behind_front_action_conflict', 'hard', 'restraint', '後ろで拘束した手と前方の手動作が競合しています', '両手首を後ろで拘束しているため、胸元や顔まわりの手動作を同時に指定できません。', ['restraint.placement', 'pose.arms'], [
+      { labelJa: '前方の手動作を解除', patch: { 'pose.arms.primary.action': null, 'pose.arms.secondary.action': null } }
+    ]));
+    if (placement === 'wrists_overhead' && individualActions.some(function (id) { return id !== 'relaxed_at_side'; })) out.push(issue('restraint_overhead_arm_action_conflict', 'hard', 'restraint', '頭上固定と腕を下げる動作が競合しています', '両手首を頭上へ固定しているため、顔・頬・胸元へ触れる動作は併用できません。', ['restraint.placement', 'pose.arms'], [
+      { labelJa: '腕の動作を解除', patch: { 'pose.arms.primary.action': null, 'pose.arms.secondary.action': null } }
+    ]));
+    if (placement === 'ankles' && s.restraint.tension === 'secured' && ['standing', 'walking', 'one_knee_kneeling'].indexOf(s.pose.posture) >= 0) out.push(issue('restraint_ankles_posture_conflict', 'hard', 'restraint', '固定した足首と現在の姿勢が両立しません', '足首を固定した状態では、立位より床座りまたは寝姿勢が安定します。', ['restraint.placement', 'restraint.tension', 'pose.posture'], [
+      { labelJa: '床座りへ変更', patch: { 'pose.posture': 'sitting', 'pose.motion.state': 'static', 'pose.weight': null, 'pose.lowerBody.stance': null, 'pose.lowerBody.legRelation': 'parallel', 'pose.lowerBody.knee': 'both_bent' } }
+    ]));
+    if (placement === 'chair_armrests' && s.pose.posture !== 'sitting') out.push(issue('restraint_chair_posture_conflict', 'hard', 'restraint', '椅子の肘掛け固定には座位が必要です', '椅子へ座る姿勢と、身体を受ける座面を指定してください。', ['restraint.placement', 'restraint.anchor', 'pose.posture', 'pose.support.type'], [
+      { labelJa: '椅子へ座る', patch: { 'pose.posture': 'sitting', 'pose.support.type': 'seated_surface', 'pose.motion.state': 'static', 'pose.weight': null } }
+    ]));
+    if (placement === 'one_wrist' && (combinedHands || individualActions.length > 1)) out.push(issue('restraint_one_wrist_too_many_actions', 'hard', 'restraint', '片手首拘束で両手の動作が指定されています', '片手首の拘束では、自由な腕の動作を1種類に絞ると安定します。', ['restraint.placement', 'restraint.freeArm', 'pose.arms'], [
+      { labelJa: '反対の手動作を解除', patch: { 'pose.arms.mode': 'separate', 'pose.arms.secondary.action': null, 'pose.arms.combined': null } }
+    ]));
+    if (/\b(minor|underage|child|kid|young\s+(girl|boy)|teen(?:ager)?)\b|未成年|子ども|子供|幼い|少女|少年/i.test(s.output.customText || '')) out.push(issue('restraint_minor_conflict', 'hard', 'safety', '拘束・固定は成人キャラクター専用です', '未成年・子ども・幼い外見を示す自由入力とは併用できません。成人キャラクターの演出として使用してください。', ['restraint', 'output.customText'], [
+      { labelJa: '拘束・固定を解除', patch: { 'restraint.type': 'none', 'restraint.placement': 'none', 'restraint.anchor': 'none' } }
+    ]));
+    out.push(issue('restraint_adult_noninjury_notice', 'info', 'safety', '拘束・固定は成人キャラクター向けの演出です', '首への拘束、吊り下げ、傷、流血を避けた非損傷の演出として出力します。', ['restraint'], []));
+  }
   function check(raw) {
     var s = S.normalize(raw);
     var out = [];
@@ -166,6 +208,7 @@
     ]));
     visibilityIssues(s, out);
     interactionIssues(s, out);
+    restraintIssues(s, out);
     if (s.output.suppressPhotographyEquipment) out.push(issue('photography_equipment_suppression', 'info', 'output', '撮影機材の誤描画を抑えます', '一部の生成モデルが視点指定を撮影機材として描く問題を抑える補助文を出力します。', ['output.suppressPhotographyEquipment'], []));
 
     var ignored = s.meta.ignoredWarnings || [];
@@ -182,5 +225,5 @@
     var s = S.normalize(raw);
     return !!s.pose.posture && !!s.camera.shotSize && summary(s).hard === 0 && handUsage(s) <= 2 && !!(PCW.generator && PCW.generator.compact(s));
   }
-  PCW.advisor = { check: check, summary: summary, handUsage: handUsage, hidden: hidden, armHidden: armHidden, isComplete: isComplete };
+  PCW.advisor = { check: check, summary: summary, handUsage: handUsage, hidden: hidden, armHidden: armHidden, restraintActive: restraintActive, isComplete: isComplete };
 })(window);

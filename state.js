@@ -54,6 +54,7 @@
       },
       camera: { shotSize: null, elevation: 'eye_level', roll: 'level' },
       interaction: { target: 'none', distance: 'normal', approach: 'none', viewerHandInteraction: 'none', viewerHandVisible: false },
+      restraint: { type: 'none', placement: 'none', anchor: 'none', tension: 'loose', freeArm: 'none' },
       composition: { subjectPlacement: 'centered', negativeSpace: 'none', crop: 'none', foreground: 'none', depth: 'separated', rhythm: 'stable' },
       output: { includeSolo: true, suppressTextSymbols: false, suppressPhotographyEquipment: false, preserveClothing: false, supportOutfitAssist: true, backDesign: 'none', customText: '' },
       meta: { ignoredWarnings: [], updatedAt: null }
@@ -109,6 +110,11 @@
       s.interaction.viewerHandInteraction = 'none';
       s.interaction.viewerHandVisible = false;
     }
+    s.restraint.type = known(D.restraintTypes, s.restraint.type, 'none');
+    s.restraint.placement = known(D.restraintPlacements, s.restraint.placement, 'none');
+    s.restraint.anchor = known(D.restraintAnchors, s.restraint.anchor, 'none');
+    s.restraint.tension = known(D.restraintTensions, s.restraint.tension, 'loose');
+    s.restraint.freeArm = known(D.restraintFreeArms, s.restraint.freeArm, 'none');
     s.composition.subjectPlacement = known(D.placements, s.composition.subjectPlacement, 'centered');
     s.composition.negativeSpace = known(D.negativeSpaces, s.composition.negativeSpace, 'none');
     s.composition.crop = known(D.crops, s.composition.crop, 'none');

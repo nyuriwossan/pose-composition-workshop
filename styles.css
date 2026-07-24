@@ -106,6 +106,9 @@ h1 { margin: 0; font-family: Georgia, "Yu Mincho", serif; font-size: clamp(2rem,
 .collection-filter[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); box-shadow: inset 0 0 0 1px var(--indigo); }
 .collection-filter[aria-pressed="true"] b { color: var(--indigo); }
 .relationship-filters { margin: 0 0 12px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-strong); }
+.family-filter-block { margin: 0 0 10px; padding: 10px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-strong); }
+.family-filter-block > small { display: block; margin-bottom: 6px; color: var(--muted); font-weight: 800; }
+.family-filters b { margin-left: 3px; font-size: .68rem; }
 .relationship-filter-row + .relationship-filter-row { margin-top: 10px; }
 .relationship-filter-row > small { display: block; margin-bottom: 5px; color: var(--muted); font-weight: 800; }
 .tag-filters { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 3px; scrollbar-width: thin; }
@@ -118,7 +121,11 @@ h1 { margin: 0; font-family: Georgia, "Yu Mincho", serif; font-size: clamp(2rem,
 .preset-filter small { margin-top: 2px; color: var(--muted); font-size: .65rem; }
 .preset-filter[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); box-shadow: inset 0 0 0 1px var(--accent); }
 .preset-filter[aria-pressed="true"] b, .preset-filter[aria-pressed="true"] small { color: var(--accent-dark); }
-.preset-filter-tools { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; color: var(--muted); font-size: .7rem; }
+.preset-filter-tools { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px 10px; margin-bottom: 12px; color: var(--muted); font-size: .7rem; }
+.selected-filters { flex: 1 1 180px; overflow-wrap: anywhere; }
+.preset-filter-tools .btn { min-height: 38px; padding: 7px 10px; }
+.restraint-notice { margin: 0; padding: 10px 12px; border: 1px solid #c9a96a; border-radius: 12px; background: #fff8e9; color: #694f20; font-size: .78rem; font-weight: 800; line-height: 1.6; }
+.expression-group:first-child { margin-top: 0; padding-top: 0; border-top: 0; }
 .viewer-only-filter { min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: .74rem; font-weight: 800; cursor: pointer; }
 .viewer-only-filter[aria-pressed="true"] { border-color: var(--indigo); background: var(--indigo-soft); color: var(--indigo); box-shadow: inset 0 0 0 1px var(--indigo); }
 .preset-card { width: 100%; min-height: 72px; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: left; cursor: pointer; }
