@@ -322,6 +322,46 @@
   test('拘束出力：片手首だけを固定し反対腕を自由にする', function () { var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'one_wrist', 'restraint.anchor': 'wall', 'restraint.freeArm': 'right' })); ok(c.indexOf('only one wrist restrained') >= 0 && c.indexOf('the other arm free and relaxed') >= 0); });
   test('拘束出力：椅子固定は座位・椅子・床の足を明示', function () { var p = D.presets.filter(function (x) { return x.id === 'special_chair_armrests_restraint'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch)); ok(c.indexOf('each wrist secured to a separate chair armrest') >= 0 && c.indexOf('seated upright in a chair') >= 0 && c.indexOf('feet resting on the floor') >= 0); });
   test('拘束出力：装飾鎖は腕と胴体だけで首へ巻かない', function () { var p = D.presets.filter(function (x) { return x.id === 'special_decorative_chain_torso_standing'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch)); ok(c.indexOf('around the arms and torso') >= 0 && c.indexOf('not the neck') >= 0); });
+  test('拘束微改修：鎖使用時だけ鎖の輪と衣装外経路を補助', function () {
+    var chain = G.compact(restraintState({ 'restraint.type': 'chain' })), rope = G.compact(restraintState({ 'restraint.type': 'rope' }));
+    ['chain links clearly visible', 'chain remains outside the body and clothing', 'no floating chain', 'no chain growing from the skin', 'no chain fused with the outfit'].forEach(function (term) { ok(chain.indexOf(term) >= 0, term); ok(rope.indexOf(term) < 0, 'rope / ' + term); });
+  });
+  test('拘束微改修：鎖＋壁固定で見える接続先を明示', function () {
+    var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.anchor': 'wall' }));
+    ok(c.indexOf('chain clearly attached to a visible restraint point') >= 0 && c.indexOf('attached to a visible wall ring') >= 0);
+  });
+  test('拘束微改修：固定先なしの鎖へ壁や柱を捏造しない', function () {
+    var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.anchor': 'none' }));
+    ok(c.indexOf('visible wall ring') < 0 && c.indexOf('visible pillar fixture') < 0 && c.indexOf('visible overhead restraint point') < 0);
+  });
+  test('拘束微改修：手首拘束で手と指の完全性を補助', function () {
+    var c = G.compact(restraintState());
+    ['fingers visible', 'hands anatomically complete', 'no missing hands', 'no missing fingers', 'no merged fingers', 'no cropped wrists', 'the bound hands remain visible'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); });
+  });
+  test('拘束微改修：後ろ手で手首・肘・肩の位置を明示', function () {
+    var c = G.compact(restraintState({ 'restraint.placement': 'wrists_behind' }));
+    ['both wrists clearly visible behind the back', 'the bound hands visible behind the waist', 'elbows slightly bent behind the back', 'wrists close together behind the waist', 'natural shoulder alignment', 'upper arms remain attached naturally to the shoulders', 'no dislocated arms'].forEach(function (term) { ok(c.indexOf(term) >= 0, term); });
+  });
+  test('拘束微改修：片手首拘束で自由な腕と両手を表示', function () {
+    var c = G.compact(restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'one_wrist', 'restraint.anchor': 'wall', 'restraint.freeArm': 'right' }));
+    ok(c.indexOf('the other arm free and visible') >= 0 && c.indexOf('the restrained hand and free hand both visible') >= 0);
+  });
+  test('拘束微改修：通常ポーズへ鎖専用・手指補助を混入しない', function () {
+    var c = G.compact(modelState());
+    ['chain links clearly visible', 'no floating chain', 'hands anatomically complete', 'no cropped wrists'].forEach(function (term) { ok(c.indexOf(term) < 0, term); });
+  });
+  test('拘束微改修：装飾鎖は胸前の見える経路へ限定', function () {
+    var p = D.presets.filter(function (x) { return x.id === 'special_decorative_chain_torso_standing'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch));
+    ok(c.indexOf('one or two chain passes across the front at chest height') >= 0 && c.indexOf('chains remain outside the clothing') >= 0 && c.indexOf('no hidden chain routes through the back or sleeves') >= 0);
+  });
+  test('拘束微改修：椅子固定で左右の見える肘掛けと両手を明示', function () {
+    var p = D.presets.filter(function (x) { return x.id === 'special_chair_armrests_restraint'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch));
+    ok(c.indexOf('each wrist secured to a separate visible chair armrest') >= 0 && c.indexOf('both hands visible') >= 0 && c.indexOf('chair armrests clearly visible') >= 0);
+  });
+  test('拘束微改修：頭上固定で床・脚支持・非吊り下げを補強', function () {
+    var p = D.presets.filter(function (x) { return x.id === 'special_wrists_overhead_standing'; })[0], c = G.compact(S.applyPatch(S.initial(), p.patch));
+    ok(c.indexOf('both feet clearly on the floor') >= 0 && c.indexOf('body weight supported by the legs') >= 0 && c.indexOf('no hanging body') >= 0);
+  });
   test('拘束Advisor：四つん這い＋両手首拘束でhard', function () { ok(issueIds(restraintState({ 'pose.posture': 'kneeling', 'pose.supportPose': 'hands_and_knees' })).indexOf('restraint_both_hands_support_conflict') >= 0); });
   test('拘束Advisor：両手ハート＋両手首拘束でhard', function () { ok(issueIds(restraintState({ 'pose.arms.mode': 'combined', 'pose.arms.combined': 'heart_hands_near_face' })).indexOf('restraint_two_hand_gesture_conflict') >= 0); });
   test('拘束Advisor：Viewerへ一口差し出す＋両手首拘束でhard', function () { ok(issueIds(restraintState({ 'interaction.target': 'viewer', 'interaction.viewerHandInteraction': 'feeding' })).indexOf('restraint_viewer_hand_conflict') >= 0); });
@@ -330,6 +370,17 @@
   test('拘束Advisor：片手首拘束＋片手動作は許可', function () { var s = restraintState({ 'restraint.placement': 'one_wrist', 'restraint.freeArm': 'right', 'pose.arms.primary.action': 'hand_near_chest' }); ok(issueIds(s).indexOf('restraint_one_wrist_too_many_actions') < 0); });
   test('拘束Advisor：片手首拘束＋両手動作でhard', function () { var s = restraintState({ 'restraint.placement': 'one_wrist', 'restraint.freeArm': 'right', 'pose.arms.mode': 'combined', 'pose.arms.combined': 'hands_clasped' }); ok(issueIds(s).indexOf('restraint_one_wrist_too_many_actions') >= 0); });
   test('拘束Advisor：未成年を示す自由入力でhard', function () { ok(issueIds(restraintState({ 'output.customText': 'underage character' })).indexOf('restraint_minor_conflict') >= 0); });
+  test('拘束Advisor微改修：鎖＋固定先なしで注意と代替案', function () {
+    var list = A.check(restraintState({ 'restraint.type': 'chain', 'restraint.anchor': 'none' })), item = list.filter(function (x) { return x.id === 'restraint_chain_anchor_missing'; })[0];
+    ok(item && item.resolutions.length >= 2);
+  });
+  test('拘束Advisor微改修：鎖＋後ろ手で高難度注意', function () { ok(issueIds(restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'wrists_behind' })).indexOf('restraint_chain_behind_difficulty') >= 0); });
+  test('拘束Advisor微改修：後ろ手＋長袖で衣装埋没注意', function () { ok(issueIds(restraintState({ 'restraint.placement': 'wrists_behind', 'output.customText': 'long-sleeved shirt' })).indexOf('restraint_behind_long_sleeves') >= 0); });
+  test('拘束Advisor微改修：腕と胴体への鎖で高難度注意', function () { ok(issueIds(restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'torso_and_arms' })).indexOf('restraint_chain_torso_difficulty') >= 0); });
+  test('拘束Advisor微改修：片手首＋鎖＋背面振り返りで高難度注意', function () {
+    var s = restraintState({ 'restraint.type': 'chain', 'restraint.placement': 'one_wrist', 'restraint.anchor': 'wall', 'pose.rearViewEmphasis': 'rear_three_quarter', 'pose.pelvis.orientation': 'away_camera', 'pose.head.yaw': 'over_shoulder' });
+    ok(issueIds(s).indexOf('restraint_chain_one_wrist_rear_difficulty') >= 0);
+  });
   specialPresetIds.forEach(function (id) {
     test('特殊プリセット：' + id + 'は成人・非損傷・首拘束なし', function () { var p = D.presets.filter(function (x) { return x.id === id; })[0], s = S.applyPatch(S.initial(), p.patch), c = G.compact(s); eq([p.meta.collection, p.meta.poseFamily], ['special', 'restraint']); eq(A.summary(s).hard, 0); ok(c.indexOf('adult character') >= 0 && c.indexOf('no restraints around the neck') >= 0 && c.indexOf('no blood') >= 0); ok(c.indexOf('around the neck') < 0 || c.indexOf('no restraints around the neck') >= 0); });
   });

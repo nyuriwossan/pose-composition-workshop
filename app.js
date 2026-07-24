@@ -125,8 +125,18 @@
       '<div class="subsection"><h3>片方の手</h3>' + chips('pose.arms.primary.action', D.armActions, { postureAware: true, max: 8, expandKey: 'primaryArm' }) + '</div>' +
       '<div class="subsection"><h3>反対の手</h3>' + chips('pose.arms.secondary.action', D.armActions, { postureAware: true, max: 8, expandKey: 'secondaryArm' }) + '</div>');
     var restraintActive = state.restraint.type !== 'none';
+    var restraintDifficultyLabels = { rope: '安定', cuffs: '中', straps: '中', chain: '難' };
+    var selectedDifficulty = restraintDifficultyLabels[state.restraint.type] || '';
+    var rearRestraint = state.pose.rearViewEmphasis !== 'none' || ['away', 'away_camera'].indexOf(state.pose.pelvis.orientation) >= 0 || state.pose.head.yaw === 'over_shoulder';
+    var difficultRestraint = state.restraint.type === 'chain' && (
+      ['wrists_behind', 'one_wrist', 'torso_and_arms'].indexOf(state.restraint.placement) >= 0 ||
+      rearRestraint
+    );
+    var restraintDifficulty = '<div class="restraint-difficulty" role="note" aria-label="拘束具の生成難易度"><strong>生成難易度の目安</strong><span>縄：安定</span><span>手錠：中</span><span>ストラップ：中</span><span>鎖：難</span></div>' +
+      (restraintActive ? '<p class="restraint-level' + (difficultRestraint ? ' restraint-level--warning' : '') + '">選択中：' + esc(S.option(D.restraintTypes, state.restraint.type).labelJa) + '・' + esc(selectedDifficulty) + (difficultRestraint ? '　⚠ 手や接続先が見える半身～全身を推奨します。' : '') + '</p>' : '');
     var restraint = card('拘束・固定（任意）', '既存ポーズへ重ねる、成人キャラクター向けの非流血・非損傷演出です。',
       '<p class="restraint-notice">首への拘束、吊り下げ、傷、流血を出力しません。</p>' +
+      restraintDifficulty +
       '<div class="subsection"><h3>拘束具</h3>' + chips('restraint.type', D.restraintTypes, { max: 5, expandKey: 'restraintType' }) + '</div>' +
       (restraintActive ? '<div class="subsection"><h3>拘束位置</h3>' + chips('restraint.placement', D.restraintPlacements, { max: 8, expandKey: 'restraintPlacement' }) + '</div>' +
       '<div class="subsection"><h3>固定先</h3>' + chips('restraint.anchor', D.restraintAnchors, { max: 5, expandKey: 'restraintAnchor' }) + '</div>' +

@@ -22,7 +22,8 @@
     var compact = [], detailed = [], ja = [];
     if (!restraintActive(s)) return { compact: compact, detailed: detailed, ja: ja };
     var r = s.restraint;
-    var loose = r.tension === 'loose', decorative = r.tension === 'decorative';
+    var loose = r.tension === 'loose', decorative = r.tension === 'decorative', chain = r.type === 'chain';
+    var wristPlacement = ['wrists_front', 'wrists_behind', 'wrists_overhead', 'one_wrist', 'chair_armrests'].indexOf(r.placement) >= 0;
     var placement = {
       wrists_front: loose ? 'both wrists loosely bound together in front' : 'both wrists securely bound together in front',
       wrists_behind: loose ? 'both wrists loosely bound behind the back' : 'both wrists bound behind the back',
@@ -30,7 +31,7 @@
       one_wrist: 'one wrist restrained, only one wrist restrained',
       chair_armrests: 'each wrist secured to a separate chair armrest',
       ankles: loose ? 'both ankles loosely bound together' : 'both ankles securely bound together',
-      torso_and_arms: decorative ? 'loose restraints arranged around the arms and torso as a dramatic restraint' : 'restraints wrapped around the arms and torso'
+      torso_and_arms: chain ? 'decorative restraint, loose chains arranged visibly around the upper arms and torso, one or two chain passes across the front at chest height' : decorative ? 'loose restraints arranged around the arms and torso as a dramatic restraint' : 'restraints wrapped around the arms and torso'
     }[r.placement];
     push(compact, 'adult character');
     push(detailed, 'The character is an adult.');
@@ -43,7 +44,7 @@
       one_wrist: 'Only one wrist is restrained.',
       chair_armrests: 'Each wrist is secured separately to a chair armrest.',
       ankles: 'Both ankles are bound together while the hands remain free.',
-      torso_and_arms: 'The restraints are arranged around the arms and torso as a non-injurious dramatic effect.'
+      torso_and_arms: chain ? 'Loose chains form a decorative restraint around the upper arms and torso, with one or two clearly visible passes across the front at chest height.' : 'The restraints are arranged around the arms and torso as a non-injurious dramatic effect.'
     }[r.placement]);
     push(ja, '拘束位置：' + selected(D.restraintPlacements, r.placement).labelJa);
 
@@ -77,17 +78,50 @@
 
     if (r.placement === 'one_wrist') {
       push(compact, 'the other arm free and relaxed');
-      push(detailed, 'The other arm remains free and relaxed.');
+      push(compact, 'the other arm free and visible, the restrained hand and free hand both visible');
+      push(detailed, 'The other arm remains free, relaxed, and visible; keep both the restrained hand and the free hand visible.');
       push(ja, '自由な腕：' + (r.freeArm === 'none' ? '片腕を自由に保つ' : selected(D.restraintFreeArms, r.freeArm).labelJa));
     }
     if (r.placement === 'wrists_front') push(compact, s.pose.posture === 'kneeling' ? 'bound hands resting near the lap' : 'bound hands held near the waist');
-    if (r.placement === 'wrists_behind') push(compact, 'bound hands visible behind the waist');
+    if (r.placement === 'wrists_behind') {
+      push(compact, 'both wrists clearly visible behind the back, the bound hands visible behind the waist, elbows slightly bent behind the back, wrists close together behind the waist, natural shoulder alignment, upper arms remain attached naturally to the shoulders, no dislocated arms');
+      push(detailed, 'Keep both wrists clearly visible behind the back and the bound hands visible behind the waist. The elbows are slightly bent, the wrists stay close together behind the waist, the shoulders align naturally, and the upper arms remain attached naturally to the shoulders without dislocation.');
+    }
     if (r.placement === 'wrists_overhead') {
       push(compact, 'both feet firmly on the floor, body fully supported by the legs, not suspended, not hanging');
-      push(detailed, 'Both feet remain firmly on the floor, the body is fully supported by the legs, and the character is not suspended or hanging.');
+      push(compact, 'both feet clearly on the floor, body weight supported by the legs, no hanging body');
+      push(detailed, 'Both feet remain clearly on the floor, the body weight is supported by the legs, and there is no hanging body.');
     }
-    if (r.placement === 'chair_armrests') push(compact, 'seated upright in a chair, feet resting on the floor');
-    if (['wrists_front', 'wrists_overhead', 'chair_armrests'].indexOf(r.placement) >= 0) push(compact, 'both hands visible');
+    if (r.placement === 'chair_armrests') {
+      push(compact, 'seated upright in a chair, feet resting on the floor');
+      push(compact, 'each wrist secured to a separate visible chair armrest, both hands visible, chair armrests clearly visible');
+      push(detailed, 'Each wrist is secured to a separate visible chair armrest; keep both hands and both chair armrests clearly visible.');
+    }
+    if (['wrists_front', 'wrists_overhead'].indexOf(r.placement) >= 0) push(compact, 'both hands visible');
+    if (wristPlacement) {
+      push(compact, 'fingers visible, hands anatomically complete, no missing hands, no missing fingers, no merged fingers, no cropped wrists, the bound hands remain visible');
+      push(detailed, 'Keep the fingers visible and the hands anatomically complete, with no missing hands, missing or merged fingers, or cropped wrists. The bound hands remain visible.');
+      push(ja, '手指：手首から先・指・拘束された手を明瞭に表示');
+    }
+    if (chain) {
+      push(compact, 'chain links clearly visible, chain remains outside the body and clothing, chain does not emerge from the body, chain does not pass through the body, chain does not pass through the clothing, no floating chain, no chain growing from the skin, no chain fused with the outfit');
+      push(detailed, 'Keep every chain link clearly visible and outside the body and clothing. The chain must not emerge from skin, pass through the body or clothing, float without support, grow from the skin, or fuse with the outfit.');
+      var visibleAnchor = {
+        wall: 'chain clearly attached to a visible restraint point, attached to a visible wall ring',
+        pillar: 'chain clearly attached to a visible restraint point, secured to a visible pillar fixture',
+        chair: 'chain clearly attached to a visible restraint point, secured to a visible chair fixture',
+        overhead_fixture: 'chain clearly attached to a visible restraint point, attached to a visible overhead restraint point'
+      }[r.anchor];
+      if (visibleAnchor) {
+        push(compact, visibleAnchor);
+        push(detailed, 'The chain is connected to a clearly visible restraint point at the selected anchor.');
+      }
+      if (r.placement === 'torso_and_arms') {
+        push(compact, 'chains clearly visible across the front of the torso, chains remain outside the clothing, no hidden chain routes through the back or sleeves');
+        push(detailed, 'Keep the chain route visible across the front of the torso and outside the clothing; do not hide chain routes through the back, sleeves, or clothing folds.');
+      }
+      push(ja, '鎖補助：鎖の輪・接続先・衣装外の経路を明示');
+    }
 
     push(compact, 'restraints clearly wrapped around the intended body part, restraints separate from the skin and clothing, restraints clearly visible, no duplicated restraints, no extra arms, no extra hands, no rope fused with the body, no chain passing through the body, no restraints around the neck, no injury, no bruises, no blood, no broken limbs');
     push(detailed, 'Keep the restraints clearly wrapped around only the intended body part, separate from skin and clothing, and clearly visible. Do not duplicate restraints or limbs, fuse rope with the body, pass chains through the body, place restraints around the neck, or show injury, bruises, blood, or broken limbs.');

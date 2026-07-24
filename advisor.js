@@ -90,6 +90,37 @@
     var combinedHands = s.pose.arms.mode === 'combined' && !!s.pose.arms.combined;
     var individualActions = [s.pose.arms.primary.action, s.pose.arms.secondary.action].filter(Boolean);
     var viewerHandAction = s.interaction.viewerHandInteraction && s.interaction.viewerHandInteraction !== 'none';
+    var isChain = s.restraint.type === 'chain';
+    var rearView = s.pose.rearViewEmphasis !== 'none' || ['away', 'away_camera'].indexOf(s.pose.pelvis.orientation) >= 0 || s.pose.head.yaw === 'over_shoulder';
+    var longSleeves = /\b(long[-\s]?sleeved?|long sleeves?|jacket|hoodie|sweater|coat)\b|長袖/i.test(s.output.customText || '');
+    var closeShot = ['face_close_up', 'headshot', 'bust_shot'].indexOf(s.camera.shotSize) >= 0;
+    if (isChain) out.push(issue('restraint_chain_difficulty', 'info', 'restraint', '鎖は難度の高い拘束具です', '鎖は縄より難度が高く、壁・柱・金具などの接続先が見える構図の方が安定します。', ['restraint.type', 'restraint.anchor', 'camera.shotSize'], []));
+    if (isChain && s.restraint.anchor === 'none') out.push(issue('restraint_chain_anchor_missing', 'warning', 'restraint', '鎖の固定先が指定されていません', '鎖＋固定先なしでは装飾的な鎖として崩れやすくなります。壁・柱・手錠・金具など、見える接続先を明示すると安定しやすくなります。', ['restraint.type', 'restraint.anchor'], [
+      { labelJa: '壁の金具へ固定', patch: { 'restraint.anchor': 'wall' } },
+      { labelJa: '縄へ変更', patch: { 'restraint.type': 'rope' } },
+      { labelJa: '手錠へ変更', patch: { 'restraint.type': 'cuffs' } }
+    ]));
+    if (placement === 'wrists_behind') out.push(issue('restraint_behind_hand_visibility', closeShot ? 'warning' : 'info', 'restraint', '後ろ手は手元が省略されやすい構図です', '後ろ手拘束では手や指が省略される場合があります。半身～全身で、腰の後ろの手首と指を見せる構図が安定します。', ['restraint.placement', 'camera.shotSize'], [
+      { labelJa: '腰上へ変更', patch: { 'camera.shotSize': 'waist_up' } }
+    ]));
+    if (placement === 'wrists_behind' && longSleeves) {
+      var visibleWristText = (s.output.customText ? s.output.customText.replace(/,\s*$/g, '') + ', ' : '') + 'short sleeves, wrists clearly visible';
+      out.push(issue('restraint_behind_long_sleeves', 'warning', 'restraint', '長袖が後ろ手の手首を隠しやすい組み合わせです', '後ろ手拘束と長袖衣装の組み合わせでは、手首や鎖が衣装に埋もれやすくなります。半袖・袖まくり・手首の見える衣装が安定します。', ['restraint.placement', 'output.customText'], [
+        { labelJa: '半袖と手首表示を補足', patch: { 'output.customText': visibleWristText } }
+      ]));
+    }
+    if (isChain && placement === 'wrists_behind') out.push(issue('restraint_chain_behind_difficulty', 'warning', 'restraint', '鎖＋後ろ手は高難度です', '鎖と後ろ手を同時に使うと、手・肘・肩の位置や鎖の経路が崩れやすくなります。まず縄へ変更するか、腰上～全身で手元を見せる構図を推奨します。', ['restraint.type', 'restraint.placement', 'camera.shotSize'], [
+      { labelJa: '縄へ変更', patch: { 'restraint.type': 'rope' } },
+      { labelJa: '腰上へ変更', patch: { 'camera.shotSize': 'waist_up' } }
+    ]));
+    if (isChain && placement === 'one_wrist' && rearView) out.push(issue('restraint_chain_one_wrist_rear_difficulty', 'warning', 'restraint', '片手首＋鎖＋背面振り返りは高難度です', '片手首＋鎖＋背面振り返りは、固定した手と鎖の接続先が隠れやすい組み合わせです。手錠や縄、または正面寄りの半身構図が安定します。', ['restraint.type', 'restraint.placement', 'pose.rearViewEmphasis', 'camera.shotSize'], [
+      { labelJa: '縄へ変更', patch: { 'restraint.type': 'rope' } },
+      { labelJa: '正面寄りの腰上へ変更', patch: { 'camera.shotSize': 'waist_up', 'pose.rearViewEmphasis': 'none', 'pose.pelvis.orientation': 'three_quarter' } }
+    ]));
+    if (isChain && placement === 'torso_and_arms') out.push(issue('restraint_chain_torso_difficulty', 'warning', 'restraint', '腕と胴体へ巻く鎖は高難度です', '装飾的な演出には有効ですが、鎖の通り道が服・脇・背中へ隠れて破綻しやすい構図です。まず縄や単純な胸前固定から試すことを推奨します。', ['restraint.type', 'restraint.placement'], [
+      { labelJa: '縄へ変更', patch: { 'restraint.type': 'rope' } },
+      { labelJa: '両手首を前で固定', patch: { 'restraint.placement': 'wrists_front', 'restraint.anchor': 'none', 'restraint.tension': 'loose' } }
+    ]));
     if (bilateralWrists && supportUsesBothHands) out.push(issue('restraint_both_hands_support_conflict', 'hard', 'restraint', '両手の支持姿勢と両手首の拘束は併用できません', 'このポーズでは両手を身体の支持に使用するため、両手首の拘束と併用できません。', ['restraint.placement', 'pose.supportPose', 'pose.arms'], [
       { labelJa: '拘束位置を解除', patch: { 'restraint.placement': 'none' } },
       { labelJa: '両手支持を解除', patch: { 'pose.supportPose': 'none', 'pose.arms.combined': null, 'pose.arms.mode': 'separate' } }
