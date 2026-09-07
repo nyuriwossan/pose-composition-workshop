@@ -38,7 +38,8 @@
     o('lightly_crossed', '軽く交差', 'legs lightly crossed', 'The legs cross lightly.', ['standing']),
     o('stepping', '一歩踏み出す', 'stepping forward', 'One foot steps forward.', ['walking']),
     o('seated_crossed', '座って脚を組む', 'seated with legs crossed', 'The legs are crossed while seated.', ['sitting']),
-    o('kneeling_both', '両膝をつく', 'resting on both knees', 'Both knees support the pose.', ['kneeling'])
+    o('kneeling_both', '両膝をつく', 'resting on both knees', 'Both knees support the pose.', ['kneeling']),
+    o('knees_apart', '膝を開いた構え', 'knees apart', 'The knees are held apart and track the direction of the feet.', ['squatting', 'crouching'])
   ];
   D.knees = [
     o('straight', '自然に伸ばす', 'knees naturally extended', 'The knees are naturally extended.'),

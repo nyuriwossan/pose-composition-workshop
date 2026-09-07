@@ -12,6 +12,11 @@
   }
   function visible(zone, shot) { return !PCW.advisor.hidden(zone, shot); }
   function reachesViewer(id) { return ['reaching_forward', 'reaching_forward_soft', 'pinching_toward_viewer'].indexOf(id) >= 0; }
+  function effectiveState(raw) {
+    var s = S.normalize(raw), support = selected(D.supportPoses, s.pose.supportPose);
+    if (support && support.fullBody && ['full_body', 'wide'].indexOf(s.camera.shotSize) < 0) s.camera.shotSize = 'full_body';
+    return s;
+  }
   function hasClothingDescription(text) {
     return /\b(t-?shirt|shirt|shorts?|pants?|trousers?|jeans?|skirt|dress|outfit|clothes?|jacket|hoodie|sweater|top|uniform)\b/i.test(String(text || ''));
   }
@@ -157,7 +162,8 @@
     return { compact: compact, detailed: detailed };
   }
   function blocks(raw) {
-    var s = S.normalize(raw);
+    var originalShot = S.normalize(raw).camera.shotSize;
+    var s = effectiveState(raw);
     var b = {
       subjectPosture: { compact: [], detailed: [], ja: [] },
       lowerBody: { compact: [], detailed: [], ja: [] },
@@ -301,6 +307,7 @@
         push(b.camera.ja, row[2] + '：' + item.labelJa + (handsAndKneesShot && row[1] !== 'full_body' ? '（四点支持のため出力を全身へ補正）' : ''));
       }
     });
+    if (originalShot !== s.camera.shotSize) push(b.camera.ja, '特殊ポーズの支持点を見せるため出力を全身へ補正（保存した画角は保持）');
     [[D.placements, s.composition.subjectPlacement, '人物配置'], [D.negativeSpaces, s.composition.negativeSpace, '余白'], [D.crops, s.composition.crop, 'クロップ'], [D.foregrounds, s.composition.foreground, '前景'], [D.depths, s.composition.depth, '奥行き'], [D.rhythms, s.composition.rhythm, '構図']].forEach(function (row) {
       var item = selected(row[0], row[1]);
       if (item) { push(b.composition.compact, item.compact); push(b.composition.detailed, item.detailed); push(b.composition.ja, row[2] + '：' + item.labelJa); }
@@ -339,10 +346,96 @@
     return b;
   }
 
+  // Exact aliases apply only to generated clauses, never to free-form text.
+  var compactAliases = {
+    'viewed from below': 'from below', 'viewed from above': 'from above',
+    'viewed from slightly below': 'from slightly below', 'viewed from slightly above': 'from slightly above',
+    'viewed from directly above': 'from directly above', 'viewed at eye level': 'eye level',
+    'with a Dutch viewing angle': 'dutch angle', 'with a slight Dutch viewing angle': 'slight dutch angle',
+    'full-body shot': 'full body', 'wide full-body shot': 'wide shot, full body',
+    'upper-body shot': 'upper body', 'waist-up shot': 'waist up', 'knee-up shot': 'knee up',
+    'head looking back over the shoulder': 'looking back over shoulder',
+    'arms crossed naturally across the chest': 'arms crossed',
+    'one hand resting on the hip': 'one hand on hip', 'the other hand resting on the hip': 'other hand on hip',
+    'one hand touching the chin': 'one hand on chin', 'the other hand touching the chin': 'other hand on chin',
+    'one arm hanging relaxed at the side': 'one arm relaxed at side', 'the other arm hanging relaxed at the side': 'other arm relaxed at side',
+    'both hands resting on the lap': 'hands on lap', 'hands clasped together': 'hands clasped',
+    'both hands held behind the back': 'hands behind back',
+    'lying supine': 'on back', 'lying prone': 'on stomach', 'lying on the side': 'on side',
+    'seated with legs crossed': 'crossed legs', 'legs held parallel': 'parallel legs',
+    'one leg placed forward': 'one leg forward', 'knees naturally extended': 'knees extended',
+    'one knee slightly bent': 'one knee bent', 'weight evenly balanced': 'balanced weight',
+    'weight shifted onto one leg': 'weight on one leg', 'weight shifted forward': 'weight forward',
+    'weight shifted backward': 'weight backward', 'lowered center of gravity': 'low center of gravity',
+    'pelvis facing the viewer': 'pelvis facing viewer', 'pelvis angled three-quarters to the viewer': 'three-quarter pelvis',
+    'pelvis turned side-on to the viewer': 'sideways pelvis', 'a slight hip shift': 'slight hip shift',
+    'a pronounced hip shift': 'pronounced hip shift', 'torso aligned with the pelvis': 'torso aligned with pelvis',
+    'torso turned slightly toward the viewer': 'torso slightly toward viewer',
+    'torso counter-rotated from the pelvis': 'torso counter-rotation',
+    'torso leaning forward': 'leaning forward', 'torso leaning backward': 'leaning backward',
+    'torso leaning sideways': 'leaning sideways', 'one shoulder subtly forward': 'one shoulder forward',
+    'neck tilted slightly': 'slight head tilt', 'neck tilted noticeably': 'pronounced head tilt',
+    'subject centered in the frame': 'centered composition', 'subject placed left of center': 'subject left of center',
+    'subject placed right of center': 'subject right of center', 'subject placed on the left side': 'subject on left',
+    'subject placed on the right side': 'subject on right', 'open space on the left': 'space on left',
+    'open space on the right': 'space on right', 'open space above the subject': 'space above',
+    'open space around the subject': 'space around subject', 'subject separated from the background': 'background separation',
+    'clear foreground-to-background separation': 'layered depth',
+    'balanced composition with subtle dynamism': 'subtle dynamic balance',
+    'strong diagonal movement through the frame': 'dynamic diagonal composition'
+  };
+  function compactLayers(raw) {
+    var s = effectiveState(raw), b = blocks(raw);
+    var layers = { semantic: [], modifiers: [], stability: [] };
+    var direct = s.pose.head.yaw === 'toward_camera' && s.pose.gaze.target === 'viewer' && s.pose.gaze.direction === 'direct' && s.pose.gaze.eyes === 'open';
+    var counterbalance = s.pose.posture === 'standing' && s.pose.weight === 'one_leg' &&
+      s.pose.pelvis.shift === 'slight' && s.pose.pelvis.orientation === 'three_quarter' &&
+      ['toward_camera', 'counter'].indexOf(s.pose.torso.relationToPelvis) >= 0 &&
+      s.pose.torso.lean === 'neutral' && visible('lowerBody', s.camera.shotSize) && visible('torso', s.camera.shotSize);
+    var symmetricArms = s.pose.arms.mode === 'separate' && s.pose.arms.primary.action === 'relaxed_at_side' && s.pose.arms.secondary.action === 'relaxed_at_side';
+    if (symmetricArms && b.arms.compact.length === 2) b.arms.compact = ['arms relaxed at sides'];
+    if (s.pose.supportPose === 'hands_and_knees') {
+      var surface = s.pose.support.type === 'bed_surface' ? 'bed' : 'supporting surface';
+      b.subjectPosture.compact = b.subjectPosture.compact.filter(function (x) { return x.indexOf('on hands and knees,') !== 0; });
+      b.subjectPosture.compact.push('on all fours');
+      push(layers.modifiers, 'both palms and knees on ' + surface);
+      push(layers.modifiers, 'weight supported by all four points');
+      push(layers.modifiers, 'hips raised');
+      push(layers.modifiers, 'leaning forward');
+      ['full body visible', 'both hands visible', 'both knees visible'].forEach(function (x) { push(layers.stability, x); });
+    }
+    var support = selected(D.supportPoses, s.pose.supportPose);
+    if (support && support.fullBody) {
+      push(layers.stability, 'natural limb anatomy');
+      if (support.id === 'standing_split') push(layers.stability, 'both legs fully visible');
+      else if (support.id === 'bridge_pose') push(layers.stability, 'both hands and feet visible');
+      else if (support.id === 'kneeling_bow') push(layers.stability, 'both hands and knees visible');
+    }
+    Object.keys(b).forEach(function (key) {
+      if (key === 'custom') return;
+      // Sensitive-to-structure blocks are preserved verbatim, including chain anchors and the single Viewer hand.
+      var protectedBlock = ['restraint', 'interaction', 'outputAssist'].indexOf(key) >= 0;
+      var destination = key === 'restraint' || key === 'outputAssist' ? layers.stability :
+        ['subjectPosture', 'arms', 'head', 'gaze'].indexOf(key) >= 0 ? layers.semantic : layers.modifiers;
+      b[key].compact.forEach(function (clause) {
+        if (protectedBlock) { push(destination, clause); return; }
+        clause.split(/,\s*/).forEach(function (part) {
+          if (direct && ['head turned toward the viewer', 'eyes directed toward the viewer', 'with a direct gaze'].indexOf(part) >= 0) return;
+          if (counterbalance && ['weight shifted onto one leg', 'a slight hip shift'].indexOf(part) >= 0) return;
+          if (s.pose.head.yaw === 'over_shoulder' && part === 'with an over-the-shoulder gaze') return;
+          var alias = compactAliases[part] || part;
+          if (layers.semantic.indexOf(alias) < 0 && layers.modifiers.indexOf(alias) < 0 && layers.stability.indexOf(alias) < 0) push(destination, alias);
+        });
+      });
+      if (key === 'subjectPosture' && counterbalance) push(layers.semantic, 'contrapposto');
+      if (key === 'head' && direct) push(layers.semantic, 'looking at viewer');
+    });
+    return layers;
+  }
   function compact(raw) {
-    var b = blocks(raw), out = [];
-    Object.keys(b).forEach(function (key) { b[key].compact.forEach(function (x) { push(out, x); }); });
-    return out.filter(Boolean).join(', ').replace(/,\s*,+/g, ',').replace(/^,\s*|,\s*$/g, '');
+    var s = S.normalize(raw), layers = compactLayers(s);
+    var generated = layers.semantic.concat(layers.modifiers, layers.stability).filter(Boolean).join(', ');
+    return generated + (s.output.customText ? (generated ? ', ' : '') + s.output.customText : '');
   }
   function detailed(raw) {
     var b = blocks(raw), groups = [];
@@ -380,5 +473,5 @@
     if (s.output.preserveClothing) add(['nudity', 'bare torso', 'exposed buttocks', 'shirt removal', 'underwear-only outfit']);
     return out.join(', ');
   }
-  PCW.generator = { blocks: blocks, compact: compact, detailed: detailed, structureJa: structureJa, negative: negative, hasClothingDescription: hasClothingDescription, restraintActive: restraintActive };
+  PCW.generator = { blocks: blocks, compactLayers: compactLayers, compact: compact, detailed: detailed, structureJa: structureJa, negative: negative, hasClothingDescription: hasClothingDescription, restraintActive: restraintActive };
 })(window);

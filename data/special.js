@@ -97,4 +97,36 @@
   D.presetSceneTagLabels.restraint_stage = '拘束演出';
   D.presets = (D.presets || []).concat(specialPresets);
   D.specialPresetIds = specialPresets.map(function (item) { return item.id; });
+
+  // Adjustable physical poses. The existing restraint collection remains intact.
+  function physicalPreset(id, name, description, posture, supportPose, arms, lowerBody, lean) {
+    var pose = basePose(posture);
+    pose.support.type = 'floor';
+    pose.supportPose = supportPose;
+    pose.weight = null;
+    pose.lowerBody = lowerBody;
+    pose.pelvis.orientation = 'side';
+    pose.torso.lean = lean || 'neutral';
+    pose.arms = { mode: 'combined', primary: { action: null }, secondary: { action: null }, combined: arms };
+    pose.head = { yaw: 'side', pitch: 'neutral', tilt: 'level' };
+    pose.gaze = { target: null, direction: null, eyes: 'open' };
+    var patch = basePatch(pose, { type: 'none', placement: 'none', anchor: 'none', tension: 'loose', freeArm: 'none' });
+    var item = preset(id, name, description, patch);
+    item.meta.poseFamily = 'special_pose';
+    item.meta.sceneTags = ['movement_study'];
+    return item;
+  }
+  var physicalPresets = [
+    physicalPreset('special_dogeza', '土下座', '床に両手と両膝をつき、腰をかかと側へ下ろして深く頭を下げるお辞儀。', 'kneeling', 'kneeling_bow', 'palms_on_floor', { stance: null, legRelation: 'kneeling_both', knee: 'both_bent' }, 'forward'),
+    physicalPreset('special_arms_up_stretch', '両腕を上げるストレッチ', '両足で立ち、両腕を頭上へ伸ばす全身ストレッチ。', 'standing', 'none', 'arms_up', { stance: 'shoulder_width', legRelation: 'parallel', knee: 'straight' }),
+    physicalPreset('special_sonkyo', '蹲踞', 'かかとを上げ、両足の前部でバランスを取りながら深く腰を落とす構え。', 'squatting', 'sonkyo', 'hands_on_knees', { stance: null, legRelation: 'knees_apart', knee: 'both_bent' }),
+    physicalPreset('special_shiko_stance', '四股の構え', '両足を広く床につけ、膝に手を置いて低く構える。片脚を上げる動作前の姿勢。', 'squatting', 'shiko_stance', 'hands_on_knees', { stance: 'wide', legRelation: 'knees_apart', knee: 'both_bent' }),
+    physicalPreset('special_i_balance', 'I字バランス', '片脚で立ち、もう片脚を縦に上げて足首を両手で支える全身バランス。', 'standing', 'standing_split', 'holding_raised_ankle', { stance: null, legRelation: null, knee: 'straight' }),
+    physicalPreset('special_leapfrog_base', '馬跳びの馬', '足を広げて前屈し、膝に両手を置いて背中を床と平行に保つ姿勢。', 'standing', 'leapfrog_base', 'hands_on_knees', { stance: 'wide', legRelation: 'parallel', knee: 'both_bent' }, 'forward'),
+    physicalPreset('special_forward_bend', '前屈', '両足を床につけて股関節から前へ折り、両腕を床へ垂らすストレッチ。', 'standing', 'forward_bend', 'arms_hanging_down', { stance: 'together', legRelation: 'parallel', knee: 'straight' }, 'forward'),
+    physicalPreset('special_bridge_pose', 'ブリッジ', '手のひらと足裏の四点で身体を支え、背中を反らして胴体を持ち上げる姿勢。', 'bridge', 'bridge_pose', 'bridge_support', { stance: null, legRelation: 'parallel', knee: 'both_bent' })
+  ];
+  D.presetSceneTagLabels.movement_study = '運動・姿勢研究';
+  D.presets = D.presets.concat(physicalPresets);
+  D.physicalPresetIds = physicalPresets.map(function (item) { return item.id; });
 })(window);

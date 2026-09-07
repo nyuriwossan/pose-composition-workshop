@@ -85,7 +85,8 @@
     if (!restraintActive(s)) return;
     var placement = s.restraint.placement;
     var bilateralWrists = ['wrists_front', 'wrists_behind', 'wrists_overhead', 'chair_armrests'].indexOf(placement) >= 0;
-    var supportUsesBothHands = ['hands_and_knees', 'forward_lean_support', 'leaning_forward_on_hands'].indexOf(s.pose.supportPose) >= 0 ||
+    var supportOption = S.option(D.supportPoses, s.pose.supportPose);
+    var supportUsesBothHands = supportOption && supportOption.usesBothHands || ['hands_and_knees', 'forward_lean_support', 'leaning_forward_on_hands'].indexOf(s.pose.supportPose) >= 0 ||
       s.pose.arms.mode === 'combined' && s.pose.arms.combined === 'supporting_upper_body';
     var combinedHands = s.pose.arms.mode === 'combined' && !!s.pose.arms.combined;
     var individualActions = [s.pose.arms.primary.action, s.pose.arms.secondary.action].filter(Boolean);
@@ -155,6 +156,25 @@
     var s = S.normalize(raw);
     var out = [];
     var arms = s.pose.arms;
+    var supportPose = S.option(D.supportPoses, s.pose.supportPose);
+    if (supportPose && supportPose.postures && supportPose.postures.indexOf(s.pose.posture) < 0) out.push(issue('special_pose_posture_mismatch', 'hard', 'support', '特殊ポーズと基本姿勢が揃っていません', '支持姿勢に対応する基本姿勢へ変更してください。', ['pose.supportPose', 'pose.posture'], [
+      { labelJa: '対応する基本姿勢へ変更', patch: { 'pose.posture': supportPose.postures[0] } }
+    ]));
+    if (supportPose && supportPose.requiredArms && (arms.mode !== 'combined' || arms.combined !== supportPose.requiredArms)) out.push(issue('special_pose_arms_mismatch', 'hard', 'support', '特殊ポーズに必要な腕の動作が異なります', '手の支持点または脚を支える腕の動作を揃えてください。', ['pose.supportPose', 'pose.arms'], [
+      { labelJa: '必要な腕の動作を適用', patch: { 'pose.arms.mode': 'combined', 'pose.arms.combined': supportPose.requiredArms, 'pose.arms.primary.action': null, 'pose.arms.secondary.action': null } }
+    ]));
+    if (supportPose && supportPose.usesBothHands && restraintActive(s) && s.restraint.placement === 'one_wrist') out.push(issue('special_pose_wrist_conflict', 'hard', 'support', 'この姿勢は両手を自由に使う必要があります', '片手首の固定を解除すると、支持姿勢や脚を支える動作に両手を使えます。', ['pose.supportPose', 'restraint'], [
+      { labelJa: '拘束を解除', patch: { 'restraint.type': 'none', 'restraint.placement': 'none' } }
+    ]));
+    if (supportPose && supportPose.fullBody && s.composition.crop !== 'none') out.push(issue('special_pose_crop_conflict', 'warning', 'visibility', '全身の支持姿勢とクロップが競合しています', '手足を画面内に残すため、意図的なクロップを解除してください。', ['composition.crop', 'pose.supportPose'], [
+      { labelJa: 'クロップを解除', patch: { 'composition.crop': 'none' } }
+    ]));
+    if (supportPose && supportPose.fullBody && ['full_body', 'wide'].indexOf(s.camera.shotSize) < 0) out.push(issue('special_pose_full_body', 'info', 'visibility', '支持点を見せるため全身で出力します', '手足と胴体の位置関係が重要な姿勢です。選択中の画角は保存し、出力を全身へ補正します。', ['camera.shotSize', 'pose.supportPose'], [
+      { labelJa: '画角を全身へ変更', patch: { 'camera.shotSize': 'full_body' } }
+    ]));
+    if (supportPose && supportPose.fullBody && s.pose.lyingOrientation !== 'none') out.push(issue('special_pose_lying_conflict', 'warning', 'support', '支持姿勢に寝る向きが重なっています', '支持点で身体を持ち上げる姿勢では寝る向きを解除してください。', ['pose.lyingOrientation', 'pose.supportPose'], [
+      { labelJa: '寝る向きを解除', patch: { 'pose.lyingOrientation': 'none' } }
+    ]));
     if (arms.combined && (arms.primary.action || arms.secondary.action)) out.push(issue('combined_with_individual_arms', 'hard', 'arms', '両腕ポーズと片腕ポーズが重複しています', '両腕を使うポーズと個別の腕動作は同時に成立しません。', ['pose.arms'], [
       { labelJa: '両腕ポーズを残す', patch: { 'pose.arms.mode': 'combined', 'pose.arms.primary.action': null, 'pose.arms.secondary.action': null } },
       { labelJa: '個別の腕を残す', patch: { 'pose.arms.mode': 'separate', 'pose.arms.combined': null } }

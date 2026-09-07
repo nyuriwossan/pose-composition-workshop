@@ -16,14 +16,16 @@
     approach_touch: '接近・触れる',
     rear_turn: '背面・振り返り',
     viewer_hand: 'Viewerとの手のやりとり',
-    restraint: '拘束・固定'
+    restraint: '拘束・固定',
+    special_pose: '特殊ポーズ・運動'
   };
   function inferPresetPoseFamily(preset) {
     var meta = preset && preset.meta || {};
     if (poseFamilies[meta.poseFamily]) return meta.poseFamily;
     var patch = preset && preset.patch || {}, pose = patch.pose || {}, arms = pose.arms || {};
     var scenes = meta.sceneTags || [], interactions = meta.interactionTags || [];
-    if (meta.collection === 'special' || patch.restraint && patch.restraint.type && patch.restraint.type !== 'none') return 'restraint';
+    if (patch.restraint && patch.restraint.type && patch.restraint.type !== 'none') return 'restraint';
+    if (meta.collection === 'special') return 'special_pose';
     if (interactions.indexOf('hand_interaction') >= 0) return 'viewer_hand';
     if (['hands_and_knees', 'forward_lean_support', 'leaning_forward_on_hands'].indexOf(pose.supportPose) >= 0 || pose.torso && pose.torso.lean === 'forward' && arms.combined === 'supporting_upper_body') return 'supported_forward';
     if (scenes.indexOf('back_view') >= 0 || scenes.indexOf('back_focused') >= 0 || pose.rearViewEmphasis && pose.rearViewEmphasis !== 'none' || pose.head && pose.head.yaw === 'over_shoulder') return 'rear_turn';

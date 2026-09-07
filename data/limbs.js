@@ -33,6 +33,12 @@
     arm('hands_on_lap', '両手を膝上に置く', 'both hands resting on the lap', 'Both hands rest naturally on the lap.', 2, ['sitting'], ['arms', 'hands', 'torso']),
     arm('supporting_upper_body', '両腕で上体を支える', 'both arms supporting the upper body', 'Both arms support the upper body.', 2, ['standing', 'sitting', 'kneeling', 'reclining'], ['arms', 'hands', 'torso']),
     arm('heart_hands_near_face', '顔の近くで両手ハート', 'forming a heart shape with both hands near the face', 'Both hands form a heart shape near the face.', 2, null, ['hands_near_face']),
-    arm('arms_open_toward_viewer', '相手へ両腕を広げる', 'opening both arms toward the viewer', 'Both arms open toward the viewer.', 2, ['standing', 'sitting'], ['arms', 'hands', 'torso'])
+    arm('arms_open_toward_viewer', '相手へ両腕を広げる', 'opening both arms toward the viewer', 'Both arms open toward the viewer.', 2, ['standing', 'sitting'], ['arms', 'hands', 'torso']),
+    arm('palms_on_floor', '両手のひらを床へ', 'both palms on floor', 'Both palms lie flat on the floor in front of the knees.', 2, ['kneeling']),
+    arm('hands_on_knees', '両手を膝へ', 'hands on knees', 'Each hand rests on the corresponding knee.', 2, ['standing', 'squatting', 'crouching']),
+    arm('arms_up', '両腕を頭上へ伸ばす', 'arms up', 'Both arms extend upward above the head in a stretch.', 2, ['standing', 'sitting']),
+    arm('holding_raised_ankle', '上げた脚の足首を両手で支える', 'both hands holding raised ankle', 'Both hands support the ankle of the vertically raised leg.', 2, ['standing']),
+    arm('arms_hanging_down', '両腕を床へ垂らす', 'arms hanging toward floor', 'Both arms hang freely toward the floor.', 2, ['standing']),
+    arm('bridge_support', '両手でブリッジを支える', 'both palms supporting body', 'Both palms press into the floor beside the head to support the bridge.', 2, ['bridge'])
   ];
 })(window);

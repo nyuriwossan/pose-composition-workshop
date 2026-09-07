@@ -11,7 +11,8 @@
     { id: 'one_knee_kneeling', labelJa: '片膝をつく', compact: 'kneeling on one knee', detailed: 'kneels on one knee', group: 'detail' },
     { id: 'crouching', labelJa: 'しゃがむ', compact: 'crouching', detailed: 'crouches', group: 'basic' },
     { id: 'squatting', labelJa: '腰を落としてしゃがむ', compact: 'in a low squat', detailed: 'holds a low squat', group: 'detail' },
-    { id: 'reclining', labelJa: '横たわる', compact: 'reclining', detailed: 'reclines', group: 'basic' }
+    { id: 'reclining', labelJa: '横たわる', compact: 'reclining', detailed: 'reclines', group: 'basic' },
+    { id: 'bridge', labelJa: 'ブリッジ', compact: 'back bridge', detailed: 'holds a back bridge with the torso lifted between the hands and feet', group: 'detail' }
   ];
 
   D.motionStates = [
@@ -32,7 +33,8 @@
     { id: 'leaning_surface', labelJa: '面にもたれる', compact: 'leaning on a surface', detailed: 'The body leans against a surface.' },
     { id: 'seated_surface', labelJa: '面に座る', compact: 'seated on a surface', detailed: 'The figure is seated on a surface.' },
     { id: 'sofa_surface', labelJa: 'ソファに座る', compact: 'seated on a sofa', detailed: 'The figure is seated on a sofa.' },
-    { id: 'bed_surface', labelJa: 'ベッド上', compact: 'on a bed', detailed: 'The figure is positioned on a bed.' }
+    { id: 'bed_surface', labelJa: 'ベッド上', compact: 'on a bed', detailed: 'The figure is positioned on a bed.' },
+    { id: 'floor', labelJa: '床上', compact: 'on floor', detailed: 'The figure is positioned on the floor.' }
   ];
   D.lyingOrientations = [
     { id: 'none', labelJa: '指定なし', compact: '', detailed: '' },
@@ -47,6 +49,13 @@
     { id: 'hands_and_knees', labelJa: '手のひらと両膝で支える', compact: 'on hands and knees, weight supported by both hands and both knees', detailed: 'The figure stays on the hands and knees, with the weight supported by both hands and both knees.' },
     { id: 'kneeling_upright', labelJa: '膝立ち', compact: 'upright kneeling posture, torso lifted above both knees', detailed: 'The figure holds an upright kneeling posture with the torso lifted above both knees.' },
     { id: 'forward_lean_support', labelJa: '前傾して支える', compact: 'leaning forward with the upper body lifted and supported by both hands', detailed: 'The figure leans forward with the upper body lifted and supported by both hands.' },
-    { id: 'leaning_forward_on_hands', labelJa: '前傾して両手で支える', compact: 'forward-leaning posture with both hands supporting the lifted upper body', detailed: 'Both hands support the lifted upper body in a forward-leaning posture.' }
+    { id: 'leaning_forward_on_hands', labelJa: '前傾して両手で支える', compact: 'forward-leaning posture with both hands supporting the lifted upper body', detailed: 'Both hands support the lifted upper body in a forward-leaning posture.' },
+    { id: 'kneeling_bow', labelJa: '土下座・深いお辞儀', compact: 'kneeling bow, head lowered to floor', detailed: 'The figure kneels with the hips resting toward the heels and bows deeply, lowering the head close to the floor between the hands.', postures: ['kneeling'], requiredArms: 'palms_on_floor', usesBothHands: true, fullBody: true },
+    { id: 'sonkyo', labelJa: '蹲踞', compact: 'sonkyo squat, deep squat, heels raised', detailed: 'The figure holds a deep sonkyo squat, balanced on the balls of both feet with the heels lifted and the torso upright.', postures: ['squatting'], fullBody: true },
+    { id: 'shiko_stance', labelJa: '四股の構え', compact: 'shiko stance, deep squat', detailed: 'The figure holds a low, wide sumo stance with both feet planted and the knees following the outward direction of the toes.', postures: ['squatting'], requiredArms: 'hands_on_knees', fullBody: true },
+    { id: 'standing_split', labelJa: 'I字バランス', compact: 'standing split, one leg raised vertically, supporting foot planted', detailed: 'The figure balances on one straight supporting leg while lifting the other leg vertically alongside the torso and supporting its ankle with both hands.', postures: ['standing'], requiredArms: 'holding_raised_ankle', usesBothHands: true, fullBody: true },
+    { id: 'leapfrog_base', labelJa: '馬跳びの馬', compact: 'bent over, back parallel to ground', detailed: 'The figure bends at the hips with both feet grounded, the back approximately parallel to the ground, and both hands bracing the knees.', postures: ['standing'], requiredArms: 'hands_on_knees', usesBothHands: true, fullBody: true },
+    { id: 'forward_bend', labelJa: '前屈', compact: 'standing forward bend, torso folded toward legs', detailed: 'The figure folds forward at the hips toward the legs while both feet stay grounded and the arms hang toward the floor.', postures: ['standing'], requiredArms: 'arms_hanging_down', fullBody: true },
+    { id: 'bridge_pose', labelJa: '手足で支えるブリッジ', compact: 'arched back, palms and feet planted on floor, torso lifted', detailed: 'Both palms and both feet press into the floor, supporting an arched back and raised torso; the body weight is carried through the hands and feet.', postures: ['bridge'], requiredArms: 'bridge_support', usesBothHands: true, fullBody: true }
   ];
 })(window);
