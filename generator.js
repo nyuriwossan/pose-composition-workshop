@@ -23,7 +23,8 @@
   function restraintActive(s) {
     return !!(s.restraint && s.restraint.type !== 'none' && s.restraint.placement !== 'none');
   }
-  function restraintBlock(s) {
+  function restraintBlock(s, opts) {
+    var age = opts && opts.ageTerm || { compact: 'adult character', detailed: 'The character is an adult.' };
     var compact = [], detailed = [], ja = [];
     if (!restraintActive(s)) return { compact: compact, detailed: detailed, ja: ja };
     var r = s.restraint;
@@ -38,8 +39,8 @@
       ankles: loose ? 'both ankles loosely bound together' : 'both ankles securely bound together',
       torso_and_arms: chain ? 'decorative restraint, loose chains arranged visibly around the upper arms and torso, one or two chain passes across the front at chest height' : decorative ? 'loose restraints arranged around the arms and torso as a dramatic restraint' : 'restraints wrapped around the arms and torso'
     }[r.placement];
-    push(compact, 'adult character');
-    push(detailed, 'The character is an adult.');
+    push(compact, age.compact);
+    push(detailed, age.detailed);
     push(ja, '対象：成人キャラクター');
     push(compact, placement);
     push(detailed, {
@@ -161,7 +162,13 @@
     });
     return { compact: compact, detailed: detailed };
   }
-  function blocks(raw) {
+  function blocks(raw, opts) {
+    // opts は出力先別の語彙差し替え用。省略時は従来出力と完全に同じ。
+    var lexicon = opts && opts.lexicon || {};
+    function sel(list, id) {
+      var item = selected(list, id);
+      return item && lexicon[item.id] ? Object.assign({}, item, lexicon[item.id]) : item;
+    }
     var originalShot = S.normalize(raw).camera.shotSize;
     var s = effectiveState(raw);
     var b = {
@@ -178,13 +185,16 @@
       outputAssist: { compact: [], detailed: [], ja: [] },
       custom: { compact: [], detailed: [], ja: [] }
     };
-    var posture = selected(D.postures, s.pose.posture);
-    var motion = selected(D.motionStates, s.pose.motion.state);
-    var support = selected(D.supportTypes, s.pose.support.type);
-    var lying = selected(D.lyingOrientations, s.pose.lyingOrientation);
-    var supportPose = selected(D.supportPoses, s.pose.supportPose);
+    var posture = sel(D.postures, s.pose.posture);
+    var motion = sel(D.motionStates, s.pose.motion.state);
+    var support = sel(D.supportTypes, s.pose.support.type);
+    var lying = sel(D.lyingOrientations, s.pose.lyingOrientation);
+    var supportPose = sel(D.supportPoses, s.pose.supportPose);
     if (posture) {
-      push(b.subjectPosture.compact, (s.output.includeSolo ? 'solo character ' : 'character ') + posture.compact);
+      if (opts && opts.tagSubject) {
+        if (s.output.includeSolo) push(b.subjectPosture.compact, 'solo');
+        push(b.subjectPosture.compact, posture.compact);
+      } else push(b.subjectPosture.compact, (s.output.includeSolo ? 'solo character ' : 'character ') + posture.compact);
       push(b.subjectPosture.detailed, 'A solo character ' + posture.detailed + '.');
       push(b.subjectPosture.ja, '基本姿勢：' + posture.labelJa);
     }
@@ -212,16 +222,16 @@
 
     if (visible('lowerBody', s.camera.shotSize)) {
       [[D.weights, s.pose.weight, '重心'], [D.stances, s.pose.lowerBody.stance, '足幅'], [D.legRelations, s.pose.lowerBody.legRelation, '脚'], [D.knees, s.pose.lowerBody.knee, '膝']].forEach(function (row) {
-        var item = selected(row[0], row[1]);
+        var item = sel(row[0], row[1]);
         if (item) { push(b.lowerBody.compact, item.compact); push(b.lowerBody.detailed, item.detailed); push(b.lowerBody.ja, row[2] + '：' + item.labelJa); }
       });
     } else {
-      var held = [selected(D.weights, s.pose.weight), selected(D.stances, s.pose.lowerBody.stance), selected(D.legRelations, s.pose.lowerBody.legRelation), selected(D.knees, s.pose.lowerBody.knee)].filter(Boolean);
+      var held = [sel(D.weights, s.pose.weight), sel(D.stances, s.pose.lowerBody.stance), sel(D.legRelations, s.pose.lowerBody.legRelation), sel(D.knees, s.pose.lowerBody.knee)].filter(Boolean);
       held.forEach(function (item) { push(b.lowerBody.ja, item.labelJa + '（画角外・保持中）'); });
     }
 
     if (visible('torso', s.camera.shotSize) || visible('shoulders', s.camera.shotSize)) {
-      var rearView = selected(D.rearViewEmphases, s.pose.rearViewEmphasis);
+      var rearView = sel(D.rearViewEmphases, s.pose.rearViewEmphasis);
       if (rearView && rearView.id !== 'none') {
         push(b.bodyFlow.compact, rearView.compact);
         push(b.bodyFlow.detailed, rearView.detailed);
@@ -233,7 +243,7 @@
         }
       }
       [[D.pelvisOrientations, s.pose.pelvis.orientation, '骨盤'], [D.pelvisShifts, s.pose.pelvis.shift, '腰'], [D.torsoRelations, s.pose.torso.relationToPelvis, '上半身'], [D.torsoLeans, s.pose.torso.lean, '傾き'], [D.shoulders, s.pose.shoulders.emphasis, '肩']].forEach(function (row) {
-        var item = selected(row[0], row[1]);
+        var item = sel(row[0], row[1]);
         if (!item) return;
         var interactionOwnsLean = row[0] === D.torsoLeans && s.interaction.target === 'viewer' && ((s.interaction.approach === 'lean_toward' && item.id === 'forward') || (s.interaction.approach === 'lean_away' && item.id === 'backward'));
         if (interactionOwnsLean) { push(b.bodyFlow.ja, row[2] + '：' + item.labelJa); return; }
@@ -247,37 +257,37 @@
     ab.compact.forEach(function (x) { push(b.arms.compact, x); });
     ab.detailed.forEach(function (x) { push(b.arms.detailed, x); });
     if (s.pose.arms.mode === 'combined') {
-      var ca = selected(D.combinedArms, s.pose.arms.combined);
+      var ca = sel(D.combinedArms, s.pose.arms.combined);
       if (ca) push(b.arms.ja, '両腕：' + ca.labelJa + (PCW.advisor.armHidden(ca, s.camera.shotSize) ? '（画角外・保持中）' : ''));
     } else {
-      var pa = selected(D.armActions, s.pose.arms.primary.action), sa = selected(D.armActions, s.pose.arms.secondary.action);
+      var pa = sel(D.armActions, s.pose.arms.primary.action), sa = sel(D.armActions, s.pose.arms.secondary.action);
       if (pa) push(b.arms.ja, '片方の手：' + pa.labelJa + (PCW.advisor.armHidden(pa, s.camera.shotSize) ? '（画角外・保持中）' : ''));
       if (sa) push(b.arms.ja, '反対の手：' + sa.labelJa + (PCW.advisor.armHidden(sa, s.camera.shotSize) ? '（画角外・保持中）' : ''));
     }
-    var rb = restraintBlock(s);
+    var rb = restraintBlock(s, opts);
     rb.compact.forEach(function (x) { push(b.restraint.compact, x); });
     rb.detailed.forEach(function (x) { push(b.restraint.detailed, x); });
     rb.ja.forEach(function (x) { push(b.restraint.ja, x); });
 
     [[D.headYaws, s.pose.head.yaw, '顔'], [D.headPitches, s.pose.head.pitch, '顎'], [D.headTilts, s.pose.head.tilt, '首']].forEach(function (row) {
-      var item = selected(row[0], row[1]);
+      var item = sel(row[0], row[1]);
       if (item) { push(b.head.compact, item.compact); push(b.head.detailed, item.detailed); push(b.head.ja, row[2] + '：' + item.labelJa); }
     });
-    var expression = selected(D.expressions, s.pose.expression);
+    var expression = sel(D.expressions, s.pose.expression);
     if (expression && expression.id !== 'none') {
       push(b.head.compact, expression.compact);
       push(b.head.detailed, expression.detailed);
       push(b.head.ja, '表情：' + expression.labelJa);
     }
     [[D.eyeStates, s.pose.gaze.eyes, '目'], [D.gazeTargets, s.pose.gaze.target, '視線対象'], [D.gazeDirections, s.pose.gaze.direction, '視線方向']].forEach(function (row) {
-      var item = selected(row[0], row[1]);
+      var item = sel(row[0], row[1]);
       if (item) { push(b.gaze.compact, item.compact); push(b.gaze.detailed, item.detailed); push(b.gaze.ja, row[2] + '：' + item.labelJa); }
     });
 
     if (s.interaction.target === 'viewer') {
-      var distance = selected(D.interactionDistances, s.interaction.distance);
-      var approach = selected(D.interactionApproaches, s.interaction.approach);
-      var viewerHandInteraction = selected(D.viewerHandInteractions, s.interaction.viewerHandInteraction);
+      var distance = sel(D.interactionDistances, s.interaction.distance);
+      var approach = sel(D.interactionApproaches, s.interaction.approach);
+      var viewerHandInteraction = sel(D.viewerHandInteractions, s.interaction.viewerHandInteraction);
       var armReaches = s.interaction.approach === 'reach_toward' && [s.pose.arms.primary.action, s.pose.arms.secondary.action].some(reachesViewer);
       if (distance) { push(b.interaction.compact, distance.compact); push(b.interaction.detailed, distance.detailed); push(b.interaction.ja, '距離：' + distance.labelJa); }
       if (approach && !armReaches) { push(b.interaction.compact, approach.compact); push(b.interaction.detailed, approach.detailed); }
@@ -301,7 +311,7 @@
 
     [[D.shotSizes, s.camera.shotSize, '撮影範囲'], [D.elevations, s.camera.elevation, 'カメラ高さ'], [D.rolls, s.camera.roll, 'カメラ傾き']].forEach(function (row) {
       var handsAndKneesShot = row[0] === D.shotSizes && s.pose.supportPose === 'hands_and_knees';
-      var item = selected(row[0], handsAndKneesShot ? 'full_body' : row[1]);
+      var item = sel(row[0], handsAndKneesShot ? 'full_body' : row[1]);
       if (item) {
         push(b.camera.compact, item.compact); push(b.camera.detailed, item.detailed);
         push(b.camera.ja, row[2] + '：' + item.labelJa + (handsAndKneesShot && row[1] !== 'full_body' ? '（四点支持のため出力を全身へ補正）' : ''));
@@ -309,10 +319,10 @@
     });
     if (originalShot !== s.camera.shotSize) push(b.camera.ja, '特殊ポーズの支持点を見せるため出力を全身へ補正（保存した画角は保持）');
     [[D.placements, s.composition.subjectPlacement, '人物配置'], [D.negativeSpaces, s.composition.negativeSpace, '余白'], [D.crops, s.composition.crop, 'クロップ'], [D.foregrounds, s.composition.foreground, '前景'], [D.depths, s.composition.depth, '奥行き'], [D.rhythms, s.composition.rhythm, '構図']].forEach(function (row) {
-      var item = selected(row[0], row[1]);
+      var item = sel(row[0], row[1]);
       if (item) { push(b.composition.compact, item.compact); push(b.composition.detailed, item.detailed); push(b.composition.ja, row[2] + '：' + item.labelJa); }
     });
-    var backDesign = selected(D.backDesigns, s.output.backDesign);
+    var backDesign = sel(D.backDesigns, s.output.backDesign);
     if (backDesign && backDesign.id !== 'none') {
       push(b.outputAssist.compact, backDesign.compact);
       push(b.outputAssist.detailed, backDesign.detailed);
@@ -384,9 +394,10 @@
     'balanced composition with subtle dynamism': 'subtle dynamic balance',
     'strong diagonal movement through the frame': 'dynamic diagonal composition'
   };
-  function compactLayers(raw) {
-    var s = effectiveState(raw), b = blocks(raw);
+  function compactLayers(raw, opts) {
+    var s = effectiveState(raw), b = blocks(raw, opts);
     var layers = { semantic: [], modifiers: [], stability: [] };
+    var main = [];
     var direct = s.pose.head.yaw === 'toward_camera' && s.pose.gaze.target === 'viewer' && s.pose.gaze.direction === 'direct' && s.pose.gaze.eyes === 'open';
     var counterbalance = s.pose.posture === 'standing' && s.pose.weight === 'one_leg' &&
       s.pose.pelvis.shift === 'slight' && s.pose.pelvis.orientation === 'three_quarter' &&
@@ -425,20 +436,23 @@
           if (s.pose.head.yaw === 'over_shoulder' && part === 'with an over-the-shoulder gaze') return;
           var alias = compactAliases[part] || part;
           if (layers.semantic.indexOf(alias) < 0 && layers.modifiers.indexOf(alias) < 0 && layers.stability.indexOf(alias) < 0) push(destination, alias);
+          if (key === 'subjectPosture' && alias !== 'solo') push(main, alias);
         });
       });
       if (key === 'subjectPosture' && counterbalance) push(layers.semantic, 'contrapposto');
       if (key === 'head' && direct) push(layers.semantic, 'looking at viewer');
     });
+    // 出力先別アダプタ用：主ポーズ（基本姿勢・支持）の句。opts指定時だけ返し、従来の戻り値形は変えない。
+    if (opts) layers.main = main.filter(function (x) { return layers.semantic.indexOf(x) >= 0; });
     return layers;
   }
-  function compact(raw) {
-    var s = S.normalize(raw), layers = compactLayers(s);
+  function compact(raw, opts) {
+    var s = S.normalize(raw), layers = compactLayers(s, opts);
     var generated = layers.semantic.concat(layers.modifiers, layers.stability).filter(Boolean).join(', ');
     return generated + (s.output.customText ? (generated ? ', ' : '') + s.output.customText : '');
   }
-  function detailed(raw) {
-    var b = blocks(raw), groups = [];
+  function detailed(raw, opts) {
+    var b = blocks(raw, opts), groups = [];
     Object.keys(b).forEach(function (key) {
       var values = b[key].detailed.filter(Boolean);
       if (!values.length) return;

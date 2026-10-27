@@ -531,6 +531,275 @@
     var s = S.normalize({ pose: { posture: 'reclining' } }); eq(s.pose.supportPose, 'none'); eq(s.pose.arms.combined, null);
   });
 
+
+  // ---- 二人用ポーズ・出力先別出力（2026-10-27） ----
+  var P = PCW.pair, MO = PCW.modelOutput;
+  var pairIds = ['pair_over_supine', 'pair_close_from_behind', 'pair_straddle_lying', 'pair_lap_facing', 'pair_lap_facing_away', 'pair_hug_from_behind', 'pair_leg_lift_support'];
+  var genderCombos = [];
+  ['unspecified', 'male', 'female'].forEach(function (a) { ['unspecified', 'male', 'female'].forEach(function (b) { genderCombos.push([a, b]); }); });
+  var prefVariants = [
+    { emphasis: false }, { emphasis: true, naiEmphasisStyle: 'braces' }, { emphasis: true, naiEmphasisStyle: 'numeric', naiNaturalLanguage: true }
+  ];
+  function pairState(id, extra) {
+    var st = P.selectPose(P.initial(), id).state;
+    Object.keys(extra || {}).forEach(function (k) { st = P.set(st, k, extra[k]); });
+    return st;
+  }
+  function stripEmphasis(text) {
+    return String(text).replace(/\((.*?):1\.2\)/g, '$1').replace(/\{\{(.*?)\}\}/g, '$1').replace(/1\.2::(.*?) ::/g, '$1');
+  }
+  function tagsOf(text) { return stripEmphasis(text).split(/,\s*/).map(function (x) { return x.trim(); }); }
+  function cleanList(text, label) {
+    ok(text && text.trim(), label + '：空の出力');
+    ok(!/undefined|null|NaN/.test(text), label + '：undefined/null');
+    var tags = tagsOf(text);
+    ok(tags.every(Boolean), label + '：空のタグ ' + text);
+    ok(unique(tags), label + '：重複タグ ' + text);
+  }
+  function eachPairCombo(fn) {
+    D.pairPoses.forEach(function (pose) {
+      pose.camera.angles.forEach(function (angle) {
+        pose.camera.shots.forEach(function (shot) {
+          genderCombos.forEach(function (g) {
+            fn(pairState(pose.id, { 'camera.angle': angle, 'camera.shot': shot, 'people.a.gender': g[0], 'people.b.gender': g[1] }), pose);
+          });
+        });
+      });
+      (pose.surface.allowed.length ? pose.surface.allowed : [null]).forEach(function (surface) {
+        pose.gazes.allowed.forEach(function (gaze) {
+          [false, true].forEach(function (clothed) {
+            fn(pairState(pose.id, { surface: surface, gaze: gaze, 'options.keepClothed': clothed, 'people.a.gender': 'male', 'people.b.gender': 'female' }), pose);
+          });
+        });
+      });
+    });
+  }
+
+  test('二人用：要求された7種類がそろっている', function () { eq(ids(D.pairPoses), pairIds); });
+  test('二人用：IDは一意で、一人用プリセットIDと衝突しない', function () { ok(unique(ids(D.pairPoses))); ids(D.pairPoses).forEach(function (id) { ok(ids(D.presets).indexOf(id) < 0, id); }); });
+  test('二人用：意味データの必須項目（人数・A/B配置・接触点・カメラ・モデル別表現・検索語）', function () {
+    D.pairPoses.forEach(function (p) {
+      ok(p.id && p.labelJa && p.shortJa, p.id + ' 名前');
+      eq(p.people, 2, p.id + ' 人数');
+      ok(D.presetPoseFamilyLabels[p.poseFamily], p.id + ' カテゴリ');
+      ok(p.roles.a && p.roles.b && p.placement.a && p.placement.b, p.id + ' A/B');
+      ok(D.pairRelationLabels.vertical[p.relation.vertical] && D.pairRelationLabels.depth[p.relation.depth] && D.pairRelationLabels.facing[p.relation.facing], p.id + ' 位置関係');
+      ok(p.contacts.length >= 2 && p.contacts.every(function (c) { return c.ja && c.tsubaki && ['a', 'b', 'both'].indexOf(c.owner) >= 0; }), p.id + ' 接触点');
+      ok(p.camera.angles.indexOf(p.camera.defaultAngle) >= 0 && p.camera.shots.indexOf(p.camera.defaultShot) >= 0, p.id + ' 既定カメラ');
+      p.camera.recommended.forEach(function (r) { ok(p.camera.angles.indexOf(r) >= 0, p.id + ' 推奨 ' + r); });
+      Object.keys(p.camera.blocked).forEach(function (b) { ok(p.camera.angles.indexOf(b) < 0, p.id + ' blocked ' + b); });
+      ok(p.surface.mode === 'none' ? p.surface.defaultId === null : p.surface.allowed.indexOf(p.surface.defaultId) >= 0, p.id + ' 場所');
+      ok(p.gazes.allowed.indexOf(p.gazes.defaultId) >= 0, p.id + ' 視線');
+      ok(p.models.tsubaki.overview && p.models.sdxl.core.length && p.models.nai.core.length && p.models.nai.nl, p.id + ' モデル別表現');
+      ok(p.keywords.length >= 5, p.id + ' 検索語');
+      p.related.forEach(function (r) { ok(ids(D.presets).indexOf(r) >= 0, p.id + ' related ' + r); });
+    });
+  });
+  test('二人用：意味データに露骨な語を含まない', function () {
+    var banned = /\b(sex|sexual|nude|naked|nsfw|penis|vagina|genital|nipple|crotch|groin|thrust|penetrat|intercourse|missionary|cowgirl|doggy)\w*/i;
+    D.pairPoses.forEach(function (p) { ok(!banned.test(JSON.stringify(p.models)), p.id); ok(!/対面座位|騎乗位|後背位|正常位|性行為/.test(JSON.stringify(p)), p.id); });
+  });
+  test('二人用：主導側と相手側を区別する（NAIのsource/targetがA/Bで逆）', function () {
+    D.pairPoses.forEach(function (p) {
+      p.models.nai.actions.forEach(function (act) { ok(['a', 'b'].indexOf(act.source) >= 0, p.id); });
+      var out = P.render(pairState(p.id), 'nai', {});
+      p.models.nai.actions.forEach(function (act) {
+        var src = act.source === 'a' ? out.a : out.b, tgt = act.source === 'a' ? out.b : out.a;
+        ok(src.indexOf('source#' + act.tag) >= 0 && tgt.indexOf('target#' + act.tag) >= 0, p.id + ' ' + act.tag);
+      });
+    });
+  });
+  test('二人用：初期状態と破損データの正規化', function () {
+    var s = P.initial(); eq([s.poseId, s.camera.angle, s.people.a.gender, s.options.keepClothed], [null, null, 'unspecified', false]);
+    var n = P.normalize({ poseId: 'nope', camera: { angle: 'x' }, people: { a: { gender: 'robot' } }, notes: { a: 5 } });
+    eq([n.poseId, n.camera.angle, n.people.a.gender, n.notes.a], [null, null, 'unspecified', '']);
+    eq(P.normalize(null).schemaVersion, 'pair-1.0'); eq(P.normalize('broken').poseId, null);
+  });
+  test('二人用：矛盾するカメラ・撮影範囲は保存されず既定値へ戻る', function () {
+    var s = P.normalize({ poseId: 'pair_over_supine', camera: { angle: 'overhead', shot: 'full_body' } });
+    eq(s.camera.angle, 'three_quarter'); ok(!P.angleState(P.poseById('pair_over_supine'), 'overhead').ok);
+    var leg = P.normalize({ poseId: 'pair_leg_lift_support', camera: { angle: 'side', shot: 'close' } });
+    eq(leg.camera.shot, 'full_body'); ok(P.shotState(P.poseById('pair_leg_lift_support'), 'close').reason);
+    var stand = P.normalize({ poseId: 'pair_hug_from_behind', surface: 'bed', gaze: 'mutual' });
+    eq([stand.surface, stand.gaze], [null, 'back_gazes_front']);
+  });
+  test('二人用：選べない候補には理由がある', function () {
+    D.pairPoses.forEach(function (p) {
+      D.pairAngles.forEach(function (a) { var st = P.angleState(p, a.id); ok(st.ok || st.reason, p.id + ' ' + a.id); });
+      D.pairShots.forEach(function (sh) { var st = P.shotState(p, sh.id); ok(st.ok || st.reason, p.id + ' ' + sh.id); });
+    });
+  });
+  test('二人用：ポーズ切り替えで成立する値は保持し、成立しない値だけ調整', function () {
+    var s = pairState('pair_lap_facing', { 'camera.angle': 'low', 'camera.shot': 'upper_body', 'people.a.gender': 'male' });
+    var r = P.selectPose(s, 'pair_hug_from_behind');
+    eq([r.state.camera.angle, r.state.camera.shot, r.state.people.a.gender], ['low', 'upper_body', 'male']); eq(r.adjusted, []);
+    var r2 = P.selectPose(s, 'pair_over_supine');
+    eq(r2.state.camera.angle, 'three_quarter'); ok(r2.adjusted.length === 1);
+  });
+  test('二人用：出力先を切り替えても選択内容は変わらない', function () {
+    var s = pairState('pair_straddle_lying', { 'camera.angle': 'side', 'people.b.gender': 'female', 'notes.a': 'black hair' }), before = JSON.stringify(s);
+    ['tsubaki', 'sdxl', 'nai', 'generic', 'tsubaki'].forEach(function (t) { P.render(s, t, { emphasis: true }); });
+    eq(JSON.stringify(s), before);
+  });
+  test('二人用：全組み合わせで3系統の出力が空にならず、重複・空タグがない', function () {
+    var n = 0;
+    eachPairCombo(function (s, pose) {
+      prefVariants.forEach(function (pr) {
+        var t = P.render(s, 'tsubaki', pr).text, x = P.render(s, 'sdxl', pr).text, nai = P.render(s, 'nai', pr);
+        ok(t && !/undefined|null/.test(t) && !/\.\./.test(t), pose.id + ' tsubaki');
+        cleanList(x, pose.id + ' sdxl'); cleanList(nai.base, pose.id + ' nai base'); cleanList(nai.a, pose.id + ' nai A'); cleanList(nai.b, pose.id + ' nai B');
+        n++;
+      });
+    });
+    ok(n > 500, '組み合わせ数 ' + n);
+  });
+  test('二人用：PIXAI系（Tsubaki・SDXL）に adult／bust を含む語を出さない', function () {
+    eachPairCombo(function (s, pose) { prefVariants.forEach(function (pr) {
+      ok(!MO.hasPixaiForbidden(P.render(s, 'tsubaki', pr).text), pose.id + ' tsubaki');
+      ok(!MO.hasPixaiForbidden(P.render(s, 'sdxl', pr).text), pose.id + ' sdxl');
+    }); });
+  });
+  test('二人用：非対応の強調構文が他モデルへ混入しない', function () {
+    eachPairCombo(function (s, pose) { prefVariants.forEach(function (pr) {
+      var t = P.render(s, 'tsubaki', pr).text, x = P.render(s, 'sdxl', pr).text, nai = P.render(s, 'nai', pr), all = [nai.base, nai.a, nai.b].join(' | ');
+      ok(!MO.syntaxLeaks('tsubaki', t), pose.id + ' tsubaki');
+      ok(!MO.syntaxLeaks('sdxl', x), pose.id + ' sdxl');
+      ok(!MO.syntaxLeaks('nai', all), pose.id + ' nai');
+      if (!pr.emphasis) { ok(!/:1\.2\)/.test(x), pose.id + ' sdxl off'); ok(!/[{}]|::/.test(all), pose.id + ' nai off'); }
+      else { ok(/\(.*:1\.2\)/.test(x), pose.id + ' sdxl on'); ok(pr.naiEmphasisStyle === 'numeric' ? /1\.2::.* ::/.test(nai.base) : /\{\{.*\}\}/.test(nai.base), pose.id + ' nai on'); }
+      ok(!/[{}]|::|source#|target#/.test(x), pose.id + ' sdxlにNAI構文なし');
+    }); });
+  });
+  test('二人用：NAIの人数タグは共通欄だけ、人物欄とのタグ重複なし', function () {
+    eachPairCombo(function (s, pose) {
+      var nai = P.render(s, 'nai', {}), base = tagsOf(nai.base);
+      [nai.a, nai.b].forEach(function (c) {
+        ok(!/\b(1boy|1girl|2boys|2girls)\b/.test(c), pose.id + ' 人数タグ');
+        tagsOf(c).forEach(function (t) { ok(base.indexOf(t) < 0, pose.id + ' 共通と重複 ' + t); });
+      });
+    });
+  });
+  test('二人用：人数タグは性別の組み合わせから一つに決まる', function () {
+    var cases = { 'male,male': ['2boys'], 'female,female': ['2girls'], 'male,female': ['1boy', '1girl'], 'female,male': ['1boy', '1girl'], 'male,unspecified': [] };
+    Object.keys(cases).forEach(function (k) {
+      var g = k.split(','), s = pairState('pair_lap_facing', { 'people.a.gender': g[0], 'people.b.gender': g[1] });
+      eq(P.countTags(s), cases[k], k);
+      if (!cases[k].length) ok(P.render(s, 'sdxl', {}).text.indexOf('two people') === 0);
+    });
+    var nai = P.render(pairState('pair_lap_facing', { 'people.a.gender': 'male', 'people.b.gender': 'female' }), 'nai', {});
+    ok(/^boy,/.test(nai.a) && /^girl,/.test(nai.b));
+  });
+  test('二人用：Tsubakiは上下・前後・接触点を文章で明示し、ネガティブを持たない', function () {
+    D.pairPoses.forEach(function (p) {
+      var out = P.render(pairState(p.id), 'tsubaki', {}), t = out.text;
+      ok(t.indexOf('Person A') >= 0 && t.indexOf('Person B') >= 0 && t.indexOf('Contact points:') >= 0, p.id);
+      if (p.relation.vertical === 'a_above') ok(t.indexOf('Person A is on top and Person B is underneath.') >= 0, p.id + ' 上下');
+      if (p.relation.depth !== 'none') ok(/Person [AB] (is )?in front/.test(t), p.id + ' 前後');
+      ok(!('negative' in out), p.id);
+    });
+  });
+  test('二人用：自由入力は原文のまま、NAIでは人物別の欄へ入る', function () {
+    var s = pairState('pair_hug_from_behind', { 'notes.common': 'bedroom, (soft light)', 'notes.a': 'black hair', 'notes.b': 'silver hair' });
+    var nai = P.render(s, 'nai', {});
+    ok(nai.base.endsWith('bedroom, (soft light)') && nai.a.endsWith('black hair') && nai.b.endsWith('silver hair'));
+    ok(P.render(s, 'tsubaki', {}).text.indexOf('Person A: black hair') >= 0);
+    eq(nai.text, [nai.base, nai.a, nai.b].join(' | '));
+  });
+  test('二人用：A⇄B入れ替えは性別と人物別入力を交換する', function () {
+    var s = P.swapPeople(pairState('pair_lap_facing', { 'people.a.gender': 'male', 'notes.b': 'cardigan' }));
+    eq([s.people.a.gender, s.people.b.gender, s.notes.a, s.notes.b], ['unspecified', 'male', 'cardigan', '']);
+  });
+  test('二人用：日本語構造にA/B配置と接触点を含む', function () {
+    D.pairPoses.forEach(function (p) { var j = P.structureJa(pairState(p.id)); ok(j.indexOf('【人物A') >= 0 && j.indexOf('【人物B') >= 0 && j.indexOf('【接触点】') >= 0, p.id); });
+  });
+  test('二人用：注意表示（NAIの人数タグ、自由入力のadult/bust）', function () {
+    var s = pairState('pair_lap_facing');
+    ok(P.issues(s, 'nai', {}).some(function (i) { return i.id === 'nai_count_tags'; }));
+    ok(P.issues(P.set(s, 'notes.a', 'adult man'), 'sdxl', {}).some(function (i) { return i.id === 'pixai_forbidden_note'; }));
+    ok(!P.issues(P.set(s, 'notes.a', 'adult man'), 'nai', {}).some(function (i) { return i.id === 'pixai_forbidden_note'; }));
+  });
+  test('検索：ひらがな・カタカナ・漢字の表記差を吸収する', function () {
+    function found(q) { return ids(P.filterPoses(q, 'all')); }
+    ok(found('ひざ').indexOf('pair_lap_facing') >= 0); ok(found('バックハグ').indexOf('pair_hug_from_behind') >= 0);
+    ok(found('ばっくはぐ').indexOf('pair_hug_from_behind') >= 0); ok(found('かたあし').indexOf('pair_leg_lift_support') >= 0);
+    eq(found('ひざ うしろ').indexOf('pair_over_supine'), -1); eq(found('存在しない語').length, 0); eq(found('').length, 7);
+    eq(ids(P.filterPoses('', 'lying_bed')), ['pair_over_supine', 'pair_straddle_lying']);
+    ok(MO.matchesQuery('べっど', ['ベッドで仰向け'])); ok(MO.matchesQuery('ＢＥＤ', ['bed']));
+  });
+  test('出力先：設定の正規化と既定値', function () {
+    eq(MO.normalizePrefs(null), { outputTarget: 'generic', emphasis: false, naiEmphasisStyle: 'braces', naiNaturalLanguage: false });
+    eq(MO.normalizePrefs({ outputTarget: 'xx', emphasis: 'yes' }).outputTarget, 'generic');
+    eq(MO.pairTarget({ outputTarget: 'generic' }), 'tsubaki'); eq(MO.pairTarget({ outputTarget: 'nai' }), 'nai');
+  });
+  test('一人用：汎用出力は従来のcompact・Negativeと完全一致', function () {
+    D.presets.forEach(function (p) {
+      var s = S.applyPatch(S.initial(), p.patch), r = MO.single(s, 'generic', { emphasis: true });
+      eq(r.text, G.compact(s), p.id); eq(r.negative, G.negative(s), p.id);
+    });
+  });
+  test('一人用：全プリセットでPIXAI系にadult／bustを出さない（自由入力なし）', function () {
+    D.presets.forEach(function (p) {
+      var s = S.applyPatch(S.initial(), p.patch);
+      [{ emphasis: false }, { emphasis: true }].forEach(function (pr) {
+        ok(!MO.hasPixaiForbidden(MO.single(s, 'tsubaki', pr).text), p.id + ' tsubaki');
+        ok(!MO.hasPixaiForbidden(MO.single(s, 'sdxl', pr).text), p.id + ' sdxl');
+      });
+    });
+  });
+  test('一人用：拘束時の年齢指定はPIXAI系でgrown-upへ置き換え、NovelAI・汎用は従来どおり', function () {
+    var s = S.applyPatch(S.initial(), D.presets.filter(function (x) { return x.id === 'special_rope_wrists_front_standing'; })[0].patch);
+    ok(MO.single(s, 'sdxl', {}).text.indexOf('grown-up character') >= 0);
+    ok(MO.single(s, 'tsubaki', {}).text.indexOf('The character is a grown-up.') >= 0);
+    ok(MO.single(s, 'nai', {}).text.indexOf('adult character') >= 0);
+    ok(G.compact(s).indexOf('adult character') >= 0);
+  });
+  test('一人用：Tsubakiは自然文・ネガティブなし・強調なし', function () {
+    D.presets.forEach(function (p) {
+      var s = S.applyPatch(S.applyPatch(S.initial(), p.patch), { 'output.includeNegativePrompt': true }), r = MO.single(s, 'tsubaki', { emphasis: true });
+      eq(r.negative, '', p.id); ok(!MO.syntaxLeaks('tsubaki', r.text), p.id); ok(/^A solo character/.test(r.text), p.id);
+    });
+  });
+  test('一人用：SDXL・NovelAIは人数→主ポーズの順で、強調は各モデルの構文だけ', function () {
+    D.presets.forEach(function (p) {
+      var s = S.applyPatch(S.initial(), p.patch);
+      var x = MO.single(s, 'sdxl', { emphasis: true }).text, n1 = MO.single(s, 'nai', { emphasis: true }).text, n2 = MO.single(s, 'nai', { emphasis: true, naiEmphasisStyle: 'numeric' }).text, off = MO.single(s, 'sdxl', {}).text;
+      ok(/^solo, \(/.test(x), p.id + ' ' + x.slice(0, 40)); ok(/^solo, \{\{/.test(n1), p.id); ok(/^solo, 1\.2::/.test(n2), p.id);
+      ok(!MO.syntaxLeaks('sdxl', x) && !MO.syntaxLeaks('nai', n1) && !MO.syntaxLeaks('nai', n2), p.id);
+      ok(!/[{}()]|::/.test(off), p.id + ' off'); cleanList(off, p.id + ' sdxl');
+    });
+  });
+  test('一人用：出力先別の生成は保存状態を変えない', function () {
+    var s = S.applyPatch(S.initial(), D.presets[0].patch), before = JSON.stringify(s);
+    ['generic', 'tsubaki', 'sdxl', 'nai'].forEach(function (t) { MO.single(s, t, { emphasis: true }); });
+    eq(JSON.stringify(s), before);
+  });
+  test('一人用：opts省略時のgenerator出力は従来と同じ', function () {
+    D.presets.forEach(function (p) {
+      var s = S.applyPatch(S.initial(), p.patch);
+      eq(G.compact(s, undefined), G.compact(s), p.id); eq(G.detailed(s, undefined), G.detailed(s), p.id);
+      eq(Object.keys(G.compactLayers(s)), ['semantic', 'modifiers', 'stability']);
+    });
+  });
+  test('保存：二人用の下書き・名前付き保存・出力先設定', function () {
+    var st = memoryStore();
+    var s = pairState('pair_lap_facing_away', { 'people.a.gender': 'female' });
+    ok(Store.savePairDraft(s, st)); eq(Store.loadPairDraft(st).poseId, 'pair_lap_facing_away');
+    Store.savePreset('二人', s, st, 'pair'); Store.savePreset('一人', S.initial(), st);
+    var list = Store.listPresets(st); eq(list.map(function (x) { return x.kind || 'single'; }), ['single', 'pair']);
+    eq(list[1].state.people.a.gender, 'female');
+    ok(Store.saveOutputPrefs({ outputTarget: 'nai', emphasis: true }, st)); eq(Store.loadOutputPrefs(st).outputTarget, 'nai');
+    st.data[Store.keys.preferences] = '{broken'; eq(Store.loadOutputPrefs(st).outputTarget, 'generic');
+    st.data[Store.keys.pairDraft] = '{broken'; eq(Store.loadPairDraft(st), null);
+  });
+  test('保存：kindのない旧ユーザープリセットは一人用として読む', function () {
+    var st = memoryStore(); st.data[Store.keys.presets] = JSON.stringify([{ id: 'old', name: '旧', state: { pose: { posture: 'standing' } } }]);
+    var list = Store.listPresets(st); eq(list[0].kind, undefined); eq(list[0].state.pose.posture, 'standing');
+  });
+  test('保存：出力先設定は一人用の下書きへ混入しない', function () {
+    var st = memoryStore(); Store.saveOutputPrefs({ outputTarget: 'sdxl' }, st); Store.saveDraft(S.initial(), st);
+    ok(JSON.parse(st.data[Store.keys.draft]).output.outputTarget === undefined);
+  });
+
   function run() {
     var results = tests.map(function (t) { try { t.fn(); return { name: t.name, pass: true }; } catch (e) { return { name: t.name, pass: false, error: e.message }; } });
     var passed = results.filter(function (r) { return r.pass; }).length;

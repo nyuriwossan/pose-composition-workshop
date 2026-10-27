@@ -1,12 +1,16 @@
 (function (global) {
   'use strict';
   var PCW = global.PCW;
-  var D = PCW.data, S = PCW.state, A = PCW.advisor, G = PCW.generator, Store = PCW.storage;
+  var D = PCW.data, S = PCW.state, A = PCW.advisor, G = PCW.generator, Store = PCW.storage, M = PCW.modelOutput, P = PCW.pair;
   var $ = function (id) { return document.getElementById(id); };
   var main = $('main'), sticky = $('stickySummary'), nav = $('bottomNav'), meter = $('stepMeter');
   var draft = Store.loadDraft();
   var state = draft || S.initial();
-  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', collectionFilter: 'all', poseFamilyFilter: 'all', moodFilter: 'all', sceneFilter: 'all', interactionFilter: 'all', viewerOnly: false };
+  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', collectionFilter: 'all', poseFamilyFilter: 'all', moodFilter: 'all', sceneFilter: 'all', interactionFilter: 'all', viewerOnly: false, countFilter: 'single', presetQuery: '', pairFamilyFilter: 'all', saveKind: 'single' };
+  // 出力先などの表示設定（pcw_preferences_v1 の output 欄）と、二人用の下書き（pcw_pair_draft_v1）
+  var prefs = Store.loadOutputPrefs();
+  var pairDraft = Store.loadPairDraft();
+  var pairState = pairDraft || P.initial();
   var stepInfo = [
     null,
     { title: '姿勢と動作', copy: '身体を支える基本状態を一つ選びます。' },
@@ -84,11 +88,13 @@
     meter.innerHTML = '<span>身体とカメラを一緒に設計</span>';
     sticky.hidden = true; nav.hidden = true;
     var resume = draft ? '<div class="resume-card"><p>端末に前回の設計が残っています。</p><div class="resume-actions"><button class="btn btn--primary" data-action="resume">前回の続き</button><button class="btn btn--quiet" data-action="discard-draft">破棄</button></div></div>' : '';
+    var pairResume = pairDraft && pairDraft.poseId ? '<div class="resume-card resume-card--pair"><p>二人用の前回の選択：' + esc(P.summary(pairDraft)) + '</p><div class="resume-actions"><button class="btn btn--primary" data-action="resume-pair">二人用の続き</button><button class="btn btn--quiet" data-action="discard-pair-draft">破棄</button></div></div>' : '';
     main.innerHTML = '<section class="hero"><p class="eyebrow">POSE / CAMERA / COMPOSITION</p><h1>身体の動きと<br>カメラ構図を<br>一緒に組み立てる。</h1><p class="hero-copy">タグを並べるのではなく、身体各部の関係を整理。見えない指定や両立しない組み合わせを確認して、画像生成AI向けの英語へ変換します。</p></section><div class="entry-grid">' +
       '<button class="entry-card" data-entry="guided"><span class="entry-number">01</span><span><strong>かんたんに作る</strong><small>質問に沿って、自然な設計を組み立てます</small></span><span class="entry-arrow">›</span></button>' +
       '<button class="entry-card" data-entry="preset"><span class="entry-number">02</span><span><strong>プリセットから作る</strong><small>整合済みの' + D.presets.length + '種類から始めます</small></span><span class="entry-arrow">›</span></button>' +
       '<button class="entry-card" data-entry="detail"><span class="entry-number">03</span><span><strong>細かく設計する</strong><small>身体・視線・構図の各軸を調整します</small></span><span class="entry-arrow">›</span></button>' +
-      '</div>' + resume + '<p class="hint">一人用・Viewer基準・厳密な左右指定なし。すべて端末内で動作します。</p>';
+      '<button class="entry-card entry-card--pair" data-entry="pair"><span class="entry-number">04</span><span><strong>二人のポーズを作る</strong><small>人物A・Bの配置と接触点を' + D.pairPoses.length + '種類から指定します</small></span><span class="entry-arrow">›</span></button>' +
+      '</div>' + resume + pairResume + '<p class="hint">一人用はViewer基準、二人用は人物A（主導側）・B（相手側）の配置で指定します。厳密な左右指定はしません。すべて端末内で動作します。</p>';
   }
   function renderStep1() {
     var posture = card('どんな姿勢ですか', '基本姿勢は一つだけ選びます。', chips('pose.posture', D.postures, { basicOnly: state.entryMode !== 'detail', max: 6, expandKey: 'postures' }));
@@ -188,20 +194,27 @@
     if (compactOnly) issues = issues.filter(function (x) { return x.severity === 'hard' || x.severity === 'warning'; }).slice(0, 3);
     return issues.length ? card('設計アドバイザー', '値は保持したまま、修正候補を選べます。', '<div class="issue-list">' + issues.map(issueCard).join('') + '</div>') : '';
   }
+  function singleTarget() { return prefs.outputTarget; }
   function outputText() {
+    if (singleTarget() !== 'generic') return M.single(state, singleTarget(), prefs).text;
     if (view.outputTab === 'detailed') return G.detailed(state);
     if (view.outputTab === 'structure') return G.structureJa(state);
     return G.compact(state);
   }
-  function negativeOutputText() { return G.negative(state); }
+  function negativeOutputText() { return singleTarget() === 'tsubaki' ? '' : G.negative(state); }
   function renderStep6() {
     var complete = A.isComplete(state);
     var banner = '<div class="complete-banner' + (complete ? '' : ' is-incomplete') + '">' + (complete ? '設計完了：出力をコピーできます。' : '未完了：基本姿勢・撮影範囲・hard警告を確認してください。') + '</div>';
     var tabs = '<div class="output-tabs" role="tablist" aria-label="出力形式">' + [
       ['compact', '構造化'], ['detailed', '詳細英文'], ['structure', '日本語構造']
     ].map(function (x) { return '<button class="output-tab" role="tab" type="button" data-output-tab="' + x[0] + '" aria-selected="' + (view.outputTab === x[0]) + '">' + x[1] + '</button>'; }).join('') + '</div>';
-    var output = card('Positive prompt', '必要な姿勢・見え方を肯定形でまとめます。単独でも使える出力です。', tabs + '<pre class="output-box" id="outputBox">' + esc(outputText()) + '</pre><div class="sheet-actions"><button class="btn btn--accent" data-action="copy-output"' + (!outputText() ? ' disabled' : '') + '>Positiveをコピー</button><button class="btn" data-action="open-save">名前を付けて保存</button><button class="btn btn--danger" data-action="reset">リセット</button></div>');
-    var negative = state.output.includeNegativePrompt ? card('Negative prompt', '補助的な除外語だけを短く分離しています。生成モデルに必要な場合だけ併用してください。', '<pre class="output-box output-box--negative" id="negativeOutputBox">' + esc(negativeOutputText()) + '</pre><div class="sheet-actions"><button class="btn" data-action="copy-negative"' + (!negativeOutputText() ? ' disabled' : '') + '>Negativeをコピー</button></div>') : '';
+    var tgt = singleTarget(), modelRes = tgt === 'generic' ? null : M.single(state, tgt, prefs);
+    var modelNotes = modelRes ? modelRes.notes.map(function (n) { return '<p class="output-note output-note--' + n.severity + '">' + esc(n.textJa) + '</p>'; }).join('') : '';
+    var emphasisOpts = tgt === 'sdxl' || tgt === 'nai' ? '<div class="chip-grid model-opts"><button type="button" class="chip" data-pref-toggle-single="emphasis" aria-pressed="' + prefs.emphasis + '">主ポーズを強調する</button>' +
+      (tgt === 'nai' ? '<button type="button" class="chip" data-pref-set-single="naiEmphasisStyle" data-value="braces" aria-pressed="' + (prefs.naiEmphasisStyle === 'braces') + '">{{ }}</button><button type="button" class="chip" data-pref-set-single="naiEmphasisStyle" data-value="numeric" aria-pressed="' + (prefs.naiEmphasisStyle === 'numeric') + '">1.2:: ::</button>' : '') + '</div>' : '';
+    var outputBody = tgt === 'generic' ? tabs : '<p class="chip-note">' + esc(M.target(tgt).labelJa + '向け：' + M.target(tgt).noteJa) + '。選択内容は出力先を切り替えても保持されます。</p>' + modelNotes + emphasisOpts;
+    var output = PCW.pairUI.targetSwitch(uiCtx, 'single') + card('Positive prompt', '必要な姿勢・見え方を肯定形でまとめます。単独でも使える出力です。', outputBody + '<pre class="output-box" id="outputBox">' + esc(outputText()) + '</pre><div class="sheet-actions"><button class="btn btn--accent" data-action="copy-output"' + (!outputText() ? ' disabled' : '') + '>Positiveをコピー</button><button class="btn" data-action="open-save">名前を付けて保存</button><button class="btn btn--danger" data-action="reset">リセット</button></div>');
+    var negative = state.output.includeNegativePrompt && tgt === 'tsubaki' ? card('Negative prompt', 'Tsubaki向けには出力しません。', '<p class="hint">Tsubakiではカスタムネガティブプロンプトを標準出力しない設定です。SDXL・NovelAI・汎用へ切り替えると表示されます。</p>') : state.output.includeNegativePrompt ? card('Negative prompt', '補助的な除外語だけを短く分離しています。生成モデルに必要な場合だけ併用してください。', '<pre class="output-box output-box--negative" id="negativeOutputBox">' + esc(negativeOutputText()) + '</pre><div class="sheet-actions"><button class="btn" data-action="copy-negative"' + (!negativeOutputText() ? ' disabled' : '') + '>Negativeをコピー</button></div>') : '';
     var supportOutfitControl = state.pose.supportPose === 'hands_and_knees' && state.output.preserveClothing ? '<button type="button" class="chip" data-output-toggle="supportOutfitAssist" aria-pressed="' + state.output.supportOutfitAssist + '">白T＋黒ショーツで補助</button>' : '';
     var supportOutfitNote = state.pose.supportPose === 'hands_and_knees' ? '<p class="hint">四点支持では「服を保持する」ON時に、服装未指定なら白Tシャツ＋黒のラウンジショーツを補助できます。</p>' : '';
     var equipmentNote = state.output.suppressPhotographyEquipment ? '<p class="hint">一部の生成モデルが視点指定を撮影機材として描く問題を抑えます。</p>' : '';
@@ -216,7 +229,8 @@
   function renderSticky() {
     var sum = A.summary(state), total = sum.hard + sum.warning + sum.info;
     sticky.hidden = false;
-    sticky.innerHTML = '<div class="summary-row"><div class="summary-copy"><strong>' + esc(currentSummary()) + '</strong><small><span class="warning-count">警告 ' + (sum.hard + sum.warning) + '</span> ・ 情報 ' + sum.info + '</small></div><button class="btn btn--primary" data-action="open-output">出力を見る</button></div>';
+    var preview = outputText();
+    sticky.innerHTML = '<div class="summary-row"><div class="summary-copy"><strong>' + esc(currentSummary()) + '</strong><small><span class="warning-count">警告 ' + (sum.hard + sum.warning) + '</span> ・ 情報 ' + sum.info + ' ・ <span class="target-pill">' + esc(M.target(singleTarget()).shortJa) + '</span></small><span class="live-preview live-preview--line">' + esc(preview || '姿勢を選ぶと英語がここに出ます') + '</span></div><div class="summary-actions"><button class="btn" type="button" data-action="copy-output"' + (preview ? '' : ' disabled') + ' aria-label="現在のPositiveをコピー">コピー</button><button class="btn btn--primary" data-action="open-output">出力を見る</button></div></div>';
   }
   function renderNav() {
     nav.hidden = false;
@@ -224,6 +238,7 @@
   }
   function render() {
     if (view.screen === 'start') { renderStart(); return; }
+    if (view.screen === 'pair') { PCW.pairUI.render(uiCtx); return; }
     renderMeter();
     ({ 1: renderStep1, 2: renderStep2, 3: renderStep3, 4: renderStep4, 5: renderStep5, 6: renderStep6 })[view.step]();
     renderSticky(); renderNav();
@@ -236,10 +251,8 @@
     if (close) close.focus();
   }
   function closeSheet() { $('sheetBackdrop').hidden = true; $('bottomSheet').hidden = true; $('sheetContent').innerHTML = ''; }
-  function presetSheet() {
-    var filterOptions = { collection: view.collectionFilter, poseFamily: view.poseFamilyFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
-    var visiblePresets = D.filterPresets(D.presets, view.presetFilter, filterOptions);
-    var builtins = visiblePresets.map(function (p) {
+  function presetCardsHtml(list) {
+    return list.map(function (p) {
       var meta = p.meta || {}, cardTags = [];
       if ((meta.audienceTags || []).indexOf('viewer_perspective') >= 0) cardTags.push(D.presetAudienceTagLabels.viewer_perspective);
       if ((meta.moodTags || []).length && D.presetMoodTagLabels[meta.moodTags[0]]) cardTags.push(D.presetMoodTagLabels[meta.moodTags[0]]);
@@ -249,6 +262,43 @@
       var tags = cardTags.slice(0, 3).map(function (tag) { return '<span class="preset-tag">' + esc(tag) + '</span>'; }).join('');
       return '<button class="preset-card" type="button" data-load-preset="' + attr(p.id) + '"><strong>' + esc(p.nameJa) + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
     }).join('');
+  }
+  function userPresetRow(p) {
+    return '<div class="user-preset"><button class="btn" data-load-user="' + attr(p.id) + '">' + (p.kind === 'pair' ? '<span class="preset-tag">二人</span> ' : '') + esc(p.name) + '</button><button class="btn btn--danger" aria-label="' + esc(p.name) + 'を削除" data-delete-user="' + attr(p.id) + '">削除</button></div>';
+  }
+  function presetSearchFields(p) {
+    var meta = p.meta || {}, fields = [p.nameJa, p.descriptionJa, D.presetPoseFamilyLabels[D.inferPresetPoseFamily(p)] || '', (D.presetCollections[meta.collection || 'basic'] || {}).labelJa || '特殊・演出', '一人', '1人'];
+    (meta.moodTags || []).forEach(function (t) { fields.push(D.presetMoodTagLabels[t] || ''); });
+    (meta.sceneTags || []).forEach(function (t) { fields.push(D.presetSceneTagLabels[t] || ''); });
+    (meta.audienceTags || []).forEach(function (t) { fields.push(D.presetAudienceTagLabels[t] || ''); });
+    return fields;
+  }
+  function visibleSinglePresets() {
+    var filterOptions = { collection: view.collectionFilter, poseFamily: view.poseFamilyFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
+    return D.filterPresets(D.presets, view.presetFilter, filterOptions).filter(function (p) { return M.matchesQuery(view.presetQuery, presetSearchFields(p)); });
+  }
+  function pairPresetCards() {
+    var list = P.filterPoses(view.presetQuery, view.pairFamilyFilter);
+    return list.length ? list.map(function (p) {
+      return '<button class="preset-card" type="button" data-load-pair="' + attr(p.id) + '"><strong>' + esc(p.nameJa || p.labelJa) + '</strong><small>' + esc(p.shortJa) + '</small><span class="preset-tags"><span class="preset-tag">二人</span><span class="preset-tag">' + esc(D.presetPoseFamilyLabels[p.poseFamily] || '') + '</span><span class="preset-tag">A：' + esc(p.roles.a) + '</span></span></button>';
+    }).join('') : '<p class="preset-empty">該当するポーズはありません。</p>';
+  }
+  function countTabs() {
+    return '<div class="segmented segmented--wide count-tabs" role="group" aria-label="人数で絞り込み"><button type="button" data-count-filter="single" aria-pressed="' + (view.countFilter === 'single') + '">一人用 <b>' + D.presets.length + '</b></button><button type="button" data-count-filter="pair" aria-pressed="' + (view.countFilter === 'pair') + '">二人用 <b>' + D.pairPoses.length + '</b></button></div>' +
+      '<label class="field-label visually-hidden" for="presetSearch">ポーズを検索</label><input id="presetSearch" type="search" data-preset-search autocomplete="off" placeholder="日本語で検索（例：ベッド、振り返る、膝）" value="' + attr(view.presetQuery) + '">';
+  }
+  function presetSheet() {
+    if (view.countFilter === 'pair') {
+      var pairCounts = P.familyCounts('');
+      var pairFams = ['all'].concat(Object.keys(D.presetPoseFamilyLabels).filter(function (id) { return pairCounts[id]; }));
+      var pairFilters = '<div class="family-filter-block"><small>ポーズ系統</small><div class="tag-filters" role="group" aria-label="ポーズ系統で絞り込み">' + pairFams.map(function (id) { return '<button type="button" data-pair-preset-family="' + id + '" aria-pressed="' + (view.pairFamilyFilter === id) + '">' + esc(id === 'all' ? 'すべて' : D.presetPoseFamilyLabels[id]) + ' <b>' + (pairCounts[id] || 0) + '</b></button>'; }).join('') + '</div></div>';
+      var pairUsers = Store.listPresets().filter(function (p) { return p.kind === 'pair'; });
+      var pairUserHtml = pairUsers.length ? '<h3>保存した二人用の設計</h3>' + pairUsers.map(userPresetRow).join('') : '';
+      openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>二人用は人物A（主導側）・B（相手側）の配置まで整理済みです。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + pairFilters + '<div class="preset-list" id="presetList">' + pairPresetCards() + '</div>' + pairUserHtml);
+      return;
+    }
+    var visiblePresets = visibleSinglePresets();
+    var builtins = presetCardsHtml(visiblePresets);
     var commonOptions = { collection: view.collectionFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
     var familyScoped = D.filterPresets(D.presets, view.presetFilter, commonOptions);
     var framingOptions = { collection: view.collectionFilter, poseFamily: view.poseFamilyFilter, mood: view.moodFilter, scene: view.sceneFilter, interaction: view.interactionFilter, viewerOnly: view.viewerOnly };
@@ -271,36 +321,79 @@
     var filters = '<div class="collection-filters" role="group" aria-label="プリセット用途カテゴリで絞り込み">' + D.renderPresetCollectionFilters(view.collectionFilter, D.presets) + '</div>' +
       '<div class="family-filter-block"><small>ポーズ系統</small><div class="tag-filters family-filters" role="group" aria-label="ポーズ系統で絞り込み">' + D.renderPresetPoseFamilyFilters(view.poseFamilyFilter, familyScoped) + '</div></div>' +
       '<div class="preset-filters" role="group" aria-label="撮影範囲で絞り込み">' + D.renderPresetFramingFilters(view.presetFilter, framingScoped) + '</div>' + relationshipFilters +
-      '<div class="preset-filter-tools"><span aria-live="polite">' + visiblePresets.length + '件を表示</span><span class="selected-filters">選択中：' + esc(selectedText) + '</span><button type="button" class="btn btn--quiet" data-action="clear-preset-filters"' + (!selected.length ? ' disabled' : '') + '>絞り込み解除</button></div>';
-    var users = Store.listPresets();
-    var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(function (p) { return '<div class="user-preset"><button class="btn" data-load-user="' + attr(p.id) + '">' + esc(p.name) + '</button><button class="btn btn--danger" aria-label="' + esc(p.name) + 'を削除" data-delete-user="' + attr(p.id) + '">削除</button></div>'; }).join('') : '';
-    openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + filters + '<div class="preset-list">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
+      '<div class="preset-filter-tools"><span aria-live="polite" id="presetCount">' + visiblePresets.length + '件を表示</span><span class="selected-filters">選択中：' + esc(selectedText) + '</span><button type="button" class="btn btn--quiet" data-action="clear-preset-filters"' + (!selected.length ? ' disabled' : '') + '>絞り込み解除</button></div>';
+    var users = Store.listPresets().filter(function (p) { return p.kind !== 'pair'; });
+    var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(userPresetRow).join('') : '';
+    openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + filters + '<div class="preset-list" id="presetList">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
   }
-  function saveSheet() {
+  function saveSheet(kind) {
+    view.saveKind = kind === 'pair' ? 'pair' : 'single';
     openSheet('<div class="sheet-head"><h2>名前を付けて保存</h2><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div><label class="field-label" for="presetName">設計名</label><input id="presetName" type="text" maxlength="60" placeholder="例：斜め向きの立ち姿"><div class="sheet-actions" style="margin-top:12px"><button class="btn btn--primary" data-action="save-user-preset">保存する</button></div>');
     setTimeout(function () { var input = $('presetName'); if (input) input.focus(); }, 0);
   }
   function applyFlow(id) {
     commit(S.applyFlowStyle(state, id), { action: 'flow-' + id });
   }
-  function copyText(text) {
+  function copyText(text, message) {
     if (!text) return;
-    if (navigator.clipboard && global.isSecureContext) navigator.clipboard.writeText(text).then(function () { toast('コピーしました'); }, fallback);
+    var done = message || 'コピーしました';
+    if (navigator.clipboard && global.isSecureContext) navigator.clipboard.writeText(text).then(function () { toast(done); }, fallback);
     else fallback();
     function fallback() {
       var area = document.createElement('textarea');
       area.value = text; area.setAttribute('readonly', ''); area.style.position = 'fixed'; area.style.opacity = '0';
       document.body.appendChild(area); area.select(); area.setSelectionRange(0, area.value.length);
-      try { document.execCommand('copy'); toast('コピーしました'); } catch (e) { toast('コピーできませんでした'); }
+      try { document.execCommand('copy'); toast(done); } catch (e) { toast('コピーできませんでした'); }
       document.body.removeChild(area);
     }
   }
 
+  function setPrefs(next) { prefs = M.normalizePrefs(next); Store.saveOutputPrefs(prefs); }
+  function setPair(next, clear) {
+    pairState = P.normalize(next);
+    if (clear) { Store.clearPairDraft(); pairDraft = null; }
+    else { pairDraft = pairState; Store.savePairDraft(pairState); }
+  }
+  function openPair(poseId) {
+    closeSheet();
+    PCW.pairUI.openWithPose(uiCtx, poseId);
+    view.screen = 'pair';
+    render(); global.scrollTo(0, 0);
+  }
+  function loadBuiltinPreset(id) {
+    var preset = D.presets.filter(function (p) { return p.id === id; })[0];
+    if (!preset) return;
+    state = S.applyPatch(S.initial(), preset.patch); state.entryMode = 'preset'; draft = state; closeSheet(); view.screen = 'builder'; view.step = 1; commit(state); global.scrollTo(0, 0); toast('プリセットを読み込みました');
+  }
+  function refocus(el) {
+    if (!el || !el.dataset) return;
+    var sel = Object.keys(el.dataset).map(function (k) { return '[data-' + k.replace(/[A-Z]/g, function (c) { return '-' + c.toLowerCase(); }) + '="' + String(el.dataset[k]).replace(/"/g, '\\"') + '"]'; }).join('');
+    var next = sel && document.querySelector('button' + sel);
+    if (next) next.focus({ preventScroll: true });
+  }
+  var uiCtx = {
+    main: main, sticky: sticky, nav: nav, meter: meter, view: view,
+    esc: esc, attr: attr, toast: toast, copyText: copyText, restore: refocus,
+    getPair: function () { return pairState; }, setPair: setPair,
+    getPrefs: function () { return M.normalizePrefs(prefs); }, setPrefs: setPrefs,
+    goStart: function () { view.screen = 'start'; render(); global.scrollTo(0, 0); },
+    loadSinglePreset: loadBuiltinPreset,
+    openSave: function (kind) { saveSheet(kind); }
+  };
+
   document.addEventListener('click', function (event) {
     var target = event.target.closest('button');
     if (!target) return;
+    if (PCW.pairUI.click(target, uiCtx)) return;
+    if (target.dataset.target) { setPrefs(Object.assign({}, prefs, { outputTarget: target.dataset.target })); render(); refocus(target); return; }
+    if (target.dataset.prefToggleSingle) { var tp = Object.assign({}, prefs); tp[target.dataset.prefToggleSingle] = !tp[target.dataset.prefToggleSingle]; setPrefs(tp); render(); refocus(target); return; }
+    if (target.dataset.prefSetSingle) { var sp = Object.assign({}, prefs); sp[target.dataset.prefSetSingle] = target.dataset.value; setPrefs(sp); render(); refocus(target); return; }
+    if (target.dataset.countFilter) { view.countFilter = target.dataset.countFilter; presetSheet(); return; }
+    if (target.dataset.pairPresetFamily) { view.pairFamilyFilter = target.dataset.pairPresetFamily; presetSheet(); return; }
+    if (target.dataset.loadPair) { openPair(target.dataset.loadPair); toast('二人用ポーズを読み込みました'); return; }
     if (target.dataset.entry) {
       if (target.dataset.entry === 'preset') { presetSheet(); return; }
+      if (target.dataset.entry === 'pair') { openPair(null); return; }
       state = S.initial(); state.entryMode = target.dataset.entry;
       view.screen = 'builder'; view.step = 1; commit(state); return;
     }
@@ -346,6 +439,7 @@
     }
     if (target.dataset.loadUser) {
       var user = Store.listPresets().filter(function (p) { return p.id === target.dataset.loadUser; })[0];
+      if (user && user.kind === 'pair') { setPair(user.state); openPair(null); toast('保存した設計を読み込みました'); return; }
       if (user) { closeSheet(); view.screen = 'builder'; view.step = 1; commit(user.state); toast('保存した設計を読み込みました'); }
       return;
     }
@@ -353,6 +447,8 @@
     var action = target.dataset.action;
     if (!action) return;
     if (action === 'resume') { view.screen = 'builder'; view.step = 1; render(); }
+    if (action === 'resume-pair') { openPair(null); }
+    if (action === 'discard-pair-draft') { setPair(P.initial(), true); render(); }
     if (action === 'discard-draft') { Store.clearDraft(); draft = null; state = S.initial(); render(); }
     if (action === 'prev-step') { if (view.step === 1) view.screen = 'start'; else view.step--; render(); global.scrollTo(0, 0); }
     if (action === 'next-step') { view.step = view.step === 6 ? 1 : view.step + 1; render(); global.scrollTo(0, 0); }
@@ -360,23 +456,37 @@
     if (action === 'copy-output') copyText(outputText());
     if (action === 'copy-negative') copyText(negativeOutputText());
     if (action === 'open-save') saveSheet();
-    if (action === 'save-user-preset') { var input = $('presetName'); Store.savePreset(input ? input.value : '', state); closeSheet(); toast('端末内に保存しました'); }
+    if (action === 'save-user-preset') { var input = $('presetName'); if (view.saveKind === 'pair') Store.savePreset(input ? input.value : '', pairState, undefined, 'pair'); else Store.savePreset(input ? input.value : '', state); closeSheet(); toast('端末内に保存しました'); }
     if (action === 'reset') { if (global.confirm('現在の設計をリセットしますか？')) { Store.clearDraft(); draft = null; state = S.initial(); view.screen = 'start'; render(); } }
     if (action === 'close-sheet') closeSheet();
-    if (action === 'clear-preset-filters') { view.presetFilter = 'all'; view.collectionFilter = 'all'; view.poseFamilyFilter = 'all'; view.moodFilter = 'all'; view.sceneFilter = 'all'; view.interactionFilter = 'all'; view.viewerOnly = false; presetSheet(); }
+    if (action === 'clear-preset-filters') { view.presetQuery = ''; view.presetFilter = 'all'; view.collectionFilter = 'all'; view.poseFamilyFilter = 'all'; view.moodFilter = 'all'; view.sceneFilter = 'all'; view.interactionFilter = 'all'; view.viewerOnly = false; presetSheet(); }
   });
   document.addEventListener('input', function (event) {
+    if (PCW.pairUI.input(event, uiCtx)) return;
+    if (event.target.matches('[data-preset-search]')) {
+      view.presetQuery = event.target.value;
+      var listEl = $('presetList');
+      if (listEl && view.countFilter === 'pair') listEl.innerHTML = pairPresetCards();
+      else if (listEl) {
+        var found = visibleSinglePresets();
+        listEl.innerHTML = presetCardsHtml(found) || '<p class="preset-empty">該当するプリセットはありません。</p>';
+        var countEl = $('presetCount'); if (countEl) countEl.textContent = found.length + '件を表示';
+      }
+      return;
+    }
     if (event.target.matches('[data-custom]')) {
       state = S.applyPatch(state, { 'output.customText': event.target.value });
       Store.saveDraft(state);
       var box = $('outputBox'); if (box) box.textContent = outputText();
+      var live = sticky.querySelector('.live-preview'); if (live) live.textContent = outputText();
       var negativeBox = $('negativeOutputBox'); if (negativeBox) negativeBox.textContent = negativeOutputText();
     }
   });
+  document.addEventListener('toggle', function (event) { PCW.pairUI.toggle(event); }, true);
   $('sheetBackdrop').addEventListener('click', closeSheet);
   $('homeButton').addEventListener('click', function () { closeSheet(); view.screen = 'start'; render(); });
   document.addEventListener('keydown', function (event) { if (event.key === 'Escape' && !$('bottomSheet').hidden) closeSheet(); });
 
-  PCW.app = { getState: function () { return S.clone(state); }, setState: function (next) { commit(next); }, render: render, openPresets: presetSheet };
+  PCW.app = { getState: function () { return S.clone(state); }, setState: function (next) { commit(next); }, render: render, openPresets: presetSheet, getPairState: function () { return P.normalize(pairState); }, getPrefs: function () { return M.normalizePrefs(prefs); }, openPair: openPair };
   render();
 })(window);

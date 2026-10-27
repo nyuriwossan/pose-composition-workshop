@@ -1,7 +1,7 @@
 (function (global) {
   'use strict';
   var PCW = global.PCW = global.PCW || {};
-  var KEYS = { draft: 'pcw_draft_v1', presets: 'pcw_user_presets_v1', preferences: 'pcw_preferences_v1' };
+  var KEYS = { draft: 'pcw_draft_v1', presets: 'pcw_user_presets_v1', preferences: 'pcw_preferences_v1', pairDraft: 'pcw_pair_draft_v1' };
   var MAX_PRESETS = 20;
 
   function target(store) { return store || global.localStorage; }
@@ -27,12 +27,16 @@
     var raw = read(KEYS.presets, [], store);
     if (!Array.isArray(raw)) return [];
     return raw.filter(function (item) { return item && typeof item.name === 'string' && item.state; }).map(function (item) {
+      // kind が無い保存データは従来どおり一人用として読む
+      if (item.kind === 'pair' && PCW.pair) return { id: String(item.id || ''), kind: 'pair', name: item.name.slice(0, 60), savedAt: item.savedAt || '', state: PCW.pair.normalize(item.state) };
       return { id: String(item.id || ''), name: item.name.slice(0, 60), savedAt: item.savedAt || '', state: PCW.state.normalize(item.state) };
     }).slice(0, MAX_PRESETS);
   }
-  function savePreset(name, state, store) {
+  function savePreset(name, state, store, kind) {
     var list = listPresets(store);
-    var item = { id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: String(name || '名前なしの設計').trim().slice(0, 60) || '名前なしの設計', savedAt: new Date().toISOString(), state: PCW.state.normalize(state) };
+    var isPair = kind === 'pair' && PCW.pair;
+    var item = { id: 'user_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: String(name || '名前なしの設計').trim().slice(0, 60) || '名前なしの設計', savedAt: new Date().toISOString(), state: isPair ? PCW.pair.normalize(state) : PCW.state.normalize(state) };
+    if (isPair) item.kind = 'pair';
     list.unshift(item);
     write(KEYS.presets, list.slice(0, MAX_PRESETS), store);
     return item;
@@ -43,6 +47,21 @@
     return next;
   }
   function savePreferences(value, store) { return write(KEYS.preferences, value || {}, store); }
+  function saveOutputPrefs(prefs, store) {
+    var current = loadPreferences(store);
+    current.output = PCW.modelOutput ? PCW.modelOutput.normalizePrefs(prefs) : prefs;
+    return savePreferences(current, store);
+  }
+  function loadOutputPrefs(store) {
+    var current = loadPreferences(store);
+    return PCW.modelOutput ? PCW.modelOutput.normalizePrefs(current.output) : (current.output || {});
+  }
+  function savePairDraft(state, store) { return PCW.pair ? write(KEYS.pairDraft, PCW.pair.normalize(state), store) : false; }
+  function loadPairDraft(store) {
+    var raw = read(KEYS.pairDraft, null, store);
+    if (!raw || typeof raw !== 'object' || !PCW.pair) return null;
+    return PCW.pair.normalize(raw);
+  }
   function loadPreferences(store) { var value = read(KEYS.preferences, {}, store); return value && typeof value === 'object' && !Array.isArray(value) ? value : {}; }
 
   PCW.storage = {
@@ -58,6 +77,11 @@
     savePreset: savePreset,
     deletePreset: deletePreset,
     savePreferences: savePreferences,
-    loadPreferences: loadPreferences
+    loadPreferences: loadPreferences,
+    saveOutputPrefs: saveOutputPrefs,
+    loadOutputPrefs: loadOutputPrefs,
+    savePairDraft: savePairDraft,
+    loadPairDraft: loadPairDraft,
+    clearPairDraft: function (store) { return remove(KEYS.pairDraft, store); }
   };
 })(window);
