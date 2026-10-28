@@ -1023,6 +1023,57 @@
     Store.savePreset('二人', s, st, 'pair'); eq(Store.listPresets(st)[0].state.people.b.prompt, PB);
   });
 
+
+  // ---- NovelAI専用の打ち消し指定（負の強調）の扱い（2026-10-28 確認） ----
+  var NEG_RAW = 'black hair, -1::hat ::, -0.5::glasses, scarf ::';
+  function negState() { return P.set(pairState('pair_hug_from_behind'), 'people.a.prompt', NEG_RAW); }
+  test('打ち消し指定：非対応モデルの出力からだけ外し、入力の原文は保持する', function () {
+    var st = negState(), before = JSON.stringify(st);
+    ['tsubaki', 'sdxl'].forEach(function (t) {
+      var text = P.render(st, t, { emphasis: true }).text;
+      ok(text.indexOf('black hair') >= 0, t + ' 他の語は残る');
+      ok(!/hat|glasses|scarf|-\d|::/.test(text), t + ' 打ち消し指定を出さない: ' + text);
+    });
+    eq(JSON.stringify(st), before, '出力しても状態は変わらない');
+    eq(st.people.a.prompt, NEG_RAW);
+  });
+  test('打ち消し指定：NovelAIへ戻すと元の指定がそのまま出る', function () {
+    var st = negState(), first = P.render(st, 'nai', {}).a;
+    ['tsubaki', 'sdxl', 'generic'].forEach(function (t) { P.render(st, t, {}); });
+    var again = P.render(st, 'nai', {}).a;
+    eq(again, first);
+    ok(again.indexOf('black hair, -1::hat ::, -0.5::glasses, scarf ::') >= 0, again);
+    ok(!P.issues(st, 'nai', {}).some(function (i) { return i.id === 'person_a' && i.codes.indexOf('emphasis_dropped') >= 0; }), 'NovelAIでは除外の案内を出さない');
+  });
+  test('打ち消し指定：人物プロンプトセット・下書き・名前付き保存で原文を保持する', function () {
+    var mem = memoryStore(), st = negState();
+    Store.savePersonSet('帽子なし', st.people.a, mem); eq(Store.listPersonSets(mem)[0].prompt, NEG_RAW);
+    Store.savePairDraft(st, mem); eq(Store.loadPairDraft(mem).people.a.prompt, NEG_RAW);
+    Store.savePreset('二人', st, mem, 'pair'); eq(Store.listPresets(mem)[0].state.people.a.prompt, NEG_RAW);
+    var reloaded = P.set(pairState('pair_lap_facing'), 'people.b.prompt', Store.listPersonSets(mem)[0].prompt);
+    ok(P.render(reloaded, 'nai', {}).b.indexOf('-1::hat ::') >= 0, '読み込み後もNovelAIで復元');
+  });
+  test('打ち消し指定：除外した指定を、出力先ごとに案内で確認できる', function () {
+    var st = negState();
+    ['tsubaki', 'sdxl'].forEach(function (t) {
+      var issue = P.issues(st, t, {}).filter(function (i) { return i.id === 'person_a'; })[0];
+      ok(issue && issue.codes.indexOf('emphasis_dropped') >= 0 && issue.severity === 'warning', t);
+      ok(issue.textJa.indexOf('-1::hat ::') >= 0 && issue.textJa.indexOf('-0.5::glasses, scarf ::') >= 0, t + ' 除外した指定を原文で表示');
+      ok(issue.textJa.indexOf(MO.target(t).labelJa) >= 0, t + ' どの出力先で外したかを表示');
+    });
+  });
+  test('打ち消し指定：他モデルのネガティブプロンプトへ自動変換しない', function () {
+    var st = negState();
+    ['tsubaki', 'sdxl', 'nai'].forEach(function (t) {
+      var out = P.render(st, t, { emphasis: true });
+      ok(!('negative' in out), t + ' 二人用出力にネガティブ欄なし');
+      ok(!/\b(hat|glasses)\b/.test(t === 'nai' ? out.base : out.text), t + ' 共通・本文へ移さない');
+    });
+    var single = S.applyPatch(S.initial(), D.presets[0].patch);
+    single = S.applyPatch(single, { 'output.includeNegativePrompt': true });
+    ['generic', 'sdxl', 'nai', 'tsubaki'].forEach(function (t) { ok(!/\b(hat|glasses)\b/.test(MO.single(single, t, {}).negative), t + ' 一人用Negativeにも入らない'); });
+  });
+
   function run() {
     var results = tests.map(function (t) { try { t.fn(); return { name: t.name, pass: true }; } catch (e) { return { name: t.name, pass: false, error: e.message }; } });
     var passed = results.filter(function (r) { return r.pass; }).length;

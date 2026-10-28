@@ -8,7 +8,7 @@
 
 `index.html` をブラウザで開いてください。ビルド、npm、外部サーバー、外部APIは不要です。`file://` と GitHub Pages のどちらでも基本機能が動作します。
 
-自動テストは `tests.html` を開くと実行されます。現在のテスト数は629件です。
+自動テストは `tests.html` を開くと実行されます。現在のテスト数は634件です。
 
 ## 主な機能
 
@@ -77,7 +77,7 @@ pose-composition-workshop/
 │  ├─ pair-poses.js       二人用ポーズ7種の意味データとモデル別表現
 │  └─ rules.js            可視範囲・姿勢別推奨値
 ├─ tests.html             ブラウザ用テスト画面
-├─ tests.js               629件のロジックテスト
+├─ tests.js               634件のロジックテスト
 └─ README.md
 ```
 
