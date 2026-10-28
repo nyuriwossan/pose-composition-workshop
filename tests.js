@@ -1273,6 +1273,103 @@
     var old = Store.loadPairDraft(st); eq([old.poseId, old.people.a.prompt, old.people.a.expression.main], ['pair_lap_facing', 'old', null]);
   });
 
+  // ---- 棒人間の模式図（2026-10-29） ----
+  var F = PCW.figure;
+  function presetState(id) { return S.applyPatch(S.initial(), D.presets.filter(function (p) { return p.id === id; })[0].patch); }
+  function figurePoints(m) {
+    var pts = [m.head, m.neck, m.hip].concat(m.shoulders);
+    m.legs.forEach(function (l) { pts.push(l.hip, l.knee, l.foot); });
+    m.arms.forEach(function (a) { pts.push(a.elbow); if (!a.offFrame) pts.push(a.hand); });
+    return pts;
+  }
+  test('模式図：77件すべてで図を組み立てられ、座標が画面内に収まる', function () {
+    D.presets.forEach(function (p) {
+      var m = F.compute(presetState(p.id));
+      ok(m, p.id + ' 図あり');
+      figurePoints(m).forEach(function (pt) {
+        ok(isFinite(pt.x) && isFinite(pt.y), p.id + ' 座標が数値');
+        ok(pt.x >= -2 && pt.x <= F.size.width + 2 && pt.y >= -2 && pt.y <= F.size.height + 2, p.id + ' 画面内 ' + JSON.stringify(pt));
+      });
+    });
+  });
+  test('模式図：77件のSVGに数値以外が混ざらず、読み上げ用の名前がある', function () {
+    D.presets.forEach(function (p) {
+      var svg = F.svg(presetState(p.id), { label: true, ariaLabel: p.nameJa });
+      ok(svg.indexOf('NaN') < 0 && svg.indexOf('undefined') < 0, p.id);
+      ok(/^<svg [^>]*role="img"[^>]*aria-label="/.test(svg), p.id + ' role/aria');
+    });
+  });
+  test('模式図：肘の位置は計算で決まり、上腕・前腕の長さが保たれる', function () {
+    D.presets.forEach(function (p) {
+      F.compute(presetState(p.id)).arms.forEach(function (a) {
+        var u = Math.hypot(a.elbow.x - a.shoulder.x, a.elbow.y - a.shoulder.y), f = Math.hypot(a.hand.x - a.elbow.x, a.hand.y - a.elbow.y);
+        ok(Math.abs(u - a.upper) < 0.6 && Math.abs(f - a.fore) < 0.6, p.id + ' 腕の長さ ' + u.toFixed(1) + '/' + f.toFixed(1));
+        ok(a.upper <= F.armLengths.upper && a.fore <= F.armLengths.fore, p.id + ' 手前へ伸びる腕は短く描く');
+      });
+    });
+  });
+  test('模式図：姿勢がいちばん見分けやすい向きで描く', function () {
+    var view = function (id) { return F.compute(presetState(id)).viewKey; };
+    eq(view('basic_front'), 'front');
+    eq(view('calm_seated'), 'side', '座る姿勢は横から');
+    eq(view('one_knee'), 'side', '片膝は横から');
+    eq(view('relationship_bed_supine_looking_up'), 'side', '寝姿は横から');
+    eq(view('special_sonkyo'), 'front', '蹲踞は膝の開きが見える正面から');
+    eq(view('special_shiko_stance'), 'front');
+    eq(view('special_i_balance'), 'front', 'I字バランスは脚を横へ上げるので正面から');
+    eq(view('special_bridge_pose'), 'side');
+    eq(view('walk_turn'), 'back', '背中向きは背面から');
+    ok(F.compute(presetState('walk_turn')).face.kind !== 'front', '振り返りは正面顔にしない');
+  });
+  test('模式図：プリセットごとの固定画ではなく、今の設定から描き直す', function () {
+    var base = presetState('basic_front'), before = F.compute(base);
+    var hip = S.applyPatch(base, { 'pose.arms.primary.action': 'hand_on_hip' }), after = F.compute(hip);
+    ok(Math.abs(after.arms[0].hand.y - before.arms[0].hand.y) > 6 || Math.abs(after.arms[0].hand.x - before.arms[0].hand.x) > 2, '片手を腰へ動かすと手の位置が変わる');
+    eq(after.arms[1].hand, before.arms[1].hand, '反対の手は変わらない');
+    var up = F.compute(S.applyPatch(base, { 'pose.arms.mode': 'combined', 'pose.arms.combined': 'arms_up' }));
+    ok(up.arms.every(function (a) { return a.hand.y < up.head.y; }), '両腕を頭上へ');
+    var sit = F.compute(S.applyPostureDefaults(base, 'sitting'));
+    eq(sit.view, 'side', '姿勢を座るへ変えると座り姿の図になる');
+  });
+  test('模式図：撮影範囲の枠は画角に合わせて変わる', function () {
+    var full = F.compute(presetState('basic_front')).crop;
+    var bust = F.compute(S.applyPatch(presetState('basic_front'), { 'camera.shotSize': 'bust_shot' })).crop;
+    var face = F.compute(S.applyPatch(presetState('basic_front'), { 'camera.shotSize': 'face_close_up' })).crop;
+    var m = F.compute(presetState('basic_front'));
+    ok(full.y + full.h >= m.legs[0].foot.y, '全身の枠は足先まで');
+    ok(bust.y + bust.h < m.hip.y, 'バストショットの枠は腰より上で終わる');
+    ok(face.w * face.h < bust.w * bust.h && bust.w * bust.h < full.w * full.h, '顔アップ＜バスト＜全身');
+    eq(F.compute(S.applyPatch(presetState('basic_front'), { 'camera.roll': 'dutch' })).crop.roll !== 0, true, '傾きは枠を回転させる');
+  });
+  test('模式図：カメラの印は設定した高さに置く', function () {
+    var cam = function (e) { var m = F.compute(S.applyPatch(presetState('basic_front'), { 'camera.elevation': e })); return { cam: m.camera, head: m.head }; };
+    var eye = cam('eye_level'), low = cam('low'), high = cam('high');
+    ok(Math.abs(eye.cam.y - eye.head.y) < 2, '目線の高さ');
+    ok(low.cam.y > low.head.y + 40, '低位置は地面寄り');
+    ok(high.cam.y < high.head.y, '高位置は頭より上');
+    eq(cam('top_down').cam.aim, 90, '真上寄りは真下を向く');
+  });
+  test('模式図：腕が未指定でも、拘束やViewerとのやりとりから手の位置を決める', function () {
+    var behind = F.compute(presetState('special_rope_wrists_behind_turn'));
+    ok(behind.arms.every(function (a) { return a.hidden; }), '後ろ手は体の陰（点線）');
+    var over = F.compute(presetState('special_wrists_overhead_standing'));
+    ok(over.arms.every(function (a) { return a.hand.y < over.head.y; }), '頭上で固定');
+    var offer = F.compute(presetState('relationship_offer_one_hand_to_viewer'));
+    ok(offer.arms[0].toward, 'Viewerへ差し出す手は手前へ伸びる');
+  });
+  test('模式図：図を描いても設計状態とプロンプト出力は変わらない', function () {
+    D.presets.forEach(function (p) {
+      var st = presetState(p.id), snapshot = JSON.stringify(st), before = JSON.stringify(G.blocks(st));
+      F.svg(st, { label: true }); F.compute(st);
+      eq(JSON.stringify(st), snapshot, p.id + ' 状態');
+      eq(JSON.stringify(G.blocks(st)), before, p.id + ' 出力');
+    });
+  });
+  test('模式図：姿勢が未選択なら案内だけを出す', function () {
+    eq(F.compute(S.initial()), null);
+    ok(F.svg(S.initial()).indexOf('姿勢を選ぶと図が出ます') >= 0);
+  });
+
   function run() {
     var results = tests.map(function (t) { try { t.fn(); return { name: t.name, pass: true }; } catch (e) { return { name: t.name, pass: false, error: e.message }; } });
     var passed = results.filter(function (r) { return r.pass; }).length;

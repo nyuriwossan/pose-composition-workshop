@@ -344,3 +344,46 @@ textarea.person-prompt { min-height: 104px; font-family: ui-monospace, SFMono-Re
 .expr-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); box-shadow: inset 0 0 0 1px var(--accent); }
 .expr-chip:disabled { color: #aaa49a; background: #eeeae2; text-decoration: line-through; cursor: not-allowed; }
 .expr-blocked { margin-top: 2px; }
+
+/* ---- 棒人間の模式図（2026-10-29） ---- */
+.pose-figure { display: block; width: 100%; height: auto; overflow: hidden; }
+.pose-figure .pf-limb, .pose-figure .pf-torso { fill: none; stroke: var(--ink); stroke-width: 3.2; stroke-linecap: round; stroke-linejoin: round; }
+.pose-figure .pf-shoulder { stroke: var(--ink); stroke-width: 2.6; stroke-linecap: round; }
+.pose-figure .pf-far { stroke: #9a958a; }
+.pose-figure .pf-hidden { stroke-dasharray: 2.5 3; stroke: #9a958a; }
+.pose-figure .pf-toward { stroke-width: 4; }
+.pose-figure .pf-hand { fill: var(--ink); stroke: none; }
+.pose-figure .pf-hand.pf-hidden { fill: #9a958a; }
+.pose-figure .pf-hand--toward { fill: var(--paper-strong); stroke: var(--ink); stroke-width: 2; }
+.pose-figure .pf-bound { fill: none; stroke: var(--accent); stroke-width: 1.6; stroke-dasharray: 2 1.6; }
+.pose-figure .pf-head { fill: var(--paper-strong); stroke: var(--ink); stroke-width: 2.6; }
+.pose-figure .pf-head--back { fill: #e6e1d6; }
+.pose-figure .pf-eye { fill: var(--ink); }
+.pose-figure .pf-nose { fill: none; stroke: var(--ink); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
+.pose-figure .pf-hair { fill: none; stroke: var(--ink); stroke-width: 1.6; stroke-linecap: round; }
+.pose-figure .pf-ground { stroke: #c9c2b4; stroke-width: 1.4; stroke-linecap: round; }
+.pose-figure .pf-prop { fill: #ebe6dc; stroke: #cfc8ba; stroke-width: 1; }
+.pose-figure .pf-heel { stroke-width: 2; }
+.pose-figure .pf-outside { fill: var(--paper); opacity: .72; }
+.pose-figure .pf-crop { fill: none; stroke: var(--indigo); stroke-width: 1.4; stroke-dasharray: 4 3; }
+.pose-figure .pf-camera rect, .pose-figure .pf-camera path { fill: var(--indigo); }
+.pose-figure .pf-label { fill: var(--muted); font-size: 8px; font-weight: 700; }
+.pose-figure .pf-empty { fill: var(--muted); font-size: 8px; }
+
+/* 図で選ぶ（プリセット） */
+.display-tabs { margin: 10px 0 12px; }
+.figure-note { margin-top: 4px !important; }
+.figure-note { margin: 0 0 10px; color: var(--muted); font-size: .72rem; line-height: 1.6; }
+.preset-list--figure { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.preset-card--figure { position: relative; display: flex; flex-direction: column; align-items: stretch; gap: 6px; min-height: 0; padding: 8px 8px 10px; }
+.preset-card--figure .figure-frame { display: block; border-radius: 10px; background: var(--paper); overflow: hidden; }
+.preset-card--figure strong { font-size: .8rem; line-height: 1.35; }
+.preset-card.is-selected { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); background: var(--paper-strong); }
+.selected-badge { display: inline-block; padding: 1px 7px; border-radius: 99px; background: var(--accent); color: #fff; font-size: .66rem; font-weight: 800; vertical-align: 1px; }
+.preset-card--figure .selected-badge { position: absolute; top: 12px; left: 12px; }
+@media (min-width: 620px) { .preset-list--figure { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* 編集中の図（現在の構造） */
+.structure-strip--figure { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; }
+.strip-figure { border-radius: 10px; background: var(--paper); overflow: hidden; }
+.strip-note { margin-top: 4px; font-weight: 600 !important; letter-spacing: 0 !important; line-height: 1.5; }

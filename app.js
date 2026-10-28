@@ -3,10 +3,19 @@
   var PCW = global.PCW;
   var D = PCW.data, S = PCW.state, A = PCW.advisor, G = PCW.generator, Store = PCW.storage, M = PCW.modelOutput, P = PCW.pair;
   var $ = function (id) { return document.getElementById(id); };
+  var PRESET_DISPLAY_KEY = 'pcw_preset_display_v1';
+  var F = PCW.figure;
   var main = $('main'), sticky = $('stickySummary'), nav = $('bottomNav'), meter = $('stepMeter');
   var draft = Store.loadDraft();
   var state = draft || S.initial();
-  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetFilter: 'all', collectionFilter: 'all', poseFamilyFilter: 'all', moodFilter: 'all', sceneFilter: 'all', interactionFilter: 'all', viewerOnly: false, countFilter: 'single', presetQuery: '', pairFamilyFilter: 'all', saveKind: 'single' };
+  var view = { screen: 'start', step: 1, expanded: {}, outputTab: 'compact', presetDisplay: loadPresetDisplay(), presetFilter: 'all', collectionFilter: 'all', poseFamilyFilter: 'all', moodFilter: 'all', sceneFilter: 'all', interactionFilter: 'all', viewerOnly: false, countFilter: 'single', presetQuery: '', pairFamilyFilter: 'all', saveKind: 'single' };
+  // 一人用プリセットの表示方法（名前で選ぶ／図で選ぶ）。表示だけの設定なので設計データとは別に保存する
+  function loadPresetDisplay() {
+    try { return global.localStorage.getItem(PRESET_DISPLAY_KEY) === 'figure' ? 'figure' : 'name'; } catch (e) { return 'name'; }
+  }
+  function savePresetDisplay(value) {
+    try { global.localStorage.setItem(PRESET_DISPLAY_KEY, value); } catch (e) { /* 保存できなくても表示は切り替える */ }
+  }
   // 出力先などの表示設定（pcw_preferences_v1 の output 欄）と、二人用の下書き（pcw_pair_draft_v1）
   var prefs = Store.loadOutputPrefs();
   var pairDraft = Store.loadPairDraft();
@@ -57,7 +66,8 @@
     return S.designSummary(state);
   }
   function structureStrip() {
-    return '<div class="structure-strip"><small>現在の構造</small><p>' + esc(currentSummary()) + '</p></div>';
+    var figure = F && state.pose.posture ? '<div class="strip-figure" aria-hidden="false">' + F.svg(state, { size: 'strip', label: true, ariaLabel: '現在の設計の模式図' }) + '</div>' : '';
+    return '<div class="structure-strip' + (figure ? ' structure-strip--figure' : '') + '">' + figure + '<div class="strip-copy"><small>現在の構造</small><p>' + esc(currentSummary()) + '</p>' + (figure ? '<small class="strip-note">図は設計の目安です（点線の枠＝撮影範囲、青い印＝カメラの高さ）</small>' : '') + '</div></div>';
   }
   function heading(step) {
     return '<div class="section-heading"><p class="eyebrow">STEP ' + step + ' / 6</p><h1>' + esc(stepInfo[step].title) + '</h1><p>' + esc(stepInfo[step].copy) + '</p></div>' + structureStrip();
@@ -252,7 +262,35 @@
     if (close) close.focus();
   }
   function closeSheet() { $('sheetBackdrop').hidden = true; $('bottomSheet').hidden = true; $('sheetContent').innerHTML = ''; }
+  // 今の設計がプリセットを読み込んだ直後の状態と同じなら「選択中」とする（読み込み後に変えたら外れる）
+  function designKey(st) {
+    var n = S.normalize(st);
+    delete n.entryMode; delete n.meta;
+    return JSON.stringify(n);
+  }
+  var presetKeyCache = {};
+  function presetKey(p) {
+    if (!presetKeyCache[p.id]) presetKeyCache[p.id] = designKey(S.applyPatch(S.initial(), p.patch));
+    return presetKeyCache[p.id];
+  }
+  function selectedPresetId() {
+    if (!draft || !state.pose.posture) return null;
+    var key = designKey(state);
+    var hit = D.presets.filter(function (p) { return presetKey(p) === key; })[0];
+    return hit ? hit.id : null;
+  }
+  function figureCardsHtml(list, selectedId) {
+    return list.map(function (p) {
+      var selected = p.id === selectedId;
+      var preview = S.applyPatch(S.initial(), p.patch);
+      return '<button class="preset-card preset-card--figure' + (selected ? ' is-selected' : '') + '" type="button" data-load-preset="' + attr(p.id) + '" aria-pressed="' + selected + '">' +
+        '<span class="figure-frame">' + F.svg(preview, { size: 'card', label: true, ariaLabel: p.nameJa + 'の模式図' }) + '</span>' +
+        '<strong>' + esc(p.nameJa) + '</strong>' + (selected ? '<span class="selected-badge">選択中</span>' : '') + '</button>';
+    }).join('');
+  }
   function presetCardsHtml(list) {
+    var selectedId = selectedPresetId();
+    if (view.presetDisplay === 'figure' && F) return figureCardsHtml(list, selectedId);
     return list.map(function (p) {
       var meta = p.meta || {}, cardTags = [];
       if ((meta.audienceTags || []).indexOf('viewer_perspective') >= 0) cardTags.push(D.presetAudienceTagLabels.viewer_perspective);
@@ -261,7 +299,8 @@
       if ((meta.sceneTags || []).length && D.presetSceneTagLabels[meta.sceneTags[0]]) cardTags.push(D.presetSceneTagLabels[meta.sceneTags[0]]);
       if (meta.poseFamily && D.presetPoseFamilyLabels[meta.poseFamily]) cardTags.push(D.presetPoseFamilyLabels[meta.poseFamily]);
       var tags = cardTags.slice(0, 3).map(function (tag) { return '<span class="preset-tag">' + esc(tag) + '</span>'; }).join('');
-      return '<button class="preset-card" type="button" data-load-preset="' + attr(p.id) + '"><strong>' + esc(p.nameJa) + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
+      var selected = p.id === selectedId;
+      return '<button class="preset-card' + (selected ? ' is-selected' : '') + '" type="button" data-load-preset="' + attr(p.id) + '" aria-pressed="' + selected + '"><strong>' + esc(p.nameJa) + (selected ? ' <span class="selected-badge">選択中</span>' : '') + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
     }).join('');
   }
   function userPresetRow(p) {
@@ -325,7 +364,9 @@
       '<div class="preset-filter-tools"><span aria-live="polite" id="presetCount">' + visiblePresets.length + '件を表示</span><span class="selected-filters">選択中：' + esc(selectedText) + '</span><button type="button" class="btn btn--quiet" data-action="clear-preset-filters"' + (!selected.length ? ' disabled' : '') + '>絞り込み解除</button></div>';
     var users = Store.listPresets().filter(function (p) { return p.kind !== 'pair'; });
     var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(userPresetRow).join('') : '';
-    openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + filters + '<div class="preset-list" id="presetList">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
+    var displayToggle = '<div class="segmented display-tabs" role="group" aria-label="プリセットの表示方法"><button type="button" data-preset-display="name" aria-pressed="' + (view.presetDisplay !== 'figure') + '">名前で選ぶ</button><button type="button" data-preset-display="figure" aria-pressed="' + (view.presetDisplay === 'figure') + '">図で選ぶ</button></div>';
+    var figureNote = view.presetDisplay === 'figure' ? '<p class="figure-note">' + esc(F.note) + ' 点線の枠は撮影範囲、青い印はカメラの高さです。</p>' : '';
+    openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + displayToggle + filters + figureNote + '<div class="preset-list' + (view.presetDisplay === 'figure' ? ' preset-list--figure' : '') + '" id="presetList">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
   }
   function saveSheet(kind) {
     var personSlot = /^person:/.test(kind || '') ? kind.slice(7) : null;
@@ -395,6 +436,15 @@
     if (target.dataset.target) { setPrefs(Object.assign({}, prefs, { outputTarget: target.dataset.target })); render(); refocus(target); return; }
     if (target.dataset.prefToggleSingle) { var tp = Object.assign({}, prefs); tp[target.dataset.prefToggleSingle] = !tp[target.dataset.prefToggleSingle]; setPrefs(tp); render(); refocus(target); return; }
     if (target.dataset.prefSetSingle) { var sp = Object.assign({}, prefs); sp[target.dataset.prefSetSingle] = target.dataset.value; setPrefs(sp); render(); refocus(target); return; }
+    if (target.dataset.presetDisplay) {
+      view.presetDisplay = target.dataset.presetDisplay === 'figure' ? 'figure' : 'name';
+      savePresetDisplay(view.presetDisplay);
+      var sheetBody = $('bottomSheet'), keep = sheetBody ? sheetBody.scrollTop : 0;
+      presetSheet();
+      if (sheetBody) sheetBody.scrollTop = keep;
+      refocus(target);
+      return;
+    }
     if (target.dataset.countFilter) { view.countFilter = target.dataset.countFilter; presetSheet(); return; }
     if (target.dataset.pairPresetFamily) { view.pairFamilyFilter = target.dataset.pairPresetFamily; presetSheet(); return; }
     if (target.dataset.loadPair) { openPair(target.dataset.loadPair); toast('二人用ポーズを読み込みました'); return; }
