@@ -98,6 +98,91 @@
     return terms.every(function (term) { return variants(term).some(function (v) { return hay.indexOf(v) >= 0; }); });
   }
 
+  // ---- 利用者が貼り付けた人物プロンプトの解釈（2026-10-28） ----
+  // 方針：語は翻訳・削除・言い換えをしない。行うのは、区切りの整理、人数タグの移動、出力先で使えない強調構文の変換だけ。
+  // 変換・移動・除外をしたときは必ず notices で利用者へ知らせる。
+  var COUNT_TAG = /^(solo|\d+\s?(boys?|girls?|others?)|multiple (boys|girls|others))$/;
+  var GENDER_WORDS = { '1boy': 'male', 'boy': 'male', '1girl': 'female', 'girl': 'female' };
+  var MAX_PERSON_PROMPT = 4000;
+
+  // 改行と、括弧・強調の外側にあるカンマで区切る。{{a, b}} や 1.2::a, b :: は一つのまとまりとして扱う。
+  function splitTop(text) {
+    var s = String(text == null ? '' : text), tokens = [], cur = '', depth = 0, numeric = false, i = 0;
+    while (i < s.length) {
+      var ch = s.charAt(i);
+      if (!numeric && depth === 0 && /^\s*$/.test(cur)) {
+        var m = /^-?\d+(?:\.\d+)?::/.exec(s.slice(i));
+        if (m) { cur += m[0]; i += m[0].length; numeric = true; continue; }
+      }
+      if (numeric && s.slice(i, i + 2) === '::') { cur += '::'; i += 2; numeric = false; continue; }
+      if (ch === '(' || ch === '{' || ch === '[') depth += 1;
+      else if (ch === ')' || ch === '}' || ch === ']') depth = Math.max(0, depth - 1);
+      else if ((ch === ',' || ch === '\n' || ch === '\r') && depth === 0 && !numeric) { tokens.push(cur); cur = ''; i += 1; continue; }
+      cur += ch; i += 1;
+    }
+    tokens.push(cur);
+    return tokens.map(function (t) { return t.replace(/\s*[\r\n]+\s*/g, ' ').trim(); }).filter(Boolean);
+  }
+  function roundWeight(w) { return String(Math.round(w * 100) / 100); }
+  // トークン全体を包む強調を一段だけ外す。kind: numeric / braces / brackets / sdxl / null
+  function unwrapOnce(t) {
+    var m;
+    if ((m = /^(-?\d+(?:\.\d+)?)::([\s\S]*?)\s*(::)?$/.exec(t))) return { kind: 'numeric', inner: m[2].trim(), weight: parseFloat(m[1]) };
+    if ((m = /^(\{+)([\s\S]*?)(\}+)$/.exec(t)) && m[1].length === m[3].length) return { kind: 'braces', inner: m[2].trim(), weight: Math.pow(1.05, m[1].length) };
+    if ((m = /^(\[+)([\s\S]*?)(\]+)$/.exec(t)) && m[1].length === m[3].length) return { kind: 'brackets', inner: m[2].trim(), weight: Math.pow(1.05, -m[1].length) };
+    if ((m = /^\(([^()]+):(\d+(?:\.\d+)?)\)$/.exec(t))) return { kind: 'sdxl', inner: m[1].trim(), weight: parseFloat(m[2]) };
+    return { kind: null, inner: t, weight: 1 };
+  }
+  // 重複・人数タグ判定用の比較キー（表示には使わない）
+  function coreOf(token) {
+    var t = String(token || '').trim(), guard = 0, u;
+    while (guard++ < 6 && (u = unwrapOnce(t)).kind) t = u.inner;
+    return t.toLowerCase().replace(/_/g, ' ').replace(/\s+/g, ' ').trim();
+  }
+  function stripStray(text) {
+    return String(text).replace(/-?\d+(?:\.\d+)?::/g, '').replace(/::/g, '').replace(/[{}]/g, '').replace(/\s+/g, ' ').trim();
+  }
+  // 出力先に合わせて強調構文を変換する。戻り値 drop=true は負の強調（NovelAI専用の「打ち消し」）で、他モデルでは意味が逆になるため出さない。
+  function convertToken(t, targetId) {
+    var u = unwrapOnce(t), out = t;
+    if (targetId === 'nai') {
+      out = t.replace(/\(([^()]+):(\d+(?:\.\d+)?)\)/g, function (_, inner, w) { return w + '::' + inner.trim() + ' ::'; });
+      return { text: out, changed: out !== t };
+    }
+    if (u.kind === 'numeric' && u.weight < 0) return { drop: true };
+    if (targetId === 'sdxl') {
+      if (u.kind === 'numeric' || u.kind === 'braces' || u.kind === 'brackets') out = '(' + stripStray(u.inner.replace(/[\[\]]/g, '')) + ':' + roundWeight(u.weight) + ')';
+      else out = stripStray(t);
+      return { text: out, changed: out !== t };
+    }
+    // tsubaki：自然文なので強調記号を外し、語だけを残す
+    out = (u.kind ? u.inner : t).replace(/\(([^()]+):\d+(?:\.\d+)?\)/g, '$1');
+    out = stripStray(out).replace(/[\[\]]/g, '').trim();
+    return { text: out, changed: out !== t };
+  }
+  function joinTokens(tokens) {
+    return tokens.reduce(function (acc, t) { return acc ? acc + (/[.!?。]$/.test(acc) ? ' ' : ', ') + t : t; }, '');
+  }
+  // 人物プロンプトを出力先向けに整える。
+  function adaptPrompt(text, targetId) {
+    var res = { tokens: [], cores: [], text: '', removed: [], inferred: null, genderConflict: false, converted: [], dropped: [], hasPipe: /\|/.test(String(text || '')), raw: String(text || '') };
+    var genders = [];
+    splitTop(text).forEach(function (tok) {
+      var core = coreOf(tok);
+      if (GENDER_WORDS[core]) push(genders, GENDER_WORDS[core]);
+      if (COUNT_TAG.test(core)) { res.removed.push(tok); return; }
+      var conv = convertToken(tok, targetId);
+      if (conv.drop) { res.dropped.push(tok); return; }
+      if (!conv.text) { res.dropped.push(tok); return; }
+      if (conv.changed) res.converted.push(tok + ' → ' + conv.text);
+      res.tokens.push(conv.text); res.cores.push(core);
+    });
+    if (genders.length === 1) res.inferred = genders[0];
+    else if (genders.length > 1) res.genderConflict = true;
+    res.text = joinTokens(res.tokens);
+    return res;
+  }
+
   // 一人用の出力先別アダプタ。既存generatorの意味ブロックを使い、出力先ごとに文構造・語彙・強調を変える。
   function single(state, targetId, prefs) {
     var S = PCW.state, s = S.normalize(state), p = normalizePrefs(prefs);
@@ -143,6 +228,11 @@
     searchKey: searchKey,
     matchesQuery: matchesQuery,
     single: single,
-    pixaiLexicon: PIXAI_LEXICON
+    pixaiLexicon: PIXAI_LEXICON,
+    splitTop: splitTop,
+    coreOf: coreOf,
+    adaptPrompt: adaptPrompt,
+    joinTokens: joinTokens,
+    maxPersonPrompt: MAX_PERSON_PROMPT
   };
 })(window);

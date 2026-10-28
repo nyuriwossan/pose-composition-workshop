@@ -800,6 +800,229 @@
     ok(JSON.parse(st.data[Store.keys.draft]).output.outputTarget === undefined);
   });
 
+
+  // ---- 人物A・Bの外見・服装プロンプトの自動統合（2026-10-28） ----
+  var PA = '1boy, solo, short black hair, {{red eyes}}, black suit,\nwhite shirt';
+  var PB = '1girl, long silver hair, blue eyes, (white dress:1.2), frills';
+  var personCases = { onlyA: { a: PA, b: '' }, onlyB: { a: '', b: PB }, both: { a: PA, b: PB }, none: { a: '', b: '' } };
+  function withPeople(id, c, extra) {
+    var st = pairState(id, extra);
+    st = P.set(st, 'people.a.prompt', c.a); st = P.set(st, 'people.b.prompt', c.b);
+    return st;
+  }
+  function allOutputs(st, pr) {
+    var t = P.render(st, 'tsubaki', pr), x = P.render(st, 'sdxl', pr), n = P.render(st, 'nai', pr);
+    return { t: t, x: x, n: n };
+  }
+  test('人物入力：初期状態は空欄で、旧保存データ（prompt欄なし）も空欄として読む', function () {
+    eq([P.initial().people.a.prompt, P.initial().people.b.prompt], ['', '']);
+    var old = P.normalize({ poseId: 'pair_lap_facing', people: { a: { gender: 'male' }, b: { gender: 'female' } }, notes: { a: 'blush' } });
+    eq([old.people.a.prompt, old.people.b.prompt, old.people.a.gender, old.notes.a], ['', '', 'male', 'blush']);
+    eq(P.normalize({ people: { a: { prompt: 42 } } }).people.a.prompt, '');
+  });
+  test('人物入力：両方空欄・空白だけの入力では、全ポーズ・全出力先の出力が変わらない', function () {
+    D.pairPoses.forEach(function (pose) {
+      prefVariants.forEach(function (pr) {
+        var base = pairState(pose.id, { 'people.a.gender': 'male', 'notes.common': 'bedroom' });
+        var blank = P.set(P.set(base, 'people.a.prompt', '  \n '), 'people.b.prompt', ',  ,');
+        var a = allOutputs(base, pr), b = allOutputs(blank, pr);
+        eq(b.t.text, a.t.text, pose.id); eq(b.x.text, a.x.text, pose.id); eq([b.n.base, b.n.a, b.n.b, b.n.text], [a.n.base, a.n.a, a.n.b, a.n.text], pose.id);
+        eq(P.structureJa(blank), P.structureJa(base), pose.id);
+      });
+    });
+  });
+  test('人物入力：Aのみ・Bのみ・両方で、全ポーズ×全出力先×強調設定の出力が整っている', function () {
+    D.pairPoses.forEach(function (pose) {
+      Object.keys(personCases).forEach(function (key) {
+        prefVariants.forEach(function (pr) {
+          var st = withPeople(pose.id, personCases[key]), o = allOutputs(st, pr), label = pose.id + '/' + key;
+          ok(o.t.text && !/undefined|null|\.\.|, ,/.test(o.t.text), label + ' tsubaki');
+          cleanList(o.x.text, label + ' sdxl'); cleanList(o.n.base, label + ' nai base'); cleanList(o.n.a, label + ' nai A'); cleanList(o.n.b, label + ' nai B');
+          ok(!MO.syntaxLeaks('tsubaki', o.t.text), label + ' tsubaki leak'); ok(!MO.syntaxLeaks('sdxl', o.x.text), label + ' sdxl leak'); ok(!MO.syntaxLeaks('nai', o.n.text), label + ' nai leak');
+          ok(!MO.hasPixaiForbidden(o.t.text) && !MO.hasPixaiForbidden(o.x.text), label + ' adult/bust');
+        });
+      });
+    });
+  });
+  test('人物入力：Aのみ・Bのみの外見は、その人物の欄・文だけに入る', function () {
+    var onlyA = allOutputs(withPeople('pair_hug_from_behind', personCases.onlyA), {});
+    ok(onlyA.n.a.indexOf('short black hair') >= 0 && onlyA.n.b.indexOf('short black hair') < 0 && onlyA.n.base.indexOf('short black hair') < 0);
+    ok(onlyA.t.text.indexOf('Appearance of Person A (the one hugging from behind): short black hair') >= 0 && onlyA.t.text.indexOf('Appearance of Person B') < 0);
+    ok(onlyA.t.text.indexOf('Keep the two appearances separate') < 0);
+    var onlyB = allOutputs(withPeople('pair_hug_from_behind', personCases.onlyB), {});
+    ok(onlyB.n.b.indexOf('long silver hair') >= 0 && onlyB.n.a.indexOf('long silver hair') < 0);
+    ok(onlyB.t.text.indexOf('Appearance of Person B (the one standing in front): long silver hair') >= 0 && onlyB.t.text.indexOf('Appearance of Person A') < 0);
+  });
+  test('人物入力：両方入力でA・Bの特徴が混ざらない（NAIは欄ごと、Tsubakiは文ごと）', function () {
+    D.pairPoses.forEach(function (pose) {
+      var o = allOutputs(withPeople(pose.id, personCases.both), {});
+      ok(o.n.a.indexOf('black suit') >= 0 && o.n.a.indexOf('silver') < 0, pose.id + ' A');
+      ok(o.n.b.indexOf('long silver hair') >= 0 && o.n.b.indexOf('black suit') < 0, pose.id + ' B');
+      var sentA = o.t.text.split('Appearance of Person A')[1].split('. ')[0], sentB = o.t.text.split('Appearance of Person B')[1].split('. ')[0];
+      ok(sentA.indexOf('black suit') >= 0 && sentA.indexOf('silver') < 0, pose.id + ' tsubaki A');
+      ok(sentB.indexOf('silver') >= 0 && sentB.indexOf('black suit') < 0, pose.id + ' tsubaki B');
+      ok(o.t.text.indexOf('Keep the two appearances separate') >= 0, pose.id);
+      ok(o.t.text.indexOf('Appearance of Person A') < o.t.text.indexOf(pose.models.tsubaki.overview), pose.id + ' 外見はポーズ説明の前');
+    });
+  });
+  test('人物入力：Tsubakiは位置関係の説明を各ポーズの役割と結び付ける', function () {
+    D.pairPoses.forEach(function (pose) {
+      var t = P.render(withPeople(pose.id, personCases.both), 'tsubaki', {}).text;
+      ok(t.indexOf('Appearance of Person A (' + pose.models.tsubaki.roleEn.a + ')') >= 0, pose.id);
+      ok(t.indexOf('Appearance of Person B (' + pose.models.tsubaki.roleEn.b + ')') >= 0, pose.id);
+      ok(!/adult|bust/i.test(pose.models.tsubaki.roleEn.a + pose.models.tsubaki.roleEn.b), pose.id);
+    });
+  });
+  test('人物入力：人数タグの混在。人物欄から外し、人数は一か所だけ（SDXL先頭・NAI共通）', function () {
+    var st = withPeople('pair_lap_facing', personCases.both), o = allOutputs(st, {});
+    eq(tagsOf(o.x.text).filter(function (t) { return /^(\d+(boys?|girls?)|solo)$/.test(t); }), ['1boy', '1girl']);
+    eq(tagsOf(o.n.base).slice(0, 2), ['1boy', '1girl']);
+    [o.n.a, o.n.b].forEach(function (c) { ok(!/\b(1boy|1girl|solo)\b/.test(c), c); });
+    ok(/^boy, /.test(o.n.a) && /^girl, /.test(o.n.b), '性別語はboy/girl');
+    ok(!/\b(1boy|1girl|solo)\b/.test(o.t.text.split('appear together.')[1]), 'Tsubaki本文に人数タグなし');
+    ok(o.t.text.indexOf('Person A is a man, and Person B is a woman.') >= 0, '入力から性別を推定');
+    var codes = P.issues(st, 'nai', {}).filter(function (i) { return i.id === 'person_a'; })[0].codes;
+    ok(codes.indexOf('count_tags') >= 0 && codes.indexOf('gender_inferred') >= 0);
+    ok(!P.issues(st, 'nai', {}).some(function (i) { return i.id === 'nai_count_tags'; }), '推定で人数タグが入るときは不足案内を出さない');
+  });
+  test('人物入力：一人用と二人用の人数指定を混同しない（solo / 2boys は人物欄から外す）', function () {
+    var st = withPeople('pair_hug_from_behind', { a: 'solo, 2boys, black hair', b: 'multiple girls, red hair' });
+    var o = allOutputs(st, {});
+    ok(!/\b(solo|2boys|multiple girls)\b/.test(o.x.text.replace(/^two people, /, '')), o.x.text);
+    ok(/^two people, /.test(o.x.text), '性別不明なら two people');
+    [o.n.a, o.n.b, o.n.base].forEach(function (c) { ok(!/\b(solo|2boys|multiple girls)\b/.test(c), c); });
+  });
+  test('人物入力：性別の設定と入力の語が食い違うときは設定を優先し、警告する', function () {
+    var st = P.set(withPeople('pair_lap_facing', { a: '1girl, long hair', b: '' }), 'people.a.gender', 'male');
+    var n = P.render(st, 'nai', {});
+    ok(/^boy, long hair/.test(n.a), n.a);
+    var issue = P.issues(st, 'nai', {}).filter(function (i) { return i.id === 'person_a'; })[0];
+    ok(issue.severity === 'warning' && issue.codes.indexOf('gender_mismatch') >= 0);
+    var both = withPeople('pair_lap_facing', { a: 'boy, girl, scarf', b: '' });
+    ok(P.issues(both, 'sdxl', {}).filter(function (i) { return i.id === 'person_a'; })[0].codes.indexOf('gender_conflict') >= 0);
+    eq(P.countTags(both), []);
+  });
+  test('人物入力：NAIの強調構文を含む入力。NAIはそのまま、SDXLは変換、Tsubakiは記号を外す', function () {
+    var st = withPeople('pair_over_supine', { a: '{{red eyes}}, [[smile]], 1.3::silver earrings, ring ::, -1::hat ::', b: '' });
+    var o = allOutputs(st, {});
+    ok(o.n.a.indexOf('{{red eyes}}, [[smile]], 1.3::silver earrings, ring ::, -1::hat ::') >= 0, o.n.a);
+    ok(o.x.text.indexOf('(red eyes:1.1), (smile:0.91), (silver earrings, ring:1.3)') >= 0, o.x.text);
+    ok(o.t.text.indexOf('red eyes, smile, silver earrings, ring') >= 0, o.t.text);
+    ok(o.x.text.indexOf('hat') < 0 && o.t.text.indexOf('hat') < 0, '負の強調はPIXAI系に出さない');
+    ['sdxl', 'tsubaki'].forEach(function (t) { ok(P.issues(st, t, {}).filter(function (i) { return i.id === 'person_a'; })[0].codes.indexOf('emphasis_dropped') >= 0, t); });
+    var sd = withPeople('pair_over_supine', { a: '(long hair:1.3), kafka (honkai: star rail)', b: '' });
+    ok(P.render(sd, 'nai', {}).a.indexOf('1.3::long hair ::, kafka (honkai: star rail)') >= 0, 'SDXL形式はNAI形式へ。重みのない括弧は名前として保持');
+    ok(P.render(sd, 'sdxl', {}).text.indexOf('(long hair:1.3), kafka (honkai: star rail)') >= 0);
+  });
+  test('人物入力：アプリの強調と利用者の強調が出力先ごとに混ざらない', function () {
+    D.pairPoses.forEach(function (pose) {
+      prefVariants.forEach(function (pr) {
+        var o = allOutputs(withPeople(pose.id, personCases.both), pr);
+        ok(!/[{}]|::/.test(o.x.text), pose.id + ' SDXLにNAI構文なし');
+        ok(!/\([^()]*:\d+(\.\d+)?\)/.test(o.n.text), pose.id + ' NAIにSDXL構文なし');
+      });
+    });
+  });
+  test('人物入力：長いプロンプトの貼り付け（上限4000字まで保持し、超過分だけ切る）', function () {
+    var tags = []; for (var i = 0; i < 400; i++) tags.push('tag' + i);
+    var long = tags.join(', ');
+    ok(long.length > 3000 && long.length <= 4000, '長さ ' + long.length);
+    var st = withPeople('pair_hug_from_behind', { a: long, b: '' });
+    eq(st.people.a.prompt, long);
+    ok(P.render(st, 'nai', {}).a.indexOf('tag399') >= 0); ok(P.render(st, 'sdxl', {}).text.indexOf('tag399') >= 0); ok(P.render(st, 'tsubaki', {}).text.indexOf('tag399') >= 0);
+    var over = P.set(st, 'people.a.prompt', long + long);
+    eq(over.people.a.prompt.length, 4000);
+  });
+  test('人物入力：改行・文章の貼り付けは区切りだけ整え、語は変えない', function () {
+    var st = withPeople('pair_hug_from_behind', { a: 'He has short black hair.\nHe wears a navy coat.', b: 'red scarf\n\nwhite gloves' });
+    ok(P.render(st, 'tsubaki', {}).text.indexOf('Appearance of Person A (the one hugging from behind): He has short black hair. He wears a navy coat.') >= 0);
+    ok(P.render(st, 'nai', {}).b.indexOf('red scarf, white gloves') >= 0);
+    eq(st.people.b.prompt, 'red scarf\n\nwhite gloves', '保存値は原文のまま');
+  });
+  test('人物入力：利用者の語とアプリの語が重なるときはアプリ側を出さない', function () {
+    var st = withPeople('pair_hug_from_behind', { a: 'boy, black hair', b: 'looking ahead, red hair' });
+    var n = P.render(st, 'nai', {});
+    eq((n.a.match(/\bboy\b/g) || []).length, 1); eq((n.b.match(/looking ahead/g) || []).length, 1);
+    var x = P.render(withPeople('pair_hug_from_behind', { a: 'white shirt', b: 'white shirt' }), 'sdxl', {}).text;
+    eq((x.match(/white shirt/g) || []).length, 1, 'SDXLの共通語は一つに');
+  });
+  test('人物入力：出力先を変えても入力内容は変わらない', function () {
+    var st = withPeople('pair_straddle_lying', personCases.both), before = JSON.stringify(st);
+    ['tsubaki', 'sdxl', 'nai', 'generic', 'nai'].forEach(function (t) { P.render(st, t, { emphasis: true }); P.issues(st, t, {}); });
+    eq(JSON.stringify(st), before);
+  });
+  test('人物入力：ポーズを変えても入力内容を保持する', function () {
+    var st = withPeople('pair_straddle_lying', personCases.both);
+    pairIds.forEach(function (id) { var next = P.selectPose(st, id).state; eq([next.people.a.prompt, next.people.b.prompt], [PA, PB], id); st = next; });
+    eq(P.selectPose(st, null).state.people.a.prompt, PA, 'ポーズ未選択に戻しても保持');
+  });
+  test('人物入力：一括コピー（| 区切り）と個別コピーの内容が一致する', function () {
+    D.pairPoses.forEach(function (pose) {
+      Object.keys(personCases).forEach(function (key) {
+        var n = P.render(withPeople(pose.id, personCases[key]), 'nai', { emphasis: true });
+        eq(n.text, [n.base, n.a, n.b].join(' | '), pose.id + key);
+        eq(n.characters.map(function (c) { return c.id; }), ['a', 'b']);
+        eq(n.characters.map(function (c) { return c.text; }), [n.a, n.b]);
+      });
+    });
+  });
+  test('人物入力：| を含む入力は一括コピーがずれるため警告する', function () {
+    var st = withPeople('pair_hug_from_behind', { a: 'black hair | red eyes', b: '' });
+    ok(P.issues(st, 'nai', {}).filter(function (i) { return i.id === 'person_a'; })[0].codes.indexOf('pipe') >= 0);
+    ok(!P.issues(st, 'sdxl', {}).some(function (i) { return i.id === 'person_a' && i.codes.indexOf('pipe') >= 0; }));
+  });
+  test('人物入力：adult／bust はアプリ側で足さず、利用者の入力にあれば警告だけする', function () {
+    var st = withPeople('pair_hug_from_behind', { a: 'adult man, black hair', b: '' });
+    ok(P.issues(st, 'tsubaki', {}).some(function (i) { return i.id === 'pixai_forbidden_note'; }));
+    ok(P.render(st, 'tsubaki', {}).text.indexOf('adult man') >= 0, '利用者の語は残す');
+    ok(!P.issues(st, 'nai', {}).some(function (i) { return i.id === 'pixai_forbidden_note'; }));
+  });
+  test('人物入力：SDXLでは人物属性が混ざる可能性を案内する', function () {
+    ok(P.issues(withPeople('pair_hug_from_behind', personCases.both), 'sdxl', {}).some(function (i) { return i.id === 'sdxl_person_mixing'; }));
+    ok(!P.issues(pairState('pair_hug_from_behind'), 'sdxl', {}).some(function (i) { return i.id === 'sdxl_person_mixing'; }));
+  });
+  test('人物入力：A⇄B入れ替えで外見・服装も入れ替わる', function () {
+    var st = P.swapPeople(withPeople('pair_lap_facing', personCases.both));
+    eq([st.people.a.prompt, st.people.b.prompt], [PB, PA]);
+  });
+  test('人物入力：日本語構造に人物ごとの外見・服装を表示する', function () {
+    var j = P.structureJa(withPeople('pair_lap_facing', personCases.onlyA));
+    ok(j.indexOf('【人物Aの外見・服装】1boy, solo, short black hair, {{red eyes}}, black suit, ／ white shirt') >= 0, j);
+    ok(j.indexOf('【人物Bの外見・服装】') < 0);
+  });
+  test('人物入力：ポーズと構図だけのリセットは人物入力と末尾追加を残す', function () {
+    var st = P.set(withPeople('pair_lap_facing', personCases.both, { 'camera.angle': 'low', 'people.a.gender': 'male' }), 'notes.common', 'bedroom');
+    var r = P.resetPoseOnly(st);
+    eq([r.poseId, r.camera.angle, r.people.a.prompt, r.people.b.prompt, r.people.a.gender, r.notes.common], [null, null, PA, PB, 'male', 'bedroom']);
+    ok(P.hasPersonInput(r)); ok(!P.hasPersonInput(P.initial()));
+  });
+  test('人物入力：人物の枠は配列で、人数タグは三人以上の数え方にも対応する', function () {
+    eq(P.slotsOf(null).map(function (x) { return x.id; }), ['a', 'b']);
+    eq(P.countTags({}, [{ gender: 'male' }, { gender: 'male' }, { gender: 'female' }]), ['2boys', '1girl']);
+    eq(P.countTags({}, [{ gender: 'female' }, { gender: 'female' }, { gender: 'female' }]), ['3girls']);
+    eq(P.countTags({}, [{ gender: 'male' }, { gender: 'unspecified' }]), []);
+  });
+  test('人物入力：解析は括弧と強調の内側のカンマで区切らない', function () {
+    eq(MO.splitTop('a, {{b, c}}, 1.2::d, e ::, (f, g:1.1), h\ni'), ['a', '{{b, c}}', '1.2::d, e ::', '(f, g:1.1)', 'h', 'i']);
+    eq(MO.coreOf('{{Black_Hair}}'), 'black hair'); eq(MO.coreOf('1.2::Red Eyes ::'), 'red eyes');
+  });
+  test('保存：人物プロンプトセットの保存・一覧・削除・上限・破損', function () {
+    var st = memoryStore();
+    var item = Store.savePersonSet('黒髪スーツ', { gender: 'male', prompt: PA }, st);
+    eq(Store.listPersonSets(st)[0].prompt, PA); eq(Store.listPersonSets(st)[0].gender, 'male');
+    Store.savePersonSet('', { gender: 'robot', prompt: 'x' }, st);
+    eq(Store.listPersonSets(st)[0].name, '名前なしの人物'); eq(Store.listPersonSets(st)[0].gender, 'unspecified');
+    Store.deletePersonSet(item.id, st); eq(Store.listPersonSets(st).length, 1);
+    for (var i = 0; i < 40; i++) Store.savePersonSet('p' + i, { prompt: 'x' }, st);
+    eq(Store.listPersonSets(st).length, Store.maxPersonSets);
+    st.data[Store.keys.personSets] = '{broken'; eq(Store.listPersonSets(st), []);
+  });
+  test('保存：二人用の下書き・名前付き保存に人物入力が残る', function () {
+    var st = memoryStore(), s = withPeople('pair_lap_facing', personCases.both);
+    Store.savePairDraft(s, st); eq(Store.loadPairDraft(st).people.a.prompt, PA);
+    Store.savePreset('二人', s, st, 'pair'); eq(Store.listPresets(st)[0].state.people.b.prompt, PB);
+  });
+
   function run() {
     var results = tests.map(function (t) { try { t.fn(); return { name: t.name, pass: true }; } catch (e) { return { name: t.name, pass: false, error: e.message }; } });
     var passed = results.filter(function (r) { return r.pass; }).length;

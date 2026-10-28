@@ -287,3 +287,41 @@ details.fold > summary small { display: block; color: var(--muted); font-size: .
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .001ms !important; animation-duration: .001ms !important; }
 }
+
+/* ---- 人物A・Bの外見・服装入力（2026-10-28） ---- */
+.person-card .card-head { margin-bottom: 6px; }
+.person-roles { margin: 0 0 10px; }
+.person-fold { margin-top: 10px; border: 1px solid var(--line); border-radius: 14px; background: #fff; }
+.person-fold--a { border-left: 4px solid var(--accent); }
+.person-fold--b { border-left: 4px solid var(--indigo); }
+.person-fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 56px; padding: 8px 12px; cursor: pointer; }
+.person-fold > summary::-webkit-details-marker { display: none; }
+.person-fold > summary::after { content: '＋'; flex: none; margin-left: auto; width: 28px; height: 28px; display: grid; place-items: center; border-radius: 99px; background: var(--paper); color: var(--muted); font-weight: 800; }
+.person-fold[open] > summary::after { content: '－'; }
+.person-fold__title { min-width: 0; }
+.person-fold__title strong { display: block; font-size: .86rem; }
+.person-fold__title small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .7rem; }
+.person-fold__body { padding: 0 12px 12px; }
+.person-placement { margin: 0 0 6px; padding: 8px 10px; border-radius: 10px; background: var(--paper); color: #4e4b45; font-size: .78rem; }
+.person-placement span { display: block; color: var(--muted); font-size: .66rem; font-weight: 800; }
+.person-fold .segmented { margin: 8px 0 10px; }
+.person-fold .segmented__label { font-size: .7rem; font-weight: 800; color: var(--muted); }
+textarea.person-prompt { min-height: 104px; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 16px; line-height: 1.5; }
+.person-meta { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 2px 10px; margin-top: 4px; color: var(--muted); font-size: .68rem; }
+.person-where { flex: 1 1 200px; text-align: right; }
+.person-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.person-sets { margin-top: 8px; font-size: .76rem; }
+.person-sets > summary { min-height: 40px; display: flex; align-items: center; cursor: pointer; color: var(--indigo); font-weight: 800; }
+.person-set-list { margin: 0; padding: 0; list-style: none; }
+.person-set-list li { display: flex; gap: 6px; align-items: center; padding: 4px 0; border-top: 1px dashed var(--line); }
+.person-set-list li button:first-child { flex: 1 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: left; }
+.btn--small-plain { min-height: 40px; padding: 6px 10px; font-size: .74rem; }
+.nai-howto { margin-top: 10px; padding: 10px 12px; border-radius: 12px; background: var(--indigo-soft); color: #2e4560; font-size: .76rem; }
+.nai-howto summary { min-height: 36px; display: flex; align-items: center; cursor: pointer; font-weight: 800; }
+.nai-howto ol { margin: 6px 0 6px; padding-left: 1.3em; }
+.nai-howto p { margin: 0; font-weight: 800; }
+.reset-options { display: grid; gap: 10px; }
+.reset-option { width: 100%; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: #fff; text-align: left; cursor: pointer; }
+.reset-option strong, .reset-option small { display: block; }
+.reset-option small { margin-top: 4px; color: var(--muted); font-size: .74rem; line-height: 1.6; }
+.reset-option--danger strong { color: var(--hard); }

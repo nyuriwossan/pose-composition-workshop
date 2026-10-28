@@ -1,7 +1,8 @@
 (function (global) {
   'use strict';
   var PCW = global.PCW = global.PCW || {};
-  var KEYS = { draft: 'pcw_draft_v1', presets: 'pcw_user_presets_v1', preferences: 'pcw_preferences_v1', pairDraft: 'pcw_pair_draft_v1' };
+  var KEYS = { draft: 'pcw_draft_v1', presets: 'pcw_user_presets_v1', preferences: 'pcw_preferences_v1', pairDraft: 'pcw_pair_draft_v1', personSets: 'pcw_person_sets_v1' };
+  var MAX_PERSON_SETS = 30;
   var MAX_PRESETS = 20;
 
   function target(store) { return store || global.localStorage; }
@@ -56,6 +57,27 @@
     var current = loadPreferences(store);
     return PCW.modelOutput ? PCW.modelOutput.normalizePrefs(current.output) : (current.output || {});
   }
+  // 人物プロンプトセット：人物A・Bのどちらにも読み込める、名前付きの外見・服装プロンプト
+  function listPersonSets(store) {
+    var raw = read(KEYS.personSets, [], store);
+    if (!Array.isArray(raw)) return [];
+    var max = PCW.modelOutput ? PCW.modelOutput.maxPersonPrompt : 4000;
+    return raw.filter(function (x) { return x && typeof x.name === 'string' && typeof x.prompt === 'string'; }).map(function (x) {
+      return { id: String(x.id || ''), name: x.name.slice(0, 60), gender: ['male', 'female'].indexOf(x.gender) >= 0 ? x.gender : 'unspecified', prompt: x.prompt.slice(0, max), savedAt: x.savedAt || '' };
+    }).slice(0, MAX_PERSON_SETS);
+  }
+  function savePersonSet(name, person, store) {
+    var list = listPersonSets(store), src = person || {};
+    var item = { id: 'person_' + Date.now() + '_' + Math.random().toString(36).slice(2, 7), name: String(name || '').trim().slice(0, 60) || '名前なしの人物', gender: ['male', 'female'].indexOf(src.gender) >= 0 ? src.gender : 'unspecified', prompt: String(src.prompt || ''), savedAt: new Date().toISOString() };
+    list.unshift(item);
+    write(KEYS.personSets, list.slice(0, MAX_PERSON_SETS), store);
+    return item;
+  }
+  function deletePersonSet(id, store) {
+    var next = listPersonSets(store).filter(function (x) { return x.id !== id; });
+    write(KEYS.personSets, next, store);
+    return next;
+  }
   function savePairDraft(state, store) { return PCW.pair ? write(KEYS.pairDraft, PCW.pair.normalize(state), store) : false; }
   function loadPairDraft(store) {
     var raw = read(KEYS.pairDraft, null, store);
@@ -82,6 +104,10 @@
     loadOutputPrefs: loadOutputPrefs,
     savePairDraft: savePairDraft,
     loadPairDraft: loadPairDraft,
-    clearPairDraft: function (store) { return remove(KEYS.pairDraft, store); }
+    clearPairDraft: function (store) { return remove(KEYS.pairDraft, store); },
+    maxPersonSets: MAX_PERSON_SETS,
+    listPersonSets: listPersonSets,
+    savePersonSet: savePersonSet,
+    deletePersonSet: deletePersonSet
   };
 })(window);

@@ -88,7 +88,8 @@
     meter.innerHTML = '<span>身体とカメラを一緒に設計</span>';
     sticky.hidden = true; nav.hidden = true;
     var resume = draft ? '<div class="resume-card"><p>端末に前回の設計が残っています。</p><div class="resume-actions"><button class="btn btn--primary" data-action="resume">前回の続き</button><button class="btn btn--quiet" data-action="discard-draft">破棄</button></div></div>' : '';
-    var pairResume = pairDraft && pairDraft.poseId ? '<div class="resume-card resume-card--pair"><p>二人用の前回の選択：' + esc(P.summary(pairDraft)) + '</p><div class="resume-actions"><button class="btn btn--primary" data-action="resume-pair">二人用の続き</button><button class="btn btn--quiet" data-action="discard-pair-draft">破棄</button></div></div>' : '';
+    var pairHasPeople = pairDraft && P.hasPersonInput(pairDraft);
+    var pairResume = pairDraft && (pairDraft.poseId || pairHasPeople) ? '<div class="resume-card resume-card--pair"><p>二人用の前回の選択：' + esc(P.summary(pairDraft)) + (pairHasPeople ? '（人物A・Bの入力あり）' : '') + '</p><div class="resume-actions"><button class="btn btn--primary" data-action="resume-pair">二人用の続き</button><button class="btn btn--quiet" data-action="discard-pair-draft">破棄</button></div></div>' : '';
     main.innerHTML = '<section class="hero"><p class="eyebrow">POSE / CAMERA / COMPOSITION</p><h1>身体の動きと<br>カメラ構図を<br>一緒に組み立てる。</h1><p class="hero-copy">タグを並べるのではなく、身体各部の関係を整理。見えない指定や両立しない組み合わせを確認して、画像生成AI向けの英語へ変換します。</p></section><div class="entry-grid">' +
       '<button class="entry-card" data-entry="guided"><span class="entry-number">01</span><span><strong>かんたんに作る</strong><small>質問に沿って、自然な設計を組み立てます</small></span><span class="entry-arrow">›</span></button>' +
       '<button class="entry-card" data-entry="preset"><span class="entry-number">02</span><span><strong>プリセットから作る</strong><small>整合済みの' + D.presets.length + '種類から始めます</small></span><span class="entry-arrow">›</span></button>' +
@@ -327,8 +328,12 @@
     openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + filters + '<div class="preset-list" id="presetList">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
   }
   function saveSheet(kind) {
-    view.saveKind = kind === 'pair' ? 'pair' : 'single';
-    openSheet('<div class="sheet-head"><h2>名前を付けて保存</h2><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div><label class="field-label" for="presetName">設計名</label><input id="presetName" type="text" maxlength="60" placeholder="例：斜め向きの立ち姿"><div class="sheet-actions" style="margin-top:12px"><button class="btn btn--primary" data-action="save-user-preset">保存する</button></div>');
+    var personSlot = /^person:/.test(kind || '') ? kind.slice(7) : null;
+    view.saveKind = personSlot ? kind : kind === 'pair' ? 'pair' : 'single';
+    var personLabel = personSlot ? (D.pairPersonSlots.filter(function (x) { return x.id === personSlot; })[0] || {}).labelJa : '';
+    var title = personSlot ? personLabel + 'を人物として保存' : '名前を付けて保存';
+    var note = personSlot ? '<p class="chip-note">性別と外見・服装プロンプトを保存します。人物A・Bのどちらにも読み込めます（最大' + Store.maxPersonSets + '件）。</p>' : '';
+    openSheet('<div class="sheet-head"><h2>' + esc(title) + '</h2><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + note + '<label class="field-label" for="presetName">' + (personSlot ? '人物の名前' : '設計名') + '</label><input id="presetName" type="text" maxlength="60" placeholder="' + (personSlot ? '例：黒髪スーツの彼' : '例：斜め向きの立ち姿') + '"><div class="sheet-actions" style="margin-top:12px"><button class="btn btn--primary" data-action="save-user-preset">保存する</button></div>');
     setTimeout(function () { var input = $('presetName'); if (input) input.focus(); }, 0);
   }
   function applyFlow(id) {
@@ -378,7 +383,9 @@
     getPrefs: function () { return M.normalizePrefs(prefs); }, setPrefs: setPrefs,
     goStart: function () { view.screen = 'start'; render(); global.scrollTo(0, 0); },
     loadSinglePreset: loadBuiltinPreset,
-    openSave: function (kind) { saveSheet(kind); }
+    openSave: function (kind) { saveSheet(kind); },
+    openSheet: function (html) { openSheet(html); },
+    closeSheet: function () { closeSheet(); }
   };
 
   document.addEventListener('click', function (event) {
@@ -448,7 +455,7 @@
     if (!action) return;
     if (action === 'resume') { view.screen = 'builder'; view.step = 1; render(); }
     if (action === 'resume-pair') { openPair(null); }
-    if (action === 'discard-pair-draft') { setPair(P.initial(), true); render(); }
+    if (action === 'discard-pair-draft') { if (!P.hasPersonInput(pairState) || global.confirm('二人用の選択と、人物A・Bの外見・服装の入力を消しますか？（保存した人物は残ります）')) { setPair(P.initial(), true); render(); } }
     if (action === 'discard-draft') { Store.clearDraft(); draft = null; state = S.initial(); render(); }
     if (action === 'prev-step') { if (view.step === 1) view.screen = 'start'; else view.step--; render(); global.scrollTo(0, 0); }
     if (action === 'next-step') { view.step = view.step === 6 ? 1 : view.step + 1; render(); global.scrollTo(0, 0); }
@@ -456,6 +463,10 @@
     if (action === 'copy-output') copyText(outputText());
     if (action === 'copy-negative') copyText(negativeOutputText());
     if (action === 'open-save') saveSheet();
+    if (action === 'save-user-preset' && /^person:/.test(view.saveKind)) {
+      var pInput = $('presetName'), pid = view.saveKind.slice(7);
+      Store.savePersonSet(pInput ? pInput.value : '', pairState.people[pid]); closeSheet(); render(); toast('人物を端末内に保存しました'); return;
+    }
     if (action === 'save-user-preset') { var input = $('presetName'); if (view.saveKind === 'pair') Store.savePreset(input ? input.value : '', pairState, undefined, 'pair'); else Store.savePreset(input ? input.value : '', state); closeSheet(); toast('端末内に保存しました'); }
     if (action === 'reset') { if (global.confirm('現在の設計をリセットしますか？')) { Store.clearDraft(); draft = null; state = S.initial(); view.screen = 'start'; render(); } }
     if (action === 'close-sheet') closeSheet();

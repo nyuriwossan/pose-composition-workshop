@@ -42,6 +42,11 @@
     { id: 'male', labelJa: '男性', tsubaki: 'a man', nai: 'boy', count: 'boy' },
     { id: 'female', labelJa: '女性', tsubaki: 'a woman', nai: 'girl', count: 'girl' }
   ];
+  // 人物の枠。出力エンジンはこの配列を順に回す（将来の三人以上の構図に備えた配列ベース）。
+  D.pairPersonSlots = [
+    { id: 'a', labelJa: '人物A', naiLabel: 'Character 1', tsubakiName: 'Person A' },
+    { id: 'b', labelJa: '人物B', naiLabel: 'Character 2', tsubakiName: 'Person B' }
+  ];
   D.pairRelationLabels = {
     vertical: { a_above: 'Aが上・Bが下', a_slightly_above: 'Aがやや上（Bの膝の上）', level: '同じ高さ' },
     depth: { b_front: 'Bが前・Aが後ろ', a_front: 'Aが前・Bが後ろ', none: '前後差なし' },
@@ -80,6 +85,7 @@
       ],
       models: {
         tsubaki: {
+          roleEn: { a: "the one leaning over from above", b: "the one lying on their back underneath" },
           overview: 'Person B lies on their back, and Person A leans over Person B from above, face to face.',
           a: "Person A is braced on both hands and knees above Person B, keeping their own weight off Person B, with the torso angled down toward Person B's face.",
           b: 'Person B lies flat on their back beneath Person A, face turned up toward Person A, arms relaxed near the head.'
@@ -123,6 +129,7 @@
       ],
       models: {
         tsubaki: {
+          roleEn: { a: "the one standing behind", b: "the one standing in front" },
           overview: 'Both stand facing the same direction. Person B is in front, and Person A stands directly behind Person B, leaning in close without wrapping their arms around Person B.',
           a: "Person A stands behind Person B with the upper body drawn close to Person B's back.",
           b: 'Person B stands in front, facing forward, back lightly leaning toward Person A, arms relaxed at the sides.'
@@ -165,6 +172,7 @@
       ],
       models: {
         tsubaki: {
+          roleEn: { a: "the one kneeling astride on top", b: "the one lying on their back underneath" },
           overview: "Person B lies on their back, and Person A kneels astride Person B's waist, facing Person B.",
           a: 'Person A kneels upright astride Person B, supporting their own weight on their knees, with the torso leaning slightly forward.',
           b: 'Person B lies on their back beneath Person A, looking up at Person A.'
@@ -208,6 +216,7 @@
       ],
       models: {
         tsubaki: {
+          roleEn: { a: "the one sitting on the other's lap", b: "the one seated underneath" },
           overview: "Person B is seated, and Person A sits on Person B's lap facing Person B.",
           a: "Person A sits on Person B's thighs facing them, arms around Person B's shoulders.",
           b: "Person B sits back on the seat, holding Person A's waist with both hands."
@@ -250,6 +259,7 @@
       ],
       models: {
         tsubaki: {
+          roleEn: { a: "the one sitting in front on the other's lap", b: "the one seated behind" },
           overview: "Person B is seated, and Person A sits on Person B's lap facing the same direction, with Person A in front and Person B behind.",
           a: "Person A sits in Person B's lap with their back leaning against Person B's chest.",
           b: "Person B sits behind Person A, arms wrapped loosely around Person A's waist, face near Person A's shoulder."
@@ -293,6 +303,7 @@
       ],
       models: {
         tsubaki: {
+          roleEn: { a: "the one hugging from behind", b: "the one standing in front" },
           overview: 'Both stand facing the same direction. Person B is in front, and Person A hugs Person B from behind, pulling them close.',
           a: 'Person A stands directly behind Person B with both arms wrapped around Person B.',
           b: 'Person B stands in front, facing forward.'
@@ -335,6 +346,7 @@
       ],
       models: {
         tsubaki: {
+          roleEn: { a: "the one giving support", b: "the one raising a leg" },
           overview: 'Person A and Person B stand facing each other. Person B balances on one leg and raises the other leg, and Person A supports the raised leg.',
           a: 'Person A stands firmly on both feet.',
           b: "Person B stands on one leg, with the other leg bent at the knee and lifted to about Person A's hip height."

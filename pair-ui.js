@@ -4,7 +4,9 @@
   var D = PCW.data, P = PCW.pair, M = PCW.modelOutput;
 
   // 二人用ポーズ画面。状態・保存・コピーは app.js から渡される ctx 経由で扱う。
-  var ui = { query: '', family: 'all', picking: false, showJa: false };
+  var ui = { query: '', family: 'all', picking: false, showJa: false, personOpen: {} };
+  var Store = PCW.storage;
+  var PERSON_HINT = 'すでに作成した外見・服装プロンプトを貼り付けてください。選択したポーズと自動で組み合わせます。';
 
   function byId(list, id) { return (list || []).filter(function (x) { return x.id === id; })[0] || null; }
 
@@ -44,7 +46,8 @@
       '<label class="field-label visually-hidden" for="pairSearch">ポーズを検索</label><input id="pairSearch" type="search" data-pair-search placeholder="ポーズを検索" value="' + ctx.attr(ui.query) + '" autocomplete="off">' +
       '<div class="tag-filters pair-family-filters" role="group" aria-label="ポーズ系統で絞り込み" id="pairFamilyFilters">' + familyFilters(ctx) + '</div>' +
       '<div class="pair-pose-list" id="pairPoseList">' + poseListHtml(ctx, s.poseId) + '</div>' +
-      (p ? '<button type="button" class="detail-toggle" data-pair-action="close-pick">選択中のポーズに戻る</button>' : '') + '</section>';
+      (p ? '<button type="button" class="detail-toggle" data-pair-action="close-pick">選択中のポーズに戻る</button>' : '') +
+      (P.hasPersonInput(s) ? '<p class="hint">人物A・Bの外見・服装の入力は保持しています。ポーズを選ぶと表示されます。</p>' : '') + '</section>';
   }
 
   function relationChips(ctx, p) {
@@ -56,10 +59,8 @@
   }
   function layout(ctx, s, p) {
     var related = p.related.map(function (id) { return byId(D.presets, id); }).filter(Boolean);
-    return '<section class="design-card"><div class="card-head"><div><h2>二人の配置</h2><p>Aは動作する側（主導側）、Bは受ける側（相手側）です。</p></div><button type="button" class="btn btn--quiet btn--nowrap" data-pair-action="swap" aria-label="人物AとBの性別・自由入力を入れ替える">A⇄B</button></div>' +
+    return '<section class="design-card"><div class="card-head"><div><h2>二人の配置</h2><p>人物ごとの身体の置き方は、上の人物A・B欄に表示しています。</p></div></div>' +
       relationChips(ctx, p) +
-      '<div class="role-row role-row--a"><span class="role-badge">A</span><div><strong>' + ctx.esc(p.roles.a) + '</strong><p>' + ctx.esc(p.placement.a) + '</p></div></div>' +
-      '<div class="role-row role-row--b"><span class="role-badge">B</span><div><strong>' + ctx.esc(p.roles.b) + '</strong><p>' + ctx.esc(p.placement.b) + '</p></div></div>' +
       '<div class="subsection"><h3>接触点</h3><ul class="contact-list">' + p.contacts.map(function (c) { return '<li>' + ctx.esc(c.ja) + '</li>'; }).join('') + '</ul></div>' +
       (related.length ? '<div class="subsection"><h3>一人だけを描く近い構図（相手視点）</h3><div class="chip-grid">' + related.map(function (r) { return '<button type="button" class="chip" data-pair-related="' + ctx.attr(r.id) + '">' + ctx.esc(r.nameJa) + '</button>'; }).join('') + '</div></div>' : '') +
       '</section>';
@@ -69,12 +70,49 @@
       return '<button type="button" data-pair-set="people.' + role + '.gender" data-value="' + g.id + '" aria-pressed="' + (s.people[role].gender === g.id) + '">' + ctx.esc(g.labelJa) + '</button>';
     }).join('') + '</div>';
   }
-  function people(ctx, s) {
-    var counts = P.countTags(s);
-    return '<section class="design-card"><div class="card-head"><div><h2>人物</h2><p>SDXL・NovelAIの人数タグ（2boys など）と、Tsubakiの人物説明に使います。</p></div></div>' +
-      genderRow(ctx, s, 'a') + genderRow(ctx, s, 'b') +
-      '<p class="chip-note">人数タグ：' + ctx.esc(counts.length ? counts.join(', ') : '性別が未指定のため出力しません（SDXLは two people）') + '</p></section>';
+  function whereText(t, slot) {
+    if (t === 'nai') return slot.naiLabel + '（' + slot.labelJa + '）の欄で、boy／girl の直後に入ります。';
+    if (t === 'sdxl') return '人物A→人物Bの順に、一つのタグ列へ入ります（SDXLは人物を区別できません）。';
+    return slot.labelJa + 'の説明文として、ポーズの説明より前に入ります。';
   }
+  function personStatus(prompt) {
+    var t = String(prompt || '').trim();
+    if (!t) return '未入力（空欄でも生成できます）';
+    var n = M.splitTop(t).length;
+    return n + '語・' + t.replace(/\s+/g, ' ').slice(0, 28) + (t.length > 28 ? '…' : '');
+  }
+  function countLine(s) {
+    var counts = P.countTags(s);
+    return '人数タグ：' + (counts.length ? counts.join(', ') : '性別が決まらないため出力しません（SDXLは two people）');
+  }
+  function personSets(ctx, slot) {
+    var sets = Store.listPersonSets();
+    var list = sets.length ? '<ul class="person-set-list">' + sets.map(function (x) {
+      return '<li><button type="button" class="btn btn--small-plain" data-person-load="' + ctx.attr(x.id) + '" data-slot="' + slot.id + '">' + ctx.esc(x.name) + '</button><button type="button" class="btn btn--quiet btn--small-plain" data-person-delete="' + ctx.attr(x.id) + '" aria-label="' + ctx.attr(x.name) + 'を削除">削除</button></li>';
+    }).join('') + '</ul>' : '<p class="chip-note">まだ保存した人物はありません。</p>';
+    return '<details class="person-sets"><summary>保存した人物から読み込む（' + sets.length + '）</summary>' + list + '</details>';
+  }
+  function personBlock(ctx, s, p, slot) {
+    var id = slot.id, person = s.people[id], t = M.pairTarget(ctx.getPrefs());
+    var open = ui.personOpen[id] !== false;
+    var gender = '<div class="segmented" role="group" aria-label="' + slot.labelJa + 'の性別"><span class="segmented__label">性別</span>' + D.pairGenders.map(function (g) {
+      return '<button type="button" data-pair-set="people.' + id + '.gender" data-value="' + g.id + '" aria-pressed="' + (person.gender === g.id) + '">' + ctx.esc(g.labelJa) + '</button>';
+    }).join('') + '</div>';
+    return '<details class="person-fold person-fold--' + id + '" data-person-fold="' + id + '"' + (open ? ' open' : '') + '><summary><span class="role-badge role-badge--' + id + '">' + id.toUpperCase() + '</span><span class="person-fold__title"><strong>' + ctx.esc(slot.labelJa + '：' + p.roles[id]) + '</strong><small id="personStatus_' + id + '">' + ctx.esc(personStatus(person.prompt)) + '</small></span></summary>' +
+      '<div class="person-fold__body"><p class="person-placement"><span>このポーズでの' + ctx.esc(slot.labelJa) + '</span>' + ctx.esc(p.placement[id]) + '</p>' + gender +
+      '<label class="field-label" for="personPrompt_' + id + '">外見・服装プロンプト</label>' +
+      '<textarea id="personPrompt_' + id + '" class="person-prompt" data-person-prompt="' + id + '" rows="4" maxlength="' + M.maxPersonPrompt + '" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="例: short black hair, red eyes, black suit, white shirt">' + ctx.esc(person.prompt) + '</textarea>' +
+      '<div class="person-meta"><small id="personCount_' + id + '">' + person.prompt.length + ' / ' + M.maxPersonPrompt + '</small><small class="person-where">' + ctx.esc(whereText(t, slot)) + '</small></div>' +
+      '<div class="person-actions"><button type="button" class="btn btn--quiet" data-person-clear="' + id + '"' + (person.prompt ? '' : ' disabled') + '>' + ctx.esc(slot.labelJa) + 'をクリア</button><button type="button" class="btn" data-person-save="' + id + '"' + (person.prompt.trim() ? '' : ' disabled') + '>この人物を保存</button></div>' +
+      personSets(ctx, slot) + '</div></details>';
+  }
+  function people(ctx, s, p) {
+    return '<section class="design-card person-card" id="pairPeople"><div class="card-head"><div><h2>人物A・B（外見・服装）</h2><p>' + ctx.esc(PERSON_HINT) + '</p></div><button type="button" class="btn btn--quiet btn--nowrap" data-pair-action="swap" aria-label="人物AとBの性別・外見・服装を入れ替える">A⇄B</button></div>' +
+      '<p class="chip-note person-roles">Aは動作する側（主導側・支える側）、Bは相手側です。英語タグも文章も、そのまま貼り付けられます。</p>' +
+      P.slotsOf(p).map(function (slot) { return personBlock(ctx, s, p, slot); }).join('') +
+      '<p class="chip-note" id="pairCountLine">' + ctx.esc(countLine(s)) + '</p></section>';
+  }
+
   function optionChips(ctx, path, items, value, stateFn) {
     var blocked = [];
     var html = '<div class="chip-grid">' + items.map(function (item) {
@@ -103,9 +141,10 @@
   function notes(ctx, s) {
     var filled = ['common', 'a', 'b'].filter(function (k) { return s.notes[k]; }).length;
     var field = function (k, label, ph) { return '<label class="field-label" for="pairNote_' + k + '">' + label + '</label><textarea id="pairNote_' + k + '" data-pair-note="' + k + '" rows="2" placeholder="' + ctx.attr(ph) + '">' + ctx.esc(s.notes[k]) + '</textarea>'; };
-    return '<details class="design-card fold"' + (ui.openNotes ? ' open' : '') + ' data-fold="notes"><summary><span><strong>自由入力（共通・人物A・人物B）</strong><small>' + (filled ? filled + '欄に入力あり' : '未入力') + '</small></span></summary><div class="fold-body"><p class="hint">英語で入力すると、出力先に合わせて末尾へ追加します。NovelAIでは人物A・BをそれぞれのCharacter Promptへ入れます。原文は改変しません。</p>' +
-      field('common', '共通（背景・画風など）', '例: bedroom, soft lighting') + field('a', '人物A', '例: black hair, white shirt') + field('b', '人物B', '例: silver hair, cardigan') + '</div></details>';
+    return '<details class="design-card fold"' + (ui.openNotes ? ' open' : '') + ' data-fold="notes"><summary><span><strong>末尾に追加する語（共通・人物A・人物B）</strong><small>' + (filled ? filled + '欄に入力あり' : '未入力') + '</small></span></summary><div class="fold-body"><p class="hint">外見・服装は上の「人物A・B」欄へ。ここに入れた語は加工せず、出力の末尾にそのまま付けます（背景・画風・品質タグなど）。NovelAIでは人物A・Bの語を、それぞれのCharacter Promptの末尾に付けます。</p>' +
+      field('common', '共通（背景・画風など）', '例: bedroom, soft lighting') + field('a', '人物Aの末尾', '例: blush') + field('b', '人物Bの末尾', '例: smile') + '</div></details>';
   }
+
   function outputOptions(ctx) {
     var prefs = ctx.getPrefs(), t = M.pairTarget(prefs);
     var emphasis = t === 'tsubaki' ? '<p class="chip-note">Tsubakiは自然文のため、強調構文を使いません。</p>' :
@@ -117,30 +156,54 @@
   function copyButton(ctx, key, label, small) {
     return '<button type="button" class="btn btn--accent' + (small ? ' btn--small' : '') + '" data-pair-copy="' + key + '">' + ctx.esc(label) + '</button>';
   }
+  function issuesHtml(ctx, s, t, prefs) {
+    return P.issues(s, t, prefs).map(function (i) { return '<p class="output-note output-note--' + i.severity + '">' + ctx.esc(i.textJa) + '</p>'; }).join('');
+  }
   function output(ctx, s) {
     var prefs = ctx.getPrefs(), t = M.pairTarget(prefs), out = P.render(s, t, prefs);
-    var notesHtml = P.issues(s, t, prefs).map(function (i) { return '<p class="output-note output-note--' + i.severity + '">' + ctx.esc(i.textJa) + '</p>'; }).join('');
+    var notesHtml = '<div id="pairIssues">' + issuesHtml(ctx, s, t, prefs) + '</div>';
     var body;
     if (t === 'nai') {
       body = '<div class="nai-block"><div class="nai-head"><strong>共通プロンプト</strong><small>Base Prompt</small>' + copyButton(ctx, 'base', 'コピー', true) + '</div><pre class="output-box output-box--short" id="pairOut_base">' + ctx.esc(out.base) + '</pre></div>' +
-        '<div class="nai-block nai-block--a"><div class="nai-head"><span class="role-badge">A</span><strong>Character 1：人物A</strong>' + copyButton(ctx, 'a', 'コピー', true) + '</div><pre class="output-box output-box--short" id="pairOut_a">' + ctx.esc(out.a) + '</pre></div>' +
-        '<div class="nai-block nai-block--b"><div class="nai-head"><span class="role-badge role-badge--b">B</span><strong>Character 2：人物B</strong>' + copyButton(ctx, 'b', 'コピー', true) + '</div><pre class="output-box output-box--short" id="pairOut_b">' + ctx.esc(out.b) + '</pre></div>' +
-        '<div class="sheet-actions"><button type="button" class="btn" data-pair-copy="text">| 区切りでまとめてコピー</button></div><p class="chip-note">Character Promptsは人物Aを上、人物Bを下に並べます。| 区切りはCharacter Promptsを使わない場合の形式です。</p>';
+        out.characters.map(function (c) {
+          return '<div class="nai-block nai-block--' + c.id + '"><div class="nai-head"><span class="role-badge role-badge--' + c.id + '">' + c.id.toUpperCase() + '</span><strong>' + ctx.esc(c.naiLabel + '：' + c.labelJa) + '</strong>' + copyButton(ctx, c.id, 'コピー', true) + '</div><pre class="output-box output-box--short" id="pairOut_' + c.id + '">' + ctx.esc(c.text) + '</pre></div>';
+        }).join('') +
+        '<div class="sheet-actions"><button type="button" class="btn" data-pair-copy="text">| 区切りでまとめてコピー</button></div>' +
+        '<details class="nai-howto"><summary>NovelAIへの貼り方（Character Promptsと | 区切りの使い分け）</summary><ol><li>共通プロンプトを、いつものプロンプト欄へ貼ります。</li><li>Character Promptsの「＋」で欄を二つ作り、上の欄に人物A、下の欄に人物Bを貼ります。</li><li>「| 区切りでまとめてコピー」は、Character Promptsの欄を一つも作らずに、プロンプト欄一つだけで使う形式です。</li></ol><p>Character Promptsの欄が一つでもあると | 区切りは無効になるため、二つの方法は併用しないでください。</p></details>';
     } else {
       body = '<pre class="output-box" id="pairOut_text">' + ctx.esc(out.text) + '</pre><div class="sheet-actions">' + copyButton(ctx, 'text', 'プロンプトをコピー') + '</div>' +
         (t === 'tsubaki' ? '<p class="chip-note">Tsubaki向けにはネガティブプロンプトを出力しません。</p>' : '');
     }
-    var ja = '<details class="fold fold--inline"' + (ui.showJa ? ' open' : '') + ' data-fold="ja"><summary><span><strong>日本語で構造を確認</strong></span></summary><pre class="output-box output-box--ja">' + ctx.esc(P.structureJa(s)) + '</pre></details>';
-    return '<section class="design-card" id="pairOutput"><div class="card-head"><div><h2>出力：' + ctx.esc(M.target(t).labelJa) + '</h2><p>選んだ内容がリアルタイムで反映されます。</p></div></div>' + notesHtml + body + ja +
+    var ja = '<details class="fold fold--inline"' + (ui.showJa ? ' open' : '') + ' data-fold="ja"><summary><span><strong>日本語で構造を確認</strong></span></summary><pre class="output-box output-box--ja" id="pairOut_ja">' + ctx.esc(P.structureJa(s)) + '</pre></details>';
+    return '<section class="design-card" id="pairOutput"><div class="card-head"><div><h2>出力：' + ctx.esc(M.target(t).labelJa) + '</h2><p>選んだ内容と人物A・Bの入力が、リアルタイムで反映されます。</p></div></div>' + notesHtml + body + ja +
       '<div class="sheet-actions pair-actions"><button type="button" class="btn" data-pair-action="save">名前を付けて保存</button><button type="button" class="btn btn--danger" data-pair-action="reset">リセット</button></div></section>';
   }
+  // 入力中にフォーカスを失わないよう、画面全体ではなく出力欄・案内・要約だけを書き換える
+  function refreshLive(ctx) {
+    var s = ctx.getPair(), prefs = ctx.getPrefs(), t = M.pairTarget(prefs), out = P.render(s, t, prefs);
+    ['text', 'base'].concat(P.slotsOf(P.poseById(s.poseId)).map(function (x) { return x.id; })).forEach(function (k) {
+      var el = document.getElementById('pairOut_' + k); if (el) el.textContent = out[k] || '';
+    });
+    var ja = document.getElementById('pairOut_ja'); if (ja) ja.textContent = P.structureJa(s);
+    var iss = document.getElementById('pairIssues'); if (iss) iss.innerHTML = issuesHtml(ctx, s, t, prefs);
+    var cl = document.getElementById('pairCountLine'); if (cl) cl.textContent = countLine(s);
+    P.slotsOf(P.poseById(s.poseId)).forEach(function (slot) {
+      var prompt = s.people[slot.id].prompt;
+      var st = document.getElementById('personStatus_' + slot.id); if (st) st.textContent = personStatus(prompt);
+      var cn = document.getElementById('personCount_' + slot.id); if (cn) cn.textContent = prompt.length + ' / ' + M.maxPersonPrompt;
+      var clr = document.querySelector('[data-person-clear="' + slot.id + '"]'); if (clr) clr.disabled = !prompt;
+      var sv = document.querySelector('[data-person-save="' + slot.id + '"]'); if (sv) sv.disabled = !prompt.trim();
+    });
+    renderSticky(ctx);
+  }
+
 
   function render(ctx) {
     var s = ctx.getPair(), p = P.poseById(s.poseId);
     ctx.meter.innerHTML = '<span>二人のポーズ</span>';
     var head = '<div class="section-heading"><p class="eyebrow">TWO PEOPLE / POSE</p><h1>二人のポーズ</h1><p>人物A・Bの位置関係と接触点を決め、出力先に合わせた英語へ変換します。成人キャラクター同士を前提にした、非露骨な構図指定です。</p></div>';
     var html = head + targetSwitch(ctx, 'pair') + picker(ctx, s);
-    if (p && !ui.picking) html += layout(ctx, s, p) + people(ctx, s) + camera(ctx, s, p) + scene(ctx, s, p) + notes(ctx, s) + outputOptions(ctx) + output(ctx, s);
+    if (p && !ui.picking) html += people(ctx, s, p) + layout(ctx, s, p) + camera(ctx, s, p) + scene(ctx, s, p) + notes(ctx, s) + outputOptions(ctx) + output(ctx, s);
     ctx.main.innerHTML = html;
     renderSticky(ctx);
     ctx.nav.hidden = false;
@@ -191,33 +254,56 @@
       return true;
     }
     if (target.dataset.pairRelated) { ctx.loadSinglePreset(target.dataset.pairRelated); return true; }
+    if (target.dataset.personClear) {
+      var cid = target.dataset.personClear, label = byId(D.pairPersonSlots, cid).labelJa;
+      if (s.people[cid].prompt && !global.confirm(label + 'の外見・服装プロンプトを消しますか？（性別とポーズは残ります）')) return true;
+      ctx.setPair(P.set(s, 'people.' + cid + '.prompt', '')); render(ctx); ctx.toast(label + 'の入力を消しました'); return true;
+    }
+    if (target.dataset.personSave) { ctx.openSave('person:' + target.dataset.personSave); return true; }
+    if (target.dataset.personLoad) {
+      var set = Store.listPersonSets().filter(function (x) { return x.id === target.dataset.personLoad; })[0], slotId = target.dataset.slot;
+      if (!set) return true;
+      var slotLabel = byId(D.pairPersonSlots, slotId).labelJa;
+      if (s.people[slotId].prompt.trim() && !global.confirm(slotLabel + 'の入力を「' + set.name + '」で置き換えますか？')) return true;
+      var loaded = P.set(s, 'people.' + slotId + '.prompt', set.prompt);
+      if (set.gender !== 'unspecified') loaded = P.set(loaded, 'people.' + slotId + '.gender', set.gender);
+      ctx.setPair(loaded); render(ctx); ctx.toast(slotLabel + 'に「' + set.name + '」を読み込みました'); return true;
+    }
+    if (target.dataset.personDelete) {
+      var del = Store.listPersonSets().filter(function (x) { return x.id === target.dataset.personDelete; })[0];
+      if (del && global.confirm('保存した人物「' + del.name + '」を削除しますか？')) { Store.deletePersonSet(del.id); render(ctx); }
+      return true;
+    }
     var action = target.dataset.pairAction;
     if (!action) return false;
     if (action === 'pick') { ui.picking = true; render(ctx); global.scrollTo(0, 0); }
     if (action === 'close-pick') { ui.picking = false; render(ctx); }
-    if (action === 'swap') { ctx.setPair(P.swapPeople(s)); render(ctx); ctx.toast('人物AとBの設定を入れ替えました'); }
+    if (action === 'swap') { ctx.setPair(P.swapPeople(s)); render(ctx); ctx.toast('人物AとBの性別・外見・服装を入れ替えました'); }
     if (action === 'home') { ctx.goStart(); }
     if (action === 'to-output') { var el = document.getElementById('pairOutput'); if (el) el.scrollIntoView({ block: 'start' }); }
     if (action === 'save') ctx.openSave('pair');
-    if (action === 'reset') { if (global.confirm('二人用の選択内容をリセットしますか？')) { ui.picking = false; ui.query = ''; ui.family = 'all'; ctx.setPair(P.initial(), true); render(ctx); global.scrollTo(0, 0); } }
+    if (action === 'reset') {
+      // 消える範囲を選んでもらう（人物入力を不用意に消さないため）
+      ctx.openSheet('<div class="sheet-head"><div><h2>リセットする範囲</h2><p>どこまで初期状態へ戻すかを選んでください。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' +
+        '<div class="reset-options"><button type="button" class="reset-option" data-pair-action="reset-pose"><strong>ポーズと構図だけ戻す</strong><small>消える：ポーズ・カメラ・場所・視線・服装の設定<br>残る：人物A・Bの性別・外見・服装、末尾に追加する語</small></button>' +
+        '<button type="button" class="reset-option reset-option--danger" data-pair-action="reset-all"><strong>すべて消す</strong><small>人物A・Bの性別・外見・服装と、末尾に追加する語も消えます。保存した人物と名前付きの保存は消えません。</small></button>' +
+        '<button type="button" class="btn btn--quiet" data-action="close-sheet">キャンセル</button></div>');
+    }
+    if (action === 'reset-pose') { ctx.closeSheet(); ui.picking = true; ui.query = ''; ui.family = 'all'; ctx.setPair(P.resetPoseOnly(s)); render(ctx); global.scrollTo(0, 0); ctx.toast('ポーズと構図を戻しました。人物A・Bの入力は残っています'); }
+    if (action === 'reset-all') { ctx.closeSheet(); ui.picking = false; ui.query = ''; ui.family = 'all'; ctx.setPair(P.initial(), true); render(ctx); global.scrollTo(0, 0); ctx.toast('二人用の入力をすべて消しました'); }
     return true;
   }
   function input(event, ctx) {
     if (ctx.view.screen !== 'pair') return false;
     var t = event.target;
     if (t.matches('[data-pair-search]')) { ui.query = t.value; updatePoseList(ctx); return true; }
-    if (t.matches('[data-pair-note]')) {
-      ctx.setPair(P.set(ctx.getPair(), 'notes.' + t.dataset.pairNote, t.value));
-      // 入力中のフォーカスを保つため、出力欄と要約だけ更新する
-      var s = ctx.getPair(), prefs = ctx.getPrefs(), out = P.render(s, M.pairTarget(prefs), prefs);
-      ['text', 'base', 'a', 'b'].forEach(function (k) { var el = document.getElementById('pairOut_' + k); if (el) el.textContent = out[k] || ''; });
-      renderSticky(ctx);
-      return true;
-    }
+    if (t.matches('[data-pair-note]')) { ctx.setPair(P.set(ctx.getPair(), 'notes.' + t.dataset.pairNote, t.value)); refreshLive(ctx); return true; }
+    if (t.matches('[data-person-prompt]')) { ctx.setPair(P.set(ctx.getPair(), 'people.' + t.dataset.personPrompt + '.prompt', t.value)); refreshLive(ctx); return true; }
     return false;
   }
   function toggle(event) {
     var el = event.target;
+    if (el.matches && el.matches('details[data-person-fold]')) { ui.personOpen[el.dataset.personFold] = el.open; return; }
     if (!el.matches || !el.matches('details[data-fold]')) return;
     var key = { scene: 'openScene', notes: 'openNotes', opts: 'openOpts', ja: 'showJa' }[el.dataset.fold];
     if (key) ui[key] = el.open;
