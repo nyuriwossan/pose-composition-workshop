@@ -4,7 +4,7 @@
   var D = PCW.data, P = PCW.pair, M = PCW.modelOutput;
 
   // 二人用ポーズ画面。状態・保存・コピーは app.js から渡される ctx 経由で扱う。
-  var ui = { query: '', family: 'all', picking: false, showJa: false, personOpen: {} };
+  var ui = { query: '', family: 'all', picking: false, showJa: false, personOpen: {}, exprOpen: {}, exprQuery: {} };
   var Store = PCW.storage;
   var PERSON_HINT = 'すでに作成した外見・服装プロンプトを貼り付けてください。選択したポーズと自動で組み合わせます。';
 
@@ -21,18 +21,19 @@
   }
 
   function poseCard(ctx, p, selected) {
-    var fam = D.presetPoseFamilyLabels[p.poseFamily] || '';
+    var fam = (D.pairPoseCategories || {})[p.category] || D.presetPoseFamilyLabels[p.poseFamily] || '';
     return '<button type="button" class="pair-pose-card" data-pair-pose="' + ctx.attr(p.id) + '" aria-pressed="' + selected + '"><strong>' + ctx.esc(p.labelJa) + '</strong><small>' + ctx.esc(p.shortJa) + '</small><span class="preset-tags"><span class="preset-tag">二人</span><span class="preset-tag">' + ctx.esc(fam) + '</span></span></button>';
   }
   function poseListHtml(ctx, selectedId) {
     var list = P.filterPoses(ui.query, ui.family);
     return list.length ? list.map(function (p) { return poseCard(ctx, p, p.id === selectedId); }).join('') : '<p class="preset-empty">該当するポーズはありません。言葉を短くするか、系統の絞り込みを外してください。</p>';
   }
+  // 二人用はカテゴリ（抱擁・密着 など）で絞り込む
   function familyFilters(ctx) {
-    var counts = P.familyCounts(ui.query);
-    var fams = ['all'].concat(Object.keys(D.presetPoseFamilyLabels).filter(function (id) { return (D.pairPoses || []).some(function (p) { return p.poseFamily === id; }); }));
+    var counts = P.categoryCounts(ui.query), cats = D.pairPoseCategories || {};
+    var fams = ['all'].concat(Object.keys(cats));
     return fams.map(function (id) {
-      var label = id === 'all' ? 'すべて' : D.presetPoseFamilyLabels[id];
+      var label = id === 'all' ? 'すべて' : cats[id];
       return '<button type="button" data-pair-family="' + id + '" aria-pressed="' + (ui.family === id) + '">' + ctx.esc(label) + ' <b>' + (counts[id] || 0) + '</b></button>';
     }).join('');
   }
@@ -42,12 +43,12 @@
     if (p && !ui.picking) {
       return '<section class="design-card pair-selected"><div class="card-head"><div><small class="mini-label">選択中のポーズ</small><h2>' + ctx.esc(p.labelJa) + '</h2><p>' + ctx.esc(p.shortJa) + '</p></div><button type="button" class="btn btn--nowrap" data-pair-action="pick">変更</button></div></section>';
     }
-    return '<section class="design-card"><div class="card-head"><div><h2>ポーズを選ぶ</h2><p>日本語で検索できます（例：膝、バックハグ、仰向け）。</p></div><span class="count-pill">' + D.pairPoses.length + '種</span></div>' +
+    return '<section class="design-card"><div class="card-head"><div><h2>ポーズを選ぶ</h2><p>日本語で検索できます（例：膝、バックハグ、壁、お姫様抱っこ）。</p></div><span class="count-pill">' + D.pairPoses.length + '種</span></div>' +
       '<label class="field-label visually-hidden" for="pairSearch">ポーズを検索</label><input id="pairSearch" type="search" data-pair-search placeholder="ポーズを検索" value="' + ctx.attr(ui.query) + '" autocomplete="off">' +
-      '<div class="tag-filters pair-family-filters" role="group" aria-label="ポーズ系統で絞り込み" id="pairFamilyFilters">' + familyFilters(ctx) + '</div>' +
+      '<div class="tag-filters pair-family-filters" role="group" aria-label="カテゴリで絞り込み" id="pairFamilyFilters">' + familyFilters(ctx) + '</div>' +
       '<div class="pair-pose-list" id="pairPoseList">' + poseListHtml(ctx, s.poseId) + '</div>' +
       (p ? '<button type="button" class="detail-toggle" data-pair-action="close-pick">選択中のポーズに戻る</button>' : '') +
-      (P.hasPersonInput(s) ? '<p class="hint">人物A・Bの外見・服装の入力は保持しています。ポーズを選ぶと表示されます。</p>' : '') + '</section>';
+      (P.hasPersonInput(s) ? '<p class="hint">人物A・Bの入力（外見・服装・表情）は保持しています。ポーズを選ぶと表示されます。</p>' : '') + '</section>';
   }
 
   function relationChips(ctx, p) {
@@ -75,11 +76,30 @@
     if (t === 'sdxl') return '人物A→人物Bの順に、一つのタグ列へ入ります（SDXLは人物を区別できません）。';
     return slot.labelJa + 'の説明文として、ポーズの説明より前に入ります。';
   }
-  function personStatus(prompt) {
-    var t = String(prompt || '').trim();
-    if (!t) return '未入力（空欄でも生成できます）';
-    var n = M.splitTop(t).length;
-    return n + '語・' + t.replace(/\s+/g, ' ').slice(0, 28) + (t.length > 28 ? '…' : '');
+  function personStatus(prompt, person) {
+    var t = String(prompt || '').trim(), expr = person ? P.expressionLabel(person) : '';
+    var head = !t ? (expr ? '外見は未入力' : '未入力（空欄でも生成できます）') : M.splitTop(t).length + '語・' + t.replace(/\s+/g, ' ').slice(0, 22) + (t.length > 22 ? '…' : '');
+    return head + (expr ? '｜表情：' + expr : '');
+  }
+  // 表情（メイン・視線・補助）。同じ人物の中で両立しない候補は無効にし、理由を出す
+  function expressionBlock(ctx, s, slot) {
+    var id = slot.id, person = s.people[id], open = !!ui.exprOpen[id], q = ui.exprQuery[id] || '';
+    var label = P.expressionLabel(person);
+    var rows = (D.pairExpressionSlots || []).map(function (es) {
+      var current = person.expression[es.id], blocked = [];
+      var visible = P.filterExpressions(es.id, q).map(function (x) { return x.id; });
+      var chips = '<button type="button" class="expr-chip" data-expr-set="' + id + '" data-slot="' + es.id + '" data-value="" aria-pressed="' + !current + '">指定なし</button>' +
+        D.pairExpressions[es.id].map(function (it) {
+          var st = P.expressionState(s, id, es.id, it.id);
+          if (!st.ok) blocked.push(it.labelJa + '：' + st.reason);
+          return '<button type="button" class="expr-chip" data-expr-set="' + id + '" data-slot="' + es.id + '" data-value="' + it.id + '" aria-pressed="' + (current === it.id) + '" title="' + ctx.attr(it.descJa + (st.ok ? '' : '（' + st.reason + '）')) + '"' + (st.ok ? '' : ' disabled') + (visible.indexOf(it.id) >= 0 ? '' : ' hidden') + '>' + ctx.esc(it.labelJa) + '</button>';
+        }).join('');
+      return '<div class="expr-row"><h4>' + ctx.esc(es.labelJa) + '</h4><div class="expr-chips" role="group" aria-label="' + ctx.attr(slot.labelJa + 'の' + es.labelJa) + '">' + chips + '</div>' +
+        (es.id === 'gaze' ? '<p class="chip-note">選ぶと、' + ctx.esc(slot.labelJa) + 'だけ「場所・視線」の二人の視線より優先します。</p>' : '') +
+        (blocked.length ? '<p class="chip-note expr-blocked">選べない候補：' + ctx.esc(blocked.join('／')) + '</p>' : '') + '</div>';
+    }).join('');
+    return '<details class="expr-fold" data-expr-fold="' + id + '"' + (open ? ' open' : '') + '><summary><strong>表情</strong><small id="exprStatus_' + id + '">' + ctx.esc(label || '未指定') + '</small></summary>' +
+      '<div class="expr-body"><label class="field-label visually-hidden" for="exprSearch_' + id + '">' + ctx.esc(slot.labelJa) + 'の表情を検索</label><input id="exprSearch_' + id + '" type="search" data-expr-search="' + id + '" placeholder="表情を検索（例：てれ、見上げる、赤面）" value="' + ctx.attr(q) + '" autocomplete="off">' + rows + '</div></details>';
   }
   function countLine(s) {
     var counts = P.countTags(s);
@@ -98,17 +118,20 @@
     var gender = '<div class="segmented" role="group" aria-label="' + slot.labelJa + 'の性別"><span class="segmented__label">性別</span>' + D.pairGenders.map(function (g) {
       return '<button type="button" data-pair-set="people.' + id + '.gender" data-value="' + g.id + '" aria-pressed="' + (person.gender === g.id) + '">' + ctx.esc(g.labelJa) + '</button>';
     }).join('') + '</div>';
-    return '<details class="person-fold person-fold--' + id + '" data-person-fold="' + id + '"' + (open ? ' open' : '') + '><summary><span class="role-badge role-badge--' + id + '">' + id.toUpperCase() + '</span><span class="person-fold__title"><strong>' + ctx.esc(slot.labelJa + '：' + p.roles[id]) + '</strong><small id="personStatus_' + id + '">' + ctx.esc(personStatus(person.prompt)) + '</small></span></summary>' +
+    return '<details class="person-fold person-fold--' + id + '" data-person-fold="' + id + '"' + (open ? ' open' : '') + '><summary><span class="role-badge role-badge--' + id + '">' + id.toUpperCase() + '</span><span class="person-fold__title"><strong>' + ctx.esc(slot.labelJa + '：' + p.roles[id]) + '</strong><small id="personStatus_' + id + '">' + ctx.esc(personStatus(person.prompt, person)) + '</small></span></summary>' +
       '<div class="person-fold__body"><p class="person-placement"><span>このポーズでの' + ctx.esc(slot.labelJa) + '</span>' + ctx.esc(p.placement[id]) + '</p>' + gender +
       '<label class="field-label" for="personPrompt_' + id + '">外見・服装プロンプト</label>' +
       '<textarea id="personPrompt_' + id + '" class="person-prompt" data-person-prompt="' + id + '" rows="4" maxlength="' + M.maxPersonPrompt + '" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="例: short black hair, red eyes, black suit, white shirt">' + ctx.esc(person.prompt) + '</textarea>' +
       '<div class="person-meta"><small id="personCount_' + id + '">' + person.prompt.length + ' / ' + M.maxPersonPrompt + '</small><small class="person-where">' + ctx.esc(whereText(t, slot)) + '</small></div>' +
-      '<div class="person-actions"><button type="button" class="btn btn--quiet" data-person-clear="' + id + '"' + (person.prompt ? '' : ' disabled') + '>' + ctx.esc(slot.labelJa) + 'をクリア</button><button type="button" class="btn" data-person-save="' + id + '"' + (person.prompt.trim() ? '' : ' disabled') + '>この人物を保存</button></div>' +
+      expressionBlock(ctx, s, slot) +
+      '<div class="person-actions"><button type="button" class="btn btn--quiet" data-person-clear="' + id + '"' + (person.prompt || P.hasExpression(person) ? '' : ' disabled') + '>' + ctx.esc(slot.labelJa) + 'をクリア</button><button type="button" class="btn" data-person-save="' + id + '"' + (person.prompt.trim() ? '' : ' disabled') + '>この人物を保存</button></div>' +
       personSets(ctx, slot) + '</div></details>';
   }
   function people(ctx, s, p) {
-    return '<section class="design-card person-card" id="pairPeople"><div class="card-head"><div><h2>人物A・B（外見・服装）</h2><p>' + ctx.esc(PERSON_HINT) + '</p></div><button type="button" class="btn btn--quiet btn--nowrap" data-pair-action="swap" aria-label="人物AとBの性別・外見・服装を入れ替える">A⇄B</button></div>' +
+    var anyExpr = P.slotsOf(p).some(function (slot) { return P.hasExpression(s.people[slot.id]); });
+    return '<section class="design-card person-card" id="pairPeople"><div class="card-head"><div><h2>人物A・B（外見・服装・表情）</h2><p>' + ctx.esc(PERSON_HINT) + '</p></div><button type="button" class="btn btn--quiet btn--nowrap" data-pair-action="swap" aria-label="人物AとBの性別・外見・服装・表情を入れ替える">A⇄B</button></div>' +
       '<p class="chip-note person-roles">Aは動作する側（主導側・支える側）、Bは相手側です。英語タグも文章も、そのまま貼り付けられます。</p>' +
+      '<div class="person-tools">' + (p.suggest ? '<button type="button" class="btn" data-pair-action="suggest-expr">このポーズのおすすめ表情</button>' : '') + '<button type="button" class="btn btn--quiet" data-pair-action="reset-expr"' + (anyExpr ? '' : ' disabled') + '>表情だけリセット</button></div>' +
       P.slotsOf(p).map(function (slot) { return personBlock(ctx, s, p, slot); }).join('') +
       '<p class="chip-note" id="pairCountLine">' + ctx.esc(countLine(s)) + '</p></section>';
   }
@@ -189,9 +212,9 @@
     var cl = document.getElementById('pairCountLine'); if (cl) cl.textContent = countLine(s);
     P.slotsOf(P.poseById(s.poseId)).forEach(function (slot) {
       var prompt = s.people[slot.id].prompt;
-      var st = document.getElementById('personStatus_' + slot.id); if (st) st.textContent = personStatus(prompt);
+      var st = document.getElementById('personStatus_' + slot.id); if (st) st.textContent = personStatus(prompt, s.people[slot.id]);
       var cn = document.getElementById('personCount_' + slot.id); if (cn) cn.textContent = prompt.length + ' / ' + M.maxPersonPrompt;
-      var clr = document.querySelector('[data-person-clear="' + slot.id + '"]'); if (clr) clr.disabled = !prompt;
+      var clr = document.querySelector('[data-person-clear="' + slot.id + '"]'); if (clr) clr.disabled = !prompt && !P.hasExpression(s.people[slot.id]);
       var sv = document.querySelector('[data-person-save="' + slot.id + '"]'); if (sv) sv.disabled = !prompt.trim();
     });
     renderSticky(ctx);
@@ -205,6 +228,11 @@
     var html = head + targetSwitch(ctx, 'pair') + picker(ctx, s);
     if (p && !ui.picking) html += people(ctx, s, p) + layout(ctx, s, p) + camera(ctx, s, p) + scene(ctx, s, p) + notes(ctx, s) + outputOptions(ctx) + output(ctx, s);
     ctx.main.innerHTML = html;
+    // 横スクロールの表情候補は、選択中の候補が見える位置まで送る
+    Array.prototype.forEach.call(document.querySelectorAll('.expr-chips'), function (row) {
+      var sel = row.querySelector('[aria-pressed="true"]');
+      if (sel && sel.dataset.value) row.scrollLeft = Math.max(0, sel.offsetLeft - row.offsetLeft - 8);
+    });
     renderSticky(ctx);
     ctx.nav.hidden = false;
     ctx.nav.innerHTML = '<button class="btn" type="button" data-pair-action="home">スタートへ</button><button class="btn btn--primary" type="button" data-pair-action="to-output"' + (p ? '' : ' disabled') + '>出力へ移動</button>';
@@ -256,8 +284,14 @@
     if (target.dataset.pairRelated) { ctx.loadSinglePreset(target.dataset.pairRelated); return true; }
     if (target.dataset.personClear) {
       var cid = target.dataset.personClear, label = byId(D.pairPersonSlots, cid).labelJa;
-      if (s.people[cid].prompt && !global.confirm(label + 'の外見・服装プロンプトを消しますか？（性別とポーズは残ります）')) return true;
-      ctx.setPair(P.set(s, 'people.' + cid + '.prompt', '')); render(ctx); ctx.toast(label + 'の入力を消しました'); return true;
+      if (!global.confirm(label + 'の外見・服装と表情を消しますか？（性別とポーズは残ります）')) return true;
+      ctx.setPair(P.clearPerson(s, cid)); render(ctx); ctx.toast(label + 'の外見・服装と表情を消しました'); return true;
+    }
+    if (target.dataset.exprSet) {
+      if (target.disabled) return true;
+      var er = target.dataset.exprSet, eslot = target.dataset.slot, ev = target.dataset.value || null;
+      var cur = s.people[er].expression[eslot];
+      ctx.setPair(P.set(s, 'people.' + er + '.expression.' + eslot, cur === ev ? null : ev)); render(ctx); ctx.restore(target); return true;
     }
     if (target.dataset.personSave) { ctx.openSave('person:' + target.dataset.personSave); return true; }
     if (target.dataset.personLoad) {
@@ -278,15 +312,22 @@
     if (!action) return false;
     if (action === 'pick') { ui.picking = true; render(ctx); global.scrollTo(0, 0); }
     if (action === 'close-pick') { ui.picking = false; render(ctx); }
-    if (action === 'swap') { ctx.setPair(P.swapPeople(s)); render(ctx); ctx.toast('人物AとBの性別・外見・服装を入れ替えました'); }
+    if (action === 'suggest-expr') {
+      var sug = P.applySuggestion(s);
+      if (!sug.filled) { ctx.toast('空いている表情の欄がないため、変更しませんでした'); return true; }
+      ui.exprOpen.a = true; ui.exprOpen.b = true;
+      ctx.setPair(sug.state); render(ctx); ctx.toast('空いていた表情の欄にだけ、おすすめを入れました'); return true;
+    }
+    if (action === 'reset-expr') { ctx.setPair(P.resetExpressions(s)); render(ctx); ctx.toast('人物A・Bの表情だけを戻しました'); return true; }
+    if (action === 'swap') { ctx.setPair(P.swapPeople(s)); render(ctx); ctx.toast('人物AとBの性別・外見・服装・表情を入れ替えました'); }
     if (action === 'home') { ctx.goStart(); }
     if (action === 'to-output') { var el = document.getElementById('pairOutput'); if (el) el.scrollIntoView({ block: 'start' }); }
     if (action === 'save') ctx.openSave('pair');
     if (action === 'reset') {
       // 消える範囲を選んでもらう（人物入力を不用意に消さないため）
       ctx.openSheet('<div class="sheet-head"><div><h2>リセットする範囲</h2><p>どこまで初期状態へ戻すかを選んでください。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' +
-        '<div class="reset-options"><button type="button" class="reset-option" data-pair-action="reset-pose"><strong>ポーズと構図だけ戻す</strong><small>消える：ポーズ・カメラ・場所・視線・服装の設定<br>残る：人物A・Bの性別・外見・服装、末尾に追加する語</small></button>' +
-        '<button type="button" class="reset-option reset-option--danger" data-pair-action="reset-all"><strong>すべて消す</strong><small>人物A・Bの性別・外見・服装と、末尾に追加する語も消えます。保存した人物と名前付きの保存は消えません。</small></button>' +
+        '<div class="reset-options"><button type="button" class="reset-option" data-pair-action="reset-pose"><strong>ポーズと構図だけ戻す</strong><small>消える：ポーズ・カメラ・場所・二人の視線・服装の設定<br>残る：人物A・Bの性別・外見・服装・表情、末尾に追加する語</small></button>' +
+        '<button type="button" class="reset-option reset-option--danger" data-pair-action="reset-all"><strong>すべて消す</strong><small>人物A・Bの性別・外見・服装・表情と、末尾に追加する語も消えます。保存した人物と名前付きの保存は消えません。</small></button>' +
         '<button type="button" class="btn btn--quiet" data-action="close-sheet">キャンセル</button></div>');
     }
     if (action === 'reset-pose') { ctx.closeSheet(); ui.picking = true; ui.query = ''; ui.family = 'all'; ctx.setPair(P.resetPoseOnly(s)); render(ctx); global.scrollTo(0, 0); ctx.toast('ポーズと構図を戻しました。人物A・Bの入力は残っています'); }
@@ -298,12 +339,21 @@
     var t = event.target;
     if (t.matches('[data-pair-search]')) { ui.query = t.value; updatePoseList(ctx); return true; }
     if (t.matches('[data-pair-note]')) { ctx.setPair(P.set(ctx.getPair(), 'notes.' + t.dataset.pairNote, t.value)); refreshLive(ctx); return true; }
+    if (t.matches('[data-expr-search]')) {
+      var role = t.dataset.exprSearch; ui.exprQuery[role] = t.value;
+      (D.pairExpressionSlots || []).forEach(function (es) {
+        var ids = P.filterExpressions(es.id, t.value).map(function (x) { return x.id; });
+        Array.prototype.forEach.call(document.querySelectorAll('[data-expr-set="' + role + '"][data-slot="' + es.id + '"]'), function (b) { if (b.dataset.value) b.hidden = ids.indexOf(b.dataset.value) < 0; });
+      });
+      return true;
+    }
     if (t.matches('[data-person-prompt]')) { ctx.setPair(P.set(ctx.getPair(), 'people.' + t.dataset.personPrompt + '.prompt', t.value)); refreshLive(ctx); return true; }
     return false;
   }
   function toggle(event) {
     var el = event.target;
     if (el.matches && el.matches('details[data-person-fold]')) { ui.personOpen[el.dataset.personFold] = el.open; return; }
+    if (el.matches && el.matches('details[data-expr-fold]')) { ui.exprOpen[el.dataset.exprFold] = el.open; return; }
     if (!el.matches || !el.matches('details[data-fold]')) return;
     var key = { scene: 'openScene', notes: 'openNotes', opts: 'openOpts', ja: 'showJa' }[el.dataset.fold];
     if (key) ui[key] = el.open;

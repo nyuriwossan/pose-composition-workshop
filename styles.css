@@ -325,3 +325,22 @@ textarea.person-prompt { min-height: 104px; font-family: ui-monospace, SFMono-Re
 .reset-option strong, .reset-option small { display: block; }
 .reset-option small { margin-top: 4px; color: var(--muted); font-size: .74rem; line-height: 1.6; }
 .reset-option--danger strong { color: var(--hard); }
+
+/* ---- 人物A・B別の表情（2026-10-28） ---- */
+.person-tools { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 4px; }
+.expr-fold { margin-top: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--paper-strong); }
+.expr-fold > summary { list-style: none; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 6px 12px; cursor: pointer; }
+.expr-fold > summary::-webkit-details-marker { display: none; }
+.expr-fold > summary strong { flex: none; font-size: .82rem; }
+.expr-fold > summary small { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: .72rem; }
+.expr-fold > summary::after { content: '＋'; flex: none; margin-left: auto; width: 26px; height: 26px; display: grid; place-items: center; border-radius: 99px; background: var(--paper); color: var(--muted); font-weight: 800; }
+.expr-fold[open] > summary::after { content: '－'; }
+.expr-body { padding: 0 12px 10px; }
+.expr-body input[type="search"] { margin-bottom: 4px; }
+.expr-row { margin-top: 8px; }
+.expr-row h4 { margin: 0 0 4px; font-size: .74rem; color: var(--muted); }
+.expr-chips { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; overscroll-behavior-inline: contain; }
+.expr-chip { flex: 0 0 auto; min-height: 40px; padding: 6px 11px; border: 1px solid var(--line); border-radius: 999px; background: #fff; font-size: .76rem; font-weight: 800; white-space: nowrap; cursor: pointer; }
+.expr-chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent-dark); box-shadow: inset 0 0 0 1px var(--accent); }
+.expr-chip:disabled { color: #aaa49a; background: #eeeae2; text-decoration: line-through; cursor: not-allowed; }
+.expr-blocked { margin-top: 2px; }

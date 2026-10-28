@@ -575,7 +575,8 @@
     });
   }
 
-  test('二人用：要求された7種類がそろっている', function () { eq(ids(D.pairPoses), pairIds); });
+  // 2026-10-28：二人用ポーズを46種へ拡張。当初の7種が先頭に同じ順で残っていることを確認する。
+  test('二人用：当初の7種類が先頭にそのまま残り、全46種', function () { eq(ids(D.pairPoses).slice(0, 7), pairIds); eq(D.pairPoses.length, 46); });
   test('二人用：IDは一意で、一人用プリセットIDと衝突しない', function () { ok(unique(ids(D.pairPoses))); ids(D.pairPoses).forEach(function (id) { ok(ids(D.presets).indexOf(id) < 0, id); }); });
   test('二人用：意味データの必須項目（人数・A/B配置・接触点・カメラ・モデル別表現・検索語）', function () {
     D.pairPoses.forEach(function (p) {
@@ -722,8 +723,9 @@
     function found(q) { return ids(P.filterPoses(q, 'all')); }
     ok(found('ひざ').indexOf('pair_lap_facing') >= 0); ok(found('バックハグ').indexOf('pair_hug_from_behind') >= 0);
     ok(found('ばっくはぐ').indexOf('pair_hug_from_behind') >= 0); ok(found('かたあし').indexOf('pair_leg_lift_support') >= 0);
-    eq(found('ひざ うしろ').indexOf('pair_over_supine'), -1); eq(found('存在しない語').length, 0); eq(found('').length, 7);
-    eq(ids(P.filterPoses('', 'lying_bed')), ['pair_over_supine', 'pair_straddle_lying']);
+    eq(found('ひざ うしろ').indexOf('pair_over_supine'), -1); eq(found('存在しない語').length, 0); eq(found('').length, D.pairPoses.length);
+    var lying = ids(P.filterPoses('', 'lying_bed'));
+    eq(lying.slice(0, 2), ['pair_over_supine', 'pair_straddle_lying']); ok(lying.every(function (id) { return P.poseById(id).poseFamily === 'lying_bed'; }));
     ok(MO.matchesQuery('べっど', ['ベッドで仰向け'])); ok(MO.matchesQuery('ＢＥＤ', ['bed']));
   });
   test('出力先：設定の正規化と既定値', function () {
@@ -1072,6 +1074,203 @@
     var single = S.applyPatch(S.initial(), D.presets[0].patch);
     single = S.applyPatch(single, { 'output.includeNegativePrompt': true });
     ['generic', 'sdxl', 'nai', 'tsubaki'].forEach(function (t) { ok(!/\b(hat|glasses)\b/.test(MO.single(single, t, {}).negative), t + ' 一人用Negativeにも入らない'); });
+  });
+
+
+  // ---- 二人用ポーズの拡張（46種）と人物A・B別の表情（2026-10-28） ----
+  var newPairIds = ['pair_front_hug', 'pair_side_hug', 'pair_arm_around_shoulder', 'pair_waist_pull', 'pair_forehead_touch', 'pair_nose_close', 'pair_face_in_chest', 'pair_cheek_touch', 'pair_chin_lift',
+    'pair_lap_sideways', 'pair_sofa_snuggle', 'pair_armrest_lean', 'pair_hand_on_thigh', 'pair_chin_on_seated_shoulder', 'pair_lean_on_side',
+    'pair_lying_face_each', 'pair_spooning', 'pair_arm_pillow', 'pair_lying_embrace', 'pair_lying_on_person', 'pair_bed_sitting_facing', 'pair_loom_one_hand', 'pair_propped_beside', 'pair_hand_on_hip_lying',
+    'pair_wall_gaze', 'pair_wall_hand', 'pair_tie_pull', 'pair_wall_lift', 'pair_wall_press', 'pair_wall_back_hug', 'pair_leg_hook', 'pair_ear_whisper',
+    'pair_princess_carry', 'pair_dip_support', 'pair_lift_gaze', 'pair_shoulder_support', 'pair_one_arm_hold', 'pair_pull_into_arms', 'pair_lift_cling'];
+  function exprState(id, a, b, extra) {
+    var st = pairState(id, extra);
+    if (a) st = P.set(st, 'people.a.expression', a);
+    if (b) st = P.set(st, 'people.b.expression', b);
+    return st;
+  }
+  var EA = { main: 'confident_smile', gaze: 'look_down' }, EB = { main: 'shy', gaze: 'look_up', sub: 'parted_lips' };
+  test('拡張ポーズ：追加39種がそろい、既存7種の後ろに並ぶ', function () { eq(ids(D.pairPoses).slice(7), newPairIds); });
+  test('拡張ポーズ：全46種にカテゴリがあり、カテゴリ別件数の合計が全数と一致', function () {
+    D.pairPoses.forEach(function (p) { ok(D.pairPoseCategories[p.category], p.id); });
+    var c = P.categoryCounts(''); eq(c.all, 46);
+    eq(Object.keys(D.pairPoseCategories).reduce(function (n, k) { return n + (c[k] || 0); }, 0), 46);
+    eq([c.embrace, c.seated, c.bed, c.standing, c.carry], [11, 8, 11, 9, 7]);
+  });
+  test('拡張ポーズ：新規ポーズごとにTsubaki・SDXL・NovelAIの出力に主ポーズが入る', function () {
+    newPairIds.forEach(function (id) {
+      var p = P.poseById(id), st = pairState(id, { 'people.a.gender': 'male', 'people.b.gender': 'female' });
+      var t = P.render(st, 'tsubaki', {}).text, x = P.render(st, 'sdxl', {}).text, n = P.render(st, 'nai', {});
+      ok(t.indexOf(p.models.tsubaki.overview) >= 0 && t.indexOf('Contact points:') >= 0, id + ' tsubaki');
+      p.models.sdxl.core.forEach(function (tag) { ok(tagsOf(x).indexOf(tag) >= 0, id + ' sdxl ' + tag); });
+      p.models.nai.core.forEach(function (tag) { ok(tagsOf(n.base).indexOf(tag) >= 0, id + ' nai ' + tag); });
+      ok(/^boy, /.test(n.a) && /^girl, /.test(n.b), id + ' nai 性別');
+      eq(n.text, [n.base, n.a, n.b].join(' | '), id);
+    });
+  });
+  test('拡張ポーズ：性的な文脈で多用されるタグ（leg lock / pinned）を使わない', function () {
+    D.pairPoses.forEach(function (p) { ok(!/\b(leg lock|legs around waist|pinned)\b/.test(JSON.stringify(p.models)), p.id); });
+  });
+  test('拡張ポーズ：カテゴリで絞り込み、日本語で検索できる', function () {
+    eq(ids(P.filterPoses('', 'carry')).length, 7);
+    ok(ids(P.filterPoses('', 'carry')).every(function (id) { return P.poseById(id).category === 'carry'; }));
+    ok(ids(P.filterPoses('おひめさま', 'all')).indexOf('pair_princess_carry') >= 0);
+    ok(ids(P.filterPoses('横抱き', 'all')).indexOf('pair_princess_carry') >= 0, '統合した案は検索語に残す');
+    ok(ids(P.filterPoses('かべ', 'all')).indexOf('pair_wall_hand') >= 0);
+    ok(ids(P.filterPoses('壁ドン', 'all')).indexOf('pair_wall_hand') >= 0);
+    ok(ids(P.filterPoses('膝の上で抱きつく', 'all')).indexOf('pair_lap_facing') >= 0);
+    ok(ids(P.filterPoses('支え・抱き上げ', 'all')).length >= 7, 'カテゴリ名でも探せる');
+  });
+  test('拡張ポーズ：ポーズを変えても、成立するカメラ・人物入力・表情は保持', function () {
+    var st = exprState('pair_front_hug', EA, EB, { 'people.a.prompt': 'black hair' });
+    newPairIds.forEach(function (id) {
+      var next = P.selectPose(st, id).state;
+      eq([next.people.a.expression.main, next.people.b.expression.sub, next.people.a.prompt], ['confident_smile', 'parted_lips', 'black hair'], id);
+      st = next;
+    });
+  });
+  test('拡張ポーズ：二人とも座る場所（both_seat）はTsubaki・SDXL・NovelAIに一度ずつ出る', function () {
+    var st = pairState('pair_sofa_snuggle', { surface: 'bench' });
+    ok(P.render(st, 'tsubaki', {}).text.indexOf('Both are seated on a bench.') >= 0);
+    eq(tagsOf(P.render(st, 'sdxl', {}).text).filter(function (t) { return t === 'bench'; }).length, 1);
+    ok(tagsOf(P.render(st, 'nai', {}).base).indexOf('bench') >= 0);
+    ok(P.structureJa(st).indexOf('ベンチ（二人が座る）') >= 0);
+    var b = pairState('pair_chin_on_seated_shoulder', { surface: 'bench' });
+    ok(tagsOf(P.render(b, 'nai', {}).b).indexOf('sitting') >= 0, 'ベンチでは sitting を残す');
+  });
+  test('表情：初期値は未指定で、旧保存データ（表情欄なし）も未指定として読む', function () {
+    eq(P.initial().people.a.expression, { main: null, gaze: null, sub: null });
+    eq(P.normalize({ poseId: 'pair_lap_facing', people: { a: { gender: 'male', prompt: 'x' } } }).people.a.expression, { main: null, gaze: null, sub: null });
+    eq(P.normalize({ people: { a: { expression: { main: 'nope', gaze: 5, sub: 'tense' } } } }).people.a.expression, { main: null, gaze: null, sub: 'tense' });
+  });
+  test('表情：全空欄なら、全46ポーズ×全出力先の出力が表情機能の追加前と変わらない（明示的に null を入れても同じ）', function () {
+    D.pairPoses.forEach(function (pose) {
+      prefVariants.forEach(function (pr) {
+        var base = pairState(pose.id, { 'people.a.gender': 'male' });
+        var blank = exprState(pose.id, { main: null, gaze: null, sub: null }, { main: null, gaze: null, sub: null }, { 'people.a.gender': 'male' });
+        var a = allOutputs(base, pr), b = allOutputs(blank, pr);
+        eq([b.t.text, b.x.text, b.n.text], [a.t.text, a.x.text, a.n.text], pose.id);
+        eq(P.issues(blank, 'sdxl', pr).map(function (i) { return i.id; }), P.issues(base, 'sdxl', pr).map(function (i) { return i.id; }), pose.id);
+      });
+    });
+  });
+  test('表情：Aのみ指定。Aの文・欄だけに入り、Bには入らない', function () {
+    var st = exprState('pair_chin_lift', EA, null), o = allOutputs(st, {});
+    ok(o.t.text.indexOf('Person A has a confident smile and is looking down at Person B.') >= 0, o.t.text);
+    ok(o.n.a.indexOf('smug') >= 0 && o.n.a.indexOf('looking down') >= 0 && o.n.b.indexOf('smug') < 0);
+    ok(tagsOf(o.x.text).indexOf('smug') >= 0);
+  });
+  test('表情：Bのみ指定。Bの文・欄だけに入る', function () {
+    var st = exprState('pair_chin_lift', null, EB), o = allOutputs(st, {});
+    ok(o.t.text.indexOf('Person B has a shy, embarrassed expression and is looking up at Person A, with lips slightly parted.') >= 0, o.t.text);
+    ok(o.n.b.indexOf('embarrassed') >= 0 && o.n.b.indexOf('parted lips') >= 0 && o.n.a.indexOf('embarrassed') < 0);
+  });
+  test('表情：A・B両方指定。外見→表情の順に人物ごとに並び、SDXLはAの表情→Bの表情の順', function () {
+    var st = P.set(P.set(exprState('pair_chin_lift', EA, EB), 'people.a.prompt', 'black suit'), 'people.b.prompt', 'white dress');
+    var t = P.render(st, 'tsubaki', {}).text;
+    var order = ['Appearance of Person A', 'Person A has a confident smile', 'Appearance of Person B', 'Person B has a shy', P.poseById('pair_chin_lift').models.tsubaki.overview].map(function (k) { return t.indexOf(k); });
+    ok(order.every(function (v, i) { return v >= 0 && (i === 0 || v > order[i - 1]); }), JSON.stringify(order));
+    var x = tagsOf(P.render(st, 'sdxl', {}).text);
+    ok(x.indexOf('black suit') < x.indexOf('white dress') && x.indexOf('white dress') < x.indexOf('smug') && x.indexOf('smug') < x.indexOf('embarrassed'), x.join(','));
+    ok(x.indexOf('embarrassed') < x.indexOf('head tilt'), '表情は身体配置より前');
+    var n = P.render(st, 'nai', {});
+    ok(n.a.indexOf('black suit, smug, confident smile, looking down') >= 0, n.a);
+    ok(n.b.indexOf('white dress, embarrassed, shy, looking up, looking at another, parted lips') >= 0, n.b);
+  });
+  test('表情：タグの無い表情は、NovelAIにだけ自然な英語句を足す（SDXLには足さない）', function () {
+    var st = exprState('pair_front_hug', { main: 'dreamy' }, null);
+    ok(P.render(st, 'nai', {}).a.indexOf('dreamy expression') >= 0);
+    ok(P.render(st, 'sdxl', {}).text.indexOf('dreamy') < 0);
+    ok(P.render(st, 'tsubaki', {}).text.indexOf('a dreamy, entranced expression') >= 0);
+  });
+  test('表情：両立しない組み合わせは選べず、理由がある。保存データに入っていても後の枠を外す', function () {
+    var st = exprState('pair_front_hug', { main: 'surprised' }, null);
+    var r = P.expressionState(st, 'a', 'gaze', 'closed'); ok(!r.ok && r.reason.indexOf('驚き') >= 0);
+    ok(P.expressionState(st, 'a', 'gaze', 'look_up').ok);
+    ok(P.expressionState(st, 'b', 'gaze', 'closed').ok, 'Bには影響しない');
+    ok(!P.expressionState(exprState('pair_front_hug', { main: 'gentle_smile' }), 'a', 'sub', 'faint_smile').ok);
+    ok(!P.expressionState(exprState('pair_front_hug', { main: 'blush' }), 'a', 'sub', 'heavy_blush').ok);
+    ok(P.expressionState(exprState('pair_front_hug', { main: 'blush' }), 'a', 'main', 'shy').ok, '同じ枠の付け替えは自由');
+    eq(P.normalize({ poseId: 'pair_front_hug', people: { a: { expression: { main: 'surprised', gaze: 'closed', sub: 'tense' } } } }).people.a.expression, { main: 'surprised', gaze: null, sub: 'tense' });
+    D.pairExpressionConflicts.forEach(function (c) { ok(c[4] && D.pairExpressions[c[0]].some(function (x) { return x.id === c[1]; }) && D.pairExpressions[c[2]].some(function (x) { return x.id === c[3]; }), JSON.stringify(c)); });
+  });
+  test('表情：人物別の視線は二人の視線より優先し、選んでいない人物には二人の視線から導いた視線を使う', function () {
+    var one = exprState('pair_waist_pull', null, { gaze: 'look_away' });
+    var t = P.render(one, 'tsubaki', {}).text, n = P.render(one, 'nai', {});
+    ok(t.indexOf("look into each other's eyes") < 0, '二人の視線文は出さない');
+    ok(t.indexOf("Person A is looking into Person B's eyes.") >= 0 && t.indexOf('Person B is looking away from Person A.') >= 0, t);
+    ok(tagsOf(n.base).indexOf('eye contact') < 0, '見つめ合いの共通タグは外す');
+    ok(tagsOf(n.a).indexOf('looking at another') >= 0 && tagsOf(n.b).indexOf('looking to the side') >= 0 && tagsOf(n.b).indexOf('looking at another') < 0);
+    ok(P.issues(one, 'nai', {}).some(function (i) { return i.id === 'person_gaze_override'; }));
+    var none = pairState('pair_waist_pull');
+    ok(P.render(none, 'tsubaki', {}).text.indexOf("Person A and Person B look into each other's eyes.") >= 0, '未指定なら従来どおり');
+    var behind = exprState('pair_spooning', { gaze: 'closed' }, null, { gaze: 'back_gazes_front' });
+    ok(P.render(behind, 'tsubaki', {}).text.indexOf('Person B is looking ahead.') >= 0, '前後のある二人の視線も人物ごとに導く');
+  });
+  test('表情：ポーズの上下関係と逆の視線は警告する', function () {
+    ok(P.issues(exprState('pair_over_supine', { gaze: 'look_up' }), 'nai', {}).some(function (i) { return i.id === 'gaze_vertical_a'; }));
+    ok(P.issues(exprState('pair_princess_carry', null, { gaze: 'look_up' }), 'nai', {}).some(function (i) { return i.id === 'gaze_vertical_b'; }));
+    ok(!P.issues(exprState('pair_over_supine', { gaze: 'look_down' }, { gaze: 'look_up' }), 'nai', {}).some(function (i) { return /^gaze_vertical/.test(i.id); }));
+  });
+  test('表情：全46ポーズ×表情の組み合わせ×出力先で、空・重複・強調構文の混入・adult/bustがない', function () {
+    var combos = [[EA, EB], [{ main: 'dreamy', sub: 'heavy_blush' }, null], [null, { gaze: 'teary', sub: 'restrained' }], [{ main: 'teasing_smile', gaze: 'side_glance', sub: 'tense' }, { main: 'blush', gaze: 'closed', sub: 'affectionate' }]];
+    D.pairPoses.forEach(function (pose) {
+      combos.forEach(function (c, i) {
+        prefVariants.forEach(function (pr) {
+          var o = allOutputs(exprState(pose.id, c[0], c[1]), pr), label = pose.id + '/' + i;
+          ok(o.t.text && !/undefined|null|\.\.|, ,/.test(o.t.text), label + ' tsubaki');
+          cleanList(o.x.text, label + ' sdxl'); cleanList(o.n.a, label + ' nai A'); cleanList(o.n.b, label + ' nai B'); cleanList(o.n.base, label + ' nai base');
+          ok(!MO.syntaxLeaks('tsubaki', o.t.text) && !MO.syntaxLeaks('sdxl', o.x.text) && !MO.syntaxLeaks('nai', o.n.text), label + ' leak');
+          ok(!MO.hasPixaiForbidden(o.t.text) && !MO.hasPixaiForbidden(o.x.text), label + ' adult/bust');
+        });
+      });
+    });
+  });
+  test('表情：出力先を変えても選択は変わらない', function () {
+    var st = exprState('pair_wall_hand', EA, EB), before = JSON.stringify(st);
+    ['tsubaki', 'sdxl', 'nai', 'generic'].forEach(function (t) { P.render(st, t, { emphasis: true }); P.issues(st, t, {}); P.structureJa(st); });
+    eq(JSON.stringify(st), before);
+  });
+  test('表情：表情だけリセット・人物だけクリア・ポーズだけリセット・入れ替えの範囲', function () {
+    var st = P.set(P.set(exprState('pair_wall_hand', EA, EB, { 'people.a.gender': 'male' }), 'people.a.prompt', 'black suit'), 'notes.common', 'night');
+    var r1 = P.resetExpressions(st);
+    eq([r1.people.a.expression.main, r1.people.b.expression.gaze, r1.people.a.prompt, r1.poseId], [null, null, 'black suit', 'pair_wall_hand']);
+    var r2 = P.clearPerson(st, 'a');
+    eq([r2.people.a.prompt, r2.people.a.expression.main, r2.people.a.gender, r2.people.b.expression.main], ['', null, 'male', 'shy']);
+    var r3 = P.resetPoseOnly(st);
+    eq([r3.poseId, r3.people.a.expression.main, r3.people.b.expression.sub, r3.notes.common], [null, 'confident_smile', 'parted_lips', 'night']);
+    var r4 = P.swapPeople(st);
+    eq([r4.people.a.expression.main, r4.people.b.expression.main], ['shy', 'confident_smile']);
+    ok(P.hasPersonInput(exprState('pair_wall_hand', { sub: 'tense' })), '表情だけでも入力ありとして扱う');
+  });
+  test('表情：おすすめ表情は空いている枠にだけ入れ、両立しない値は入れない', function () {
+    var empty = P.applySuggestion(pairState('pair_wall_hand'));
+    ok(empty.filled > 0); eq(empty.state.people.a.expression, P.poseById('pair_wall_hand').suggest.a);
+    var partly = P.applySuggestion(exprState('pair_wall_hand', { main: 'expressionless' }));
+    eq(partly.state.people.a.expression.main, 'expressionless', '選択済みは上書きしない');
+    var blocked = P.applySuggestion(exprState('pair_wall_hand', null, { main: 'blush' }));
+    ok(blocked.state.people.b.expression.sub !== 'heavy_blush', '赤面と赤面強めは同時に入れない');
+    D.pairPoses.forEach(function (p) {
+      ok(p.suggest, p.id + ' おすすめあり');
+      var res = P.applySuggestion(pairState(p.id));
+      ['a', 'b'].forEach(function (r) { eq(res.state.people[r].expression, P.normalize(res.state).people[r].expression, p.id); });
+    });
+  });
+  test('表情：日本語構造に人物ごとの表情を表示し、検索はひらがなでも探せる', function () {
+    var j = P.structureJa(exprState('pair_chin_lift', EA, EB));
+    ok(j.indexOf('【人物Aの表情】メイン表情：余裕のある笑み／視線：見下ろす') >= 0, j);
+    ok(j.indexOf('【人物Bの表情】メイン表情：照れ／視線：見上げる／補助表情：口を少し開ける') >= 0, j);
+    eq(P.filterExpressions('main', 'てれ').map(function (x) { return x.id; }), ['shy']);
+    ok(P.filterExpressions('gaze', 'みあげる').some(function (x) { return x.id === 'look_up'; }));
+    ok(P.filterExpressions('sub', 'blush').some(function (x) { return x.id === 'heavy_blush'; }), '英語タグでも探せる');
+    eq(P.filterExpressions('main', '').length, D.pairExpressions.main.length);
+  });
+  test('保存：表情は下書き・名前付き保存に残り、旧形式の保存も読める', function () {
+    var st = memoryStore(), s = exprState('pair_lap_sideways', EA, EB);
+    Store.savePairDraft(s, st); eq(Store.loadPairDraft(st).people.b.expression, EB);
+    Store.savePreset('表情つき', s, st, 'pair'); eq(Store.listPresets(st)[0].state.people.a.expression.main, 'confident_smile');
+    st.data[Store.keys.pairDraft] = JSON.stringify({ poseId: 'pair_lap_facing', people: { a: { gender: 'male', prompt: 'old' } } });
+    var old = Store.loadPairDraft(st); eq([old.poseId, old.people.a.prompt, old.people.a.expression.main], ['pair_lap_facing', 'old', null]);
   });
 
   function run() {

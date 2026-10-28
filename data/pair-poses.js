@@ -26,16 +26,17 @@
     { id: 'bed', labelJa: 'ベッド', en: 'a bed', onTag: 'on bed', seatTag: 'sitting on bed' },
     { id: 'floor', labelJa: '床', en: 'the floor', onTag: 'on floor', seatTag: 'sitting on floor' },
     { id: 'sofa', labelJa: 'ソファ', en: 'a sofa', onTag: 'on couch', seatTag: 'sitting on couch' },
-    { id: 'chair', labelJa: '椅子', en: 'a chair', onTag: 'on chair', seatTag: 'sitting on chair' }
+    { id: 'chair', labelJa: '椅子', en: 'a chair', onTag: 'on chair', seatTag: 'sitting on chair' },
+    { id: 'bench', labelJa: 'ベンチ', en: 'a bench', onTag: 'bench', seatTag: 'bench' }
   ];
   // {A}{B}{front}{back} は人物名へ置換する。tags.a/b/front/back は人物別、sdxl は一枚のタグ列用（矛盾しない語だけ）。
   D.pairGazes = [
-    { id: 'mutual', labelJa: '見つめ合う', tsubaki: "{A} and {B} look into each other's eyes.", sdxl: ['eye contact'], nai: { base: ['eye contact'], a: ['looking at another'], b: ['looking at another'] } },
-    { id: 'a_gazes_b', labelJa: 'AがBを見つめ、Bは視線を外す', tsubaki: '{A} gazes at {B}, and {B} glances slightly away.', sdxl: ['looking at another'], nai: { a: ['looking at another'], b: ['looking away'] } },
-    { id: 'back_gazes_front', labelJa: '後ろの{back}が{front}の横顔を見る', tsubaki: "{back} looks at {front}'s profile, while {front} looks ahead.", sdxl: ['looking at another'], nai: { back: ['looking at another'], front: ['looking ahead'] } },
-    { id: 'front_looks_back', labelJa: '前の{front}が振り返って{back}を見る', tsubaki: '{front} turns their head to look back at {back}.', sdxl: ['looking back'], nai: { front: ['looking back', 'looking at another'], back: ['looking at another'] } },
-    { id: 'both_viewer', labelJa: '二人ともこちらを見る', tsubaki: 'Both of them look toward the viewer.', sdxl: ['looking at viewer'], nai: { a: ['looking at viewer'], b: ['looking at viewer'] } },
-    { id: 'eyes_closed', labelJa: '二人とも目を閉じる', tsubaki: 'Both of them have their eyes gently closed.', sdxl: ['closed eyes'], nai: { a: ['closed eyes'], b: ['closed eyes'] } }
+    { id: 'mutual', labelJa: '見つめ合う', roles: { a: "is looking into {other}'s eyes", b: "is looking into {other}'s eyes" }, tsubaki: "{A} and {B} look into each other's eyes.", sdxl: ['eye contact'], nai: { base: ['eye contact'], a: ['looking at another'], b: ['looking at another'] } },
+    { id: 'a_gazes_b', labelJa: 'AがBを見つめ、Bは視線を外す', roles: { a: 'is gazing at {other}', b: 'is glancing slightly away' }, tsubaki: '{A} gazes at {B}, and {B} glances slightly away.', sdxl: ['looking at another'], nai: { a: ['looking at another'], b: ['looking away'] } },
+    { id: 'back_gazes_front', labelJa: '後ろの{back}が{front}の横顔を見る', roles: { back: "is looking at {other}'s profile", front: 'is looking ahead' }, tsubaki: "{back} looks at {front}'s profile, while {front} looks ahead.", sdxl: ['looking at another'], nai: { back: ['looking at another'], front: ['looking ahead'] } },
+    { id: 'front_looks_back', labelJa: '前の{front}が振り返って{back}を見る', roles: { front: 'is turning their head to look back at {other}', back: 'is looking at {other}' }, tsubaki: '{front} turns their head to look back at {back}.', sdxl: ['looking back'], nai: { front: ['looking back', 'looking at another'], back: ['looking at another'] } },
+    { id: 'both_viewer', labelJa: '二人ともこちらを見る', roles: { a: 'is looking toward the viewer', b: 'is looking toward the viewer' }, tsubaki: 'Both of them look toward the viewer.', sdxl: ['looking at viewer'], nai: { a: ['looking at viewer'], b: ['looking at viewer'] } },
+    { id: 'eyes_closed', labelJa: '二人とも目を閉じる', roles: { a: 'has their eyes gently closed', b: 'has their eyes gently closed' }, tsubaki: 'Both of them have their eyes gently closed.', sdxl: ['closed eyes'], nai: { a: ['closed eyes'], b: ['closed eyes'] } }
   ];
   D.pairGenders = [
     { id: 'unspecified', labelJa: '指定なし', tsubaki: '', nai: '', count: '' },
@@ -48,12 +49,14 @@
     { id: 'b', labelJa: '人物B', naiLabel: 'Character 2', tsubakiName: 'Person B' }
   ];
   D.pairRelationLabels = {
-    vertical: { a_above: 'Aが上・Bが下', a_slightly_above: 'Aがやや上（Bの膝の上）', level: '同じ高さ' },
+    vertical: { a_above: 'Aが上・Bが下', a_slightly_above: 'Aがやや上（Bの膝の上）', a_taller: 'Aの顔が高い位置', b_carried: 'BがAに抱え上げられている', level: '同じ高さ' },
     depth: { b_front: 'Bが前・Aが後ろ', a_front: 'Aが前・Bが後ろ', none: '前後差なし' },
-    facing: { face_to_face: '向かい合う', same_direction: '同じ方向を向く' }
+    facing: { face_to_face: '向かい合う', same_direction: '同じ方向を向く', side_by_side: '横に並ぶ', side_on: '横から寄る' }
   };
+  // 二人用ポーズのカテゴリ（依頼書の分類）。一人用プリセットの系統とは別に持つ。
+  D.pairPoseCategories = { embrace: '抱擁・密着', seated: '座位・膝上', bed: 'ベッド・寝姿', standing: '立位・壁際', carry: '支え・抱き上げ' };
   D.pairRelationTsubaki = {
-    vertical: { a_above: 'Person A is on top and Person B is underneath.', a_slightly_above: "Person A's head is slightly higher than Person B's head.", level: '' },
+    vertical: { a_above: 'Person A is on top and Person B is underneath.', a_slightly_above: "Person A's head is slightly higher than Person B's head.", a_taller: "Person A's head is higher than Person B's head.", b_carried: "Person B's feet are off the ground, held up by Person A.", level: '' },
     depth: { b_front: 'Person B is in front and Person A is behind.', a_front: 'Person A is in front and Person B is behind.', none: '' }
   };
 
@@ -72,6 +75,7 @@
       labelJa: '仰向けの相手に覆いかぶさる',
       shortJa: '仰向けのBに、Aが向かい合って上から覆いかぶさる。',
       poseFamily: 'lying_bed',
+      category: 'bed',
       roles: { a: '上から覆いかぶさる側', b: '仰向けの側' },
       relation: { vertical: 'a_above', depth: 'none', facing: 'face_to_face' },
       placement: {
@@ -108,7 +112,7 @@
       },
       surface: { mode: 'on', allowed: ['bed', 'floor', 'sofa'], defaultId: 'bed' },
       gazes: { allowed: ['mutual', 'a_gazes_b', 'eyes_closed'], defaultId: 'mutual' },
-      keywords: ['覆いかぶさる', 'おおいかぶさる', '上から', '見下ろす', '見上げる', '仰向け', 'ベッド', '床', '向かい合う', '顔が近い', '寝る'],
+      keywords: ['覆いかぶさる', 'おおいかぶさる', '上から', '見下ろす', '見上げる', '仰向け', 'ベッド', '床', '向かい合う', '顔が近い', '寝る', 'ベッド上で覆いかぶさる'],
       related: ['relationship_bed_supine_looking_up', 'relationship_bed_leaning_over_viewer']
     }),
     pose({
@@ -116,6 +120,7 @@
       labelJa: '背後から身を寄せる',
       shortJa: '前に立つBへ、Aが背後から身を寄せる。腕は回さない。',
       poseFamily: 'standing_leaning',
+      category: 'embrace',
       roles: { a: '後ろから身を寄せる側', b: '前に立つ側' },
       relation: { vertical: 'level', depth: 'b_front', facing: 'same_direction' },
       placement: {
@@ -159,6 +164,7 @@
       labelJa: '横になった相手に向かい合ってまたがる',
       shortJa: '仰向けのBの腰の上に、Aが向かい合って膝立ちでまたがる。',
       poseFamily: 'lying_bed',
+      category: 'bed',
       roles: { a: 'またがる側', b: '横になる側' },
       relation: { vertical: 'a_above', depth: 'none', facing: 'face_to_face' },
       placement: {
@@ -203,6 +209,7 @@
       labelJa: '膝の上に向かい合って座る',
       shortJa: '座っているBの膝の上に、Aが向かい合って座る。',
       poseFamily: 'sitting_kneeling',
+      category: 'seated',
       roles: { a: '膝に座る側', b: '座っている側' },
       relation: { vertical: 'a_slightly_above', depth: 'none', facing: 'face_to_face' },
       placement: {
@@ -239,13 +246,14 @@
       },
       surface: { mode: 'seat', allowed: ['sofa', 'chair', 'bed', 'floor'], defaultId: 'sofa' },
       gazes: { allowed: ['mutual', 'a_gazes_b', 'eyes_closed'], defaultId: 'mutual' },
-      keywords: ['膝の上', '膝に座る', '膝乗り', '向かい合う', '抱っこ', 'ソファ', '椅子', '首に腕を回す', '座る']
+      keywords: ['膝の上', '膝に座る', '膝乗り', '向かい合う', '抱っこ', 'ソファ', '椅子', '首に腕を回す', '座る', '膝の上で抱きつく', '膝上で密着']
     }),
     pose({
       id: 'pair_lap_facing_away',
       labelJa: '膝の上に背中を向けて座る',
       shortJa: '座っているBの膝の上に、Aが背中を向けて（同じ向きで）座る。',
       poseFamily: 'sitting_kneeling',
+      category: 'seated',
       roles: { a: '膝に座る側（前）', b: '座っている側（後ろ）' },
       relation: { vertical: 'a_slightly_above', depth: 'a_front', facing: 'same_direction' },
       placement: {
@@ -282,13 +290,14 @@
       },
       surface: { mode: 'seat', allowed: ['sofa', 'chair', 'bed', 'floor'], defaultId: 'sofa' },
       gazes: { allowed: ['back_gazes_front', 'front_looks_back', 'both_viewer', 'eyes_closed'], defaultId: 'back_gazes_front' },
-      keywords: ['膝の上', '膝に座る', '背中を向けて', '後ろから抱く', 'バックハグ', '抱っこ', 'ソファ', '同じ向き', '座る']
+      keywords: ['膝の上', '膝に座る', '背中を向けて', '後ろから抱く', 'バックハグ', '抱っこ', 'ソファ', '同じ向き', '座る', '背中を預けて膝上に座る', '甘える']
     }),
     pose({
       id: 'pair_hug_from_behind',
       labelJa: '背後から抱き寄せる',
       shortJa: '前に立つBを、Aが背後から両腕で抱き寄せる。',
       poseFamily: 'standing_leaning',
+      category: 'embrace',
       roles: { a: '後ろから抱き寄せる側', b: '前に立つ側' },
       relation: { vertical: 'level', depth: 'b_front', facing: 'same_direction' },
       placement: {
@@ -326,13 +335,14 @@
       },
       surface: { mode: 'none', allowed: [], defaultId: null },
       gazes: { allowed: ['back_gazes_front', 'front_looks_back', 'both_viewer', 'eyes_closed'], defaultId: 'back_gazes_front' },
-      keywords: ['バックハグ', '後ろから抱きしめる', '抱き寄せる', '抱きしめる', '背後', '立ち', 'ハグ', '肩に顎']
+      keywords: ['バックハグ', '後ろから抱きしめる', '抱き寄せる', '抱きしめる', '背後', '立ち', 'ハグ', '肩に顎', '背後から抱きしめる', '後ろから抱く']
     }),
     pose({
       id: 'pair_leg_lift_support',
       labelJa: '片脚を上げ、相手が支える',
       shortJa: '向かい合って立ち、Bが片脚を上げ、Aがその脚と背中を支える。',
       poseFamily: 'standing_leaning',
+      category: 'standing',
       roles: { a: '支える側', b: '片脚を上げる側' },
       relation: { vertical: 'level', depth: 'none', facing: 'face_to_face' },
       placement: {

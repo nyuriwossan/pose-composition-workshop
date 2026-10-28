@@ -281,7 +281,7 @@
   function pairPresetCards() {
     var list = P.filterPoses(view.presetQuery, view.pairFamilyFilter);
     return list.length ? list.map(function (p) {
-      return '<button class="preset-card" type="button" data-load-pair="' + attr(p.id) + '"><strong>' + esc(p.nameJa || p.labelJa) + '</strong><small>' + esc(p.shortJa) + '</small><span class="preset-tags"><span class="preset-tag">二人</span><span class="preset-tag">' + esc(D.presetPoseFamilyLabels[p.poseFamily] || '') + '</span><span class="preset-tag">A：' + esc(p.roles.a) + '</span></span></button>';
+      return '<button class="preset-card" type="button" data-load-pair="' + attr(p.id) + '"><strong>' + esc(p.nameJa || p.labelJa) + '</strong><small>' + esc(p.shortJa) + '</small><span class="preset-tags"><span class="preset-tag">二人</span><span class="preset-tag">' + esc(D.pairPoseCategories[p.category] || D.presetPoseFamilyLabels[p.poseFamily] || '') + '</span><span class="preset-tag">A：' + esc(p.roles.a) + '</span></span></button>';
     }).join('') : '<p class="preset-empty">該当するポーズはありません。</p>';
   }
   function countTabs() {
@@ -290,9 +290,9 @@
   }
   function presetSheet() {
     if (view.countFilter === 'pair') {
-      var pairCounts = P.familyCounts('');
-      var pairFams = ['all'].concat(Object.keys(D.presetPoseFamilyLabels).filter(function (id) { return pairCounts[id]; }));
-      var pairFilters = '<div class="family-filter-block"><small>ポーズ系統</small><div class="tag-filters" role="group" aria-label="ポーズ系統で絞り込み">' + pairFams.map(function (id) { return '<button type="button" data-pair-preset-family="' + id + '" aria-pressed="' + (view.pairFamilyFilter === id) + '">' + esc(id === 'all' ? 'すべて' : D.presetPoseFamilyLabels[id]) + ' <b>' + (pairCounts[id] || 0) + '</b></button>'; }).join('') + '</div></div>';
+      var pairCounts = P.categoryCounts('');
+      var pairFams = ['all'].concat(Object.keys(D.pairPoseCategories));
+      var pairFilters = '<div class="family-filter-block"><small>カテゴリ</small><div class="tag-filters" role="group" aria-label="カテゴリで絞り込み">' + pairFams.map(function (id) { return '<button type="button" data-pair-preset-family="' + id + '" aria-pressed="' + (view.pairFamilyFilter === id) + '">' + esc(id === 'all' ? 'すべて' : D.pairPoseCategories[id]) + ' <b>' + (pairCounts[id] || 0) + '</b></button>'; }).join('') + '</div></div>';
       var pairUsers = Store.listPresets().filter(function (p) { return p.kind === 'pair'; });
       var pairUserHtml = pairUsers.length ? '<h3>保存した二人用の設計</h3>' + pairUsers.map(userPresetRow).join('') : '';
       openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>二人用は人物A（主導側）・B（相手側）の配置まで整理済みです。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + pairFilters + '<div class="preset-list" id="presetList">' + pairPresetCards() + '</div>' + pairUserHtml);

@@ -21,7 +21,7 @@
     return {
       schemaVersion: SCHEMA,
       poseId: null,
-      people: { a: { gender: 'unspecified', prompt: '' }, b: { gender: 'unspecified', prompt: '' } },
+      people: { a: { gender: 'unspecified', prompt: '', expression: emptyExpression() }, b: { gender: 'unspecified', prompt: '', expression: emptyExpression() } },
       camera: { angle: null, shot: null },
       surface: null,
       gaze: null,
@@ -56,6 +56,7 @@
       s.people[k].gender = byId(D.pairGenders, srcPerson.gender) ? srcPerson.gender : 'unspecified';
       // 貼り付けた文章は加工せず保持する（長さの上限だけ設ける）
       s.people[k].prompt = str(srcPerson.prompt, M.maxPersonPrompt);
+      s.people[k].expression = normalizeExpression(srcPerson.expression);
     });
     if (p) {
       var cam = src.camera || {};
@@ -97,7 +98,32 @@
   }
   function hasPersonInput(state) {
     var s = normalize(state);
-    return slotsOf(null).some(function (slot) { return M.splitTop(s.people[slot.id].prompt).length > 0; });
+    return slotsOf(null).some(function (slot) { return M.splitTop(s.people[slot.id].prompt).length > 0 || hasExpression(s.people[slot.id]); });
+  }
+  // 表情だけを未指定へ戻す（外見・服装・性別・ポーズは残す）
+  function resetExpressions(state) {
+    var next = clone(normalize(state));
+    slotsOf(null).forEach(function (slot) { next.people[slot.id].expression = emptyExpression(); });
+    return normalize(next);
+  }
+  // 一人分の外見・服装と表情を消す（性別は残す）
+  function clearPerson(state, role) {
+    var next = clone(normalize(state));
+    if (next.people[role]) { next.people[role].prompt = ''; next.people[role].expression = emptyExpression(); }
+    return normalize(next);
+  }
+  // ポーズのおすすめ表情を、未指定の枠にだけ入れる
+  function applySuggestion(state) {
+    var s = normalize(state), p = poseById(s.poseId), next = clone(s), filled = 0;
+    if (!p || !p.suggest) return { state: s, filled: 0 };
+    slotsOf(p).forEach(function (slot) {
+      var sug = p.suggest[slot.id] || {}, expr = next.people[slot.id].expression;
+      expressionSlotIds().forEach(function (k) {
+        if (expr[k] || !sug[k] || expressionConflict(expr, k, sug[k])) return;
+        expr[k] = sug[k]; filled += 1;
+      });
+    });
+    return { state: normalize(next), filled: filled };
   }
   function swapPeople(state) {
     var s = normalize(state), next = clone(s);
@@ -152,6 +178,71 @@
     if (girls) out.push(girls === 1 ? '1girl' : girls + 'girls');
     return out;
   }
+  // ---- 人物A・B別の表情（2026-10-28） ----
+  function expressionSlotIds() { return (D.pairExpressionSlots || []).map(function (x) { return x.id; }); }
+  function exprItem(slot, id) { return byId((D.pairExpressions || {})[slot], id); }
+  function emptyExpression() { var o = {}; expressionSlotIds().forEach(function (k) { o[k] = null; }); return o; }
+  // 同じ人物の中で両立しない組み合わせなら理由を返す（両立するなら空文字）
+  function expressionConflict(expr, slot, id) {
+    var reason = '';
+    (D.pairExpressionConflicts || []).some(function (c) {
+      var hit = (c[0] === slot && c[1] === id && expr[c[2]] === c[3]) || (c[2] === slot && c[3] === id && expr[c[0]] === c[1]);
+      if (hit) reason = c[4];
+      return hit;
+    });
+    return reason;
+  }
+  // 先の枠（メイン → 視線 → 補助）を優先し、矛盾する後の枠の値は保存しない
+  function normalizeExpression(src) {
+    var out = emptyExpression(), raw = isObject(src) ? src : {};
+    expressionSlotIds().forEach(function (k) {
+      var id = raw[k];
+      if (!exprItem(k, id) || expressionConflict(out, k, id)) return;
+      out[k] = id;
+    });
+    return out;
+  }
+  function hasExpression(person) { return expressionSlotIds().some(function (k) { return !!(person.expression && person.expression[k]); }); }
+  function expressionState(state, role, slot, id) {
+    var s = normalize(state), expr = clone(s.people[role].expression);
+    expr[slot] = null;
+    var reason = expressionConflict(expr, slot, id);
+    return { ok: !reason, reason: reason };
+  }
+  function expressionLabel(person) {
+    return (D.pairExpressionSlots || []).map(function (slot) { var it = exprItem(slot.id, person.expression[slot.id]); return it ? it.labelJa : ''; }).filter(Boolean).join('・');
+  }
+  function otherName(infos, info) {
+    var others = infos.filter(function (x) { return x.id !== info.id; });
+    return others.length ? others[0].slot.tsubakiName : 'the other person';
+  }
+  // 二人の視線（見つめ合う など）から、その人物だけの視線句を取り出す
+  function pairGazePhrase(p, g, role) {
+    if (!g || !g.roles) return '';
+    return g.roles[role] || (roleOf(p, 'front') === role ? g.roles.front : roleOf(p, 'back') === role ? g.roles.back : '') || '';
+  }
+  function anyPersonGaze(infos) { return infos.some(function (x) { return !!x.person.expression.gaze; }); }
+  // 表情の英文：「Person A has a shy expression and is looking up at Person B, with lips slightly parted.」
+  function tsubakiExpression(info, infos, p, g, anyGaze) {
+    var e = info.person.expression, other = otherName(infos, info), clauses = [];
+    var main = exprItem('main', e.main), gz = exprItem('gaze', e.gaze), sub = exprItem('sub', e.sub);
+    if (main) clauses.push('has ' + main.tsubaki);
+    var gazeText = gz ? gz.tsubaki : (anyGaze ? pairGazePhrase(p, g, info.id) : '');
+    if (gazeText) clauses.push(gazeText.replace(/\{other\}/g, other));
+    if (!clauses.length && !sub) return '';
+    return sentence(info.slot.tsubakiName + ' ' + (clauses.length ? clauses.join(' and ') : 'appears') + (sub ? (clauses.length ? ', with ' : ' with ') + sub.tsubaki : ''));
+  }
+  // 表情のタグ（メイン → 視線 → 補助）。NovelAIだけ、タグの無い表情に自然な英語句を足す。
+  function expressionTags(person, targetId) {
+    var out = [];
+    expressionSlotIds().forEach(function (k) {
+      var it = exprItem(k, person.expression[k]);
+      if (!it) return;
+      it.tags.forEach(function (t) { M.push(out, t); });
+      if (targetId === 'nai') (it.nai || []).forEach(function (t) { M.push(out, t); });
+    });
+    return out;
+  }
   function gazeRoleTags(p, g, role) {
     if (!g) return [];
     var out = (g.nai[role] || []).slice();
@@ -171,10 +262,15 @@
     if (who.length) out.push(sentence(who.join(', and ')));
     // 外見は「誰が・どの位置の人物か」と結び付けて、ポーズ説明より前に置く
     var described = infos.filter(function (info) { return info.adapted.text; });
-    described.forEach(function (info) {
-      var role = p.models.tsubaki.roleEn && p.models.tsubaki.roleEn[info.id];
-      var body = info.adapted.text;
-      out.push('Appearance of ' + info.slot.tsubakiName + (role ? ' (' + role + ')' : '') + ': ' + body + (/[.!?]$/.test(body) ? '' : '.'));
+    var g0 = byId(D.pairGazes, s.gaze), anyGaze = anyPersonGaze(infos);
+    infos.forEach(function (info) {
+      if (info.adapted.text) {
+        var role = p.models.tsubaki.roleEn && p.models.tsubaki.roleEn[info.id];
+        var body = info.adapted.text;
+        out.push('Appearance of ' + info.slot.tsubakiName + (role ? ' (' + role + ')' : '') + ': ' + body + (/[.!?]$/.test(body) ? '' : '.'));
+      }
+      var expr = tsubakiExpression(info, infos, p, g0, anyGaze);
+      if (expr) out.push(expr);
     });
     if (described.length >= 2) out.push('Keep the two appearances separate: ' + infos.map(function (info) { return info.slot.tsubakiName + "'s features apply only to " + info.slot.tsubakiName; }).join(', and ') + '.');
     out.push(p.models.tsubaki.overview);
@@ -185,9 +281,10 @@
     out.push(p.models.tsubaki.b);
     out.push(sentence('Contact points: ' + p.contacts.map(function (c) { return c.tsubaki; }).join('; ')));
     var surf = byId(D.pairSurfaces, s.surface);
-    if (surf) out.push(p.surface.mode === 'seat' ? 'Person B is seated on ' + surf.en + '.' : 'They are on ' + surf.en + '.');
+    if (surf) out.push(p.surface.mode === 'seat' ? 'Person B is seated on ' + surf.en + '.' : p.surface.mode === 'both_seat' ? 'Both are seated on ' + surf.en + '.' : 'They are on ' + surf.en + '.');
     var g = byId(D.pairGazes, s.gaze);
-    if (g) out.push(fillEn(g.tsubaki, p));
+    // 人物別の視線を選んだ場合は、上の表情文で一人ずつ書いたので二人の視線文は出さない
+    if (g && !anyGaze) out.push(fillEn(g.tsubaki, p));
     var angle = byId(D.pairAngles, s.camera.angle), shot = byId(D.pairShots, s.camera.shot);
     if (angle) out.push(angle.tsubaki);
     if (shot) out.push(shot.tsubaki);
@@ -215,9 +312,14 @@
       });
     });
     function add(t) { if (used.indexOf(t) < 0 && cores.indexOf(M.coreOf(t)) < 0) { used.push(t); cores.push(M.coreOf(t)); M.push(tags, t); } }
+    // 人物A → 人物Bの順に表情。視線を選んでいない人物には、二人の視線から導いた視線を使う
+    var g = byId(D.pairGazes, s.gaze), anyGaze = anyPersonGaze(infos);
+    infos.forEach(function (info) {
+      expressionTags(info.person, 'sdxl').forEach(add);
+      if (anyGaze && !info.person.expression.gaze) gazeRoleTags(p, g, info.id).forEach(add);
+    });
     p.models.sdxl.placement.forEach(add);
-    var g = byId(D.pairGazes, s.gaze);
-    if (g) g.sdxl.forEach(add);
+    if (g && !anyGaze) g.sdxl.forEach(add);
     var surf = byId(D.pairSurfaces, s.surface);
     if (surf) add(p.surface.mode === 'seat' ? surf.seatTag : surf.onTag);
     var angle = byId(D.pairAngles, s.camera.angle), shot = byId(D.pairShots, s.camera.shot);
@@ -236,10 +338,10 @@
     var used = core.slice();
     M.push(base, M.emphasize('nai', pr, core));
     function addBase(t) { if (used.indexOf(t) < 0) { used.push(t); M.push(base, t); } }
-    var g = byId(D.pairGazes, s.gaze);
-    if (g && g.nai.base) g.nai.base.forEach(addBase);
+    var g = byId(D.pairGazes, s.gaze), anyGaze = anyPersonGaze(infos);
+    if (g && g.nai.base && !anyGaze) g.nai.base.forEach(addBase);
     var surf = byId(D.pairSurfaces, s.surface);
-    if (surf && p.surface.mode === 'on') addBase(surf.onTag);
+    if (surf && (p.surface.mode === 'on' || p.surface.mode === 'both_seat')) addBase(surf.onTag);
     var angle = byId(D.pairAngles, s.camera.angle), shot = byId(D.pairShots, s.camera.shot);
     if (angle) angle.tags.forEach(addBase);
     if (shot) shot.tags.forEach(addBase);
@@ -251,12 +353,13 @@
       function addMine(t) { if (used.indexOf(t) < 0 && mine.indexOf(M.coreOf(t)) < 0) M.push(list, t); }
       if (gender.nai && mine.indexOf(gender.nai) < 0) M.push(list, gender.nai);
       info.adapted.tokens.forEach(function (t) { list.push(t); });
+      expressionTags(info.person, 'nai').forEach(addMine);
       p.models.nai.actions.forEach(function (act) { M.push(list, (act.source === role ? 'source#' : 'target#') + act.tag); });
       // 座る面はBの姿勢として渡す（sitting → sitting on couch などへ具体化）
       var seated = role === 'b' && surf && p.surface.mode === 'seat';
       if (seated) addMine(surf.seatTag);
-      (p.models.nai[role] || []).forEach(function (t) { if (seated && t === 'sitting') return; addMine(t); });
-      gazeRoleTags(p, g, role).forEach(addMine);
+      (p.models.nai[role] || []).forEach(function (t) { if (seated && t === 'sitting' && /sitting/.test(surf.seatTag)) return; addMine(t); });
+      if (!info.person.expression.gaze) gazeRoleTags(p, g, role).forEach(addMine);
       var text = list.join(', ');
       if (s.notes[role]) text += (text ? ', ' : '') + s.notes[role];
       return { id: role, labelJa: info.slot.labelJa, naiLabel: info.slot.naiLabel, text: text };
@@ -288,12 +391,14 @@
     slotsOf(p).forEach(function (slot) {
       var raw = s.people[slot.id].prompt.trim();
       if (M.splitTop(raw).length) lines.push('【' + slot.labelJa + 'の外見・服装】' + raw.replace(/\s*[\r\n]+\s*/g, ' ／ '));
+      var person = s.people[slot.id];
+      if (hasExpression(person)) lines.push('【' + slot.labelJa + 'の表情】' + (D.pairExpressionSlots || []).map(function (es) { var it = exprItem(es.id, person.expression[es.id]); return it ? es.labelJa + '：' + it.labelJa : ''; }).filter(Boolean).join('／'));
     });
     var rel = [R.vertical[p.relation.vertical], R.depth[p.relation.depth], R.facing[p.relation.facing]].filter(function (x) { return x && x !== '同じ高さ' && x !== '前後差なし'; });
     lines.push('【位置関係】' + rel.join('／'));
     lines.push('【接触点】\n' + p.contacts.map(function (c) { return '・' + c.ja; }).join('\n'));
     var surf = byId(D.pairSurfaces, s.surface);
-    if (surf) lines.push('【場所】' + surf.labelJa + (p.surface.mode === 'seat' ? '（Bが座る）' : ''));
+    if (surf) lines.push('【場所】' + surf.labelJa + (p.surface.mode === 'seat' ? '（Bが座る）' : p.surface.mode === 'both_seat' ? '（二人が座る）' : ''));
     if (s.gaze) lines.push('【視線】' + gazeLabel(p, s.gaze));
     lines.push('【カメラ】' + byId(D.pairAngles, s.camera.angle).labelJa + '・' + byId(D.pairShots, s.camera.shot).labelJa);
     return lines.join('\n');
@@ -311,6 +416,16 @@
     if ((id === 'tsubaki' || id === 'sdxl') && (['common', 'a', 'b'].some(function (k) { return M.hasPixaiForbidden(s.notes[k]); }) || infos.some(function (x) { return M.hasPixaiForbidden(x.person.prompt); }))) out.push({ id: 'pixai_forbidden_note', severity: 'warning', textJa: '入力に adult／bust を含む語があります。利用者の入力は原文のまま出力します（アプリ側では追加しません）。' });
     if (id === 'sdxl' && anyPerson) out.push({ id: 'sdxl_person_mixing', severity: 'warning', textJa: 'SDXLでは人物A・Bの外見とポーズが一つのタグ列に入るため、髪色や服装がもう一方へ移ったり、上下・前後を取り違えたりすることがあります。両者に共通する語は一つにまとめます。安定させたいときは、各人物を特徴的な数語に絞るか、TsubakiやNovelAIを使ってください。' });
     var targetName = M.target(id).labelJa;
+    var pg = byId(D.pairGazes, s.gaze);
+    if (pg && anyPersonGaze(infos)) {
+      var allGaze = infos.every(function (x) { return !!x.person.expression.gaze; });
+      out.push({ id: 'person_gaze_override', severity: 'info', textJa: allGaze ? '二人とも人物別の視線を選んだため、「場所・視線」の二人の視線（' + gazeLabel(p, s.gaze) + '）は使いません。' : '人物別の視線を選んだため、「場所・視線」の二人の視線（' + gazeLabel(p, s.gaze) + '）は、視線を選んでいない人物にだけ当てはめます。' });
+    }
+    var vh = (D.pairGazeVerticalHints || {})[p.relation.vertical];
+    if (vh) infos.forEach(function (x) {
+      var gz = exprItem('gaze', x.person.expression.gaze);
+      if (gz && gz.direction && gz.direction === vh[x.id]) out.push({ id: 'gaze_vertical_' + x.id, severity: 'warning', textJa: x.slot.labelJa + 'はこのポーズで相手より' + (gz.direction === 'up' ? '高い' : '低い') + '位置にいるため、「' + gz.labelJa + '」は不自然になりやすい組み合わせです。' });
+    });
     // 人物ごとに一つの案内へまとめる（スマートフォンで読みやすくするため）
     infos.forEach(function (x) {
       var who = x.slot.labelJa, ad = x.adapted, g = byId(D.pairGenders, x.gender), parts = [], codes = [], severity = 'info';
@@ -327,12 +442,25 @@
     return out;
   }
 
+  // filter はカテゴリ（抱擁・密着 など）か、従来のポーズ系統のどちらでも指定できる
   function filterPoses(query, family) {
+    var cats = D.pairPoseCategories || {};
     return (D.pairPoses || []).filter(function (p) {
-      if (family && family !== 'all' && p.poseFamily !== family) return false;
+      if (family && family !== 'all') {
+        if (cats[family] ? p.category !== family : p.poseFamily !== family) return false;
+      }
       var labels = D.presetPoseFamilyLabels || {};
-      return M.matchesQuery(query, [p.labelJa, p.shortJa, p.roles.a, p.roles.b, p.placement.a, p.placement.b, labels[p.poseFamily] || '', '二人', '2人', 'ふたり'].concat(p.keywords));
+      return M.matchesQuery(query, [p.labelJa, p.shortJa, p.roles.a, p.roles.b, p.placement.a, p.placement.b, labels[p.poseFamily] || '', cats[p.category] || '', '二人', '2人', 'ふたり'].concat(p.keywords));
     });
+  }
+  function categoryCounts(query) {
+    var counts = { all: 0 };
+    filterPoses(query, 'all').forEach(function (p) { counts.all += 1; counts[p.category] = (counts[p.category] || 0) + 1; });
+    return counts;
+  }
+  // 表情の検索（ひらがな・カタカナ・漢字の差を吸収）
+  function filterExpressions(slot, query) {
+    return ((D.pairExpressions || {})[slot] || []).filter(function (it) { return M.matchesQuery(query, [it.labelJa, it.descJa].concat(it.keywords || [], it.tags)); });
   }
   function familyCounts(query) {
     var counts = { all: 0 };
@@ -353,6 +481,14 @@
     selectPose: selectPose,
     swapPeople: swapPeople,
     resetPoseOnly: resetPoseOnly,
+    resetExpressions: resetExpressions,
+    clearPerson: clearPerson,
+    applySuggestion: applySuggestion,
+    expressionState: expressionState,
+    expressionLabel: expressionLabel,
+    hasExpression: hasExpression,
+    categoryCounts: categoryCounts,
+    filterExpressions: filterExpressions,
     hasPersonInput: hasPersonInput,
     slotsOf: slotsOf,
     personInfo: function (state, targetId) { var s = normalize(state); return personInfo(s, poseById(s.poseId), targetId); },
