@@ -17,8 +17,8 @@
 
   // Danbooruタグ一覧（a1111-sd-webui-tagcomplete の danbooru.csv、2026-10-29取得）と完全一致を確認した語。投稿数は確認時点の参考値。
   D.modeVerifiedTags = {
-    'head tilt': 139388, 'hand on own neck': 2066, 'contrapposto': 30005, 'arm across chest': 402, 'looking back': 281064,
-    'arm at side': 42804, 'hand up': 350006, 'against wall': 14753, 'leaning to the side': 10342, 'chair': 91462,
+    'head tilt': 139388, 'hand on own neck': 2066, 'arm across chest': 402,
+    'arm at side': 42804, 'against wall': 14753, 'leaning to the side': 10342, 'chair': 91462,
     'leaning on object': 2915, 'stool': 11014, 'arm support': 94468, 'hand on own thigh': 12747, 'leaning forward': 115911,
     'on chair': 21903, 'elbow on knee': 876, 'armchair': 6376, 'elbow rest': 6876
   };
@@ -61,8 +61,8 @@
       },
       prompt: {
         torso: {
-          compact: ['hips tilted and angled one way', 'shoulder line tilted the opposite way', 'ribcage counter-rotated so the shoulders and hips form an X', 'head held away from the higher shoulder'],
-          detailed: ['The hips tilt and angle one way while the shoulder line tilts the opposite way, the ribcage counter-rotating so the shoulders and hips form an X.', 'The head stays away from the higher shoulder.']
+          compact: ['pelvis angled one way with its line slightly tilted', 'shoulder line tilted the opposite way', 'ribcage counter-rotated so the shoulder line and pelvis line form an X', 'head held away from the higher shoulder'],
+          detailed: ['The pelvis angles one way with its line slightly tilted while the shoulder line tilts the opposite way, the ribcage counter-rotating so the shoulder line and pelvis line form an X.', 'The head stays away from the higher shoulder.']
         },
         arms: {
           compact: ['one forearm crossing diagonally in front of the chest', 'that hand resting on the opposite side of the ribcage', 'the other arm extended long and down, angled away from the hip'],
@@ -70,7 +70,7 @@
         }
       },
       tags: {
-        torso: { verified: ['contrapposto'], phrases: ['hips and shoulders tilted opposite', 'counter-rotated ribcage'] },
+        torso: { verified: [], phrases: ['pelvis angled one way', 'shoulder line tilted opposite', 'counter-rotated ribcage'] },
         arms: { verified: ['arm across chest'], phrases: ['diagonal forearm over chest', 'other arm straight down away from hip'] }
       },
       figure: { shoulderTilt: 7, hipTilt: -6, headShift: -3, headTilt: -7, twist: 1,
@@ -87,8 +87,8 @@
       },
       prompt: {
         torso: {
-          compact: ['torso turned about forty-five degrees away from the viewer', 'near shoulder dropped low', 'far shoulder raised', 'shoulder line slanting down toward the viewer', 'head turned back toward the viewer', 'chin drawn toward the near shoulder'],
-          detailed: ['The torso turns about forty-five degrees away from the viewer, with the near shoulder dropped low and the far shoulder raised so the shoulder line slants down toward the viewer.', 'The head turns back toward the viewer, the chin drawn toward the near shoulder.']
+          compact: ['torso angled about forty-five degrees from the viewer with the chest still partly visible', 'near shoulder dropped low', 'far shoulder raised', 'shoulder line slanting down toward the viewer', 'face turned toward the viewer', 'chin drawn toward the near shoulder'],
+          detailed: ['The torso angles about forty-five degrees from the viewer with the chest still partly visible, the near shoulder dropped low and the far shoulder raised so the shoulder line slants down toward the viewer.', 'The face turns toward the viewer, the chin drawn toward the near shoulder.']
         },
         arms: {
           compact: ['near arm hanging close along the torso', 'far arm partly hidden behind the torso'],
@@ -96,7 +96,7 @@
         }
       },
       tags: {
-        torso: { verified: ['looking back'], phrases: ['body turned away', 'near shoulder lowered', 'far shoulder raised', 'chin toward near shoulder'] },
+        torso: { verified: [], phrases: ['body angled three-quarters', 'chest partly visible', 'near shoulder lowered', 'far shoulder raised', 'face toward viewer', 'chin toward near shoulder'] },
         arms: { verified: ['arm at side'], phrases: ['far arm hidden behind torso'] }
       },
       figure: { narrow: 0.62, shoulderTilt: -9, headShift: 3, headTilt: 8, face: 'three_quarter', near: 'shoulder:0',
@@ -113,20 +113,20 @@
       },
       prompt: {
         torso: {
-          compact: ['torso rotated', 'one shoulder dropped', 'the opposite shoulder brought closer to the viewer', 'neck kept long and upright'],
-          detailed: ['The torso rotates, dropping one shoulder while the opposite shoulder comes closer to the viewer.', 'The neck stays long and upright.']
+          compact: ['torso rotated', 'one shoulder dropped noticeably lower than the other', 'the opposite shoulder brought closer to the viewer', 'neck kept long and upright'],
+          detailed: ['The torso rotates, dropping one shoulder noticeably lower than the other while the opposite shoulder comes closer to the viewer.', 'The neck stays long and upright.']
         },
         arms: {
-          compact: ['the hand on the dropped-shoulder side hovering beside the temple near the hairline', 'a visible gap between the hand and the cheek', 'that elbow opened outward', 'the other arm relaxed downward'],
-          detailed: ['On the dropped-shoulder side, the hand hovers beside the temple near the hairline, leaving a visible gap between the hand and the cheek, with that elbow opened outward.', 'The other arm relaxes downward.']
+          compact: ['the hand on the dropped-shoulder side raised beside the temple with the fingertips held a little away from the hair', 'a clear gap between the palm and the cheek', 'that elbow kept low and opened outward', 'the other arm relaxed downward'],
+          detailed: ['On the dropped-shoulder side, the hand rises beside the temple with the fingertips held a little away from the hair, leaving a clear gap between the palm and the cheek, while that elbow stays low and opens outward.', 'The other arm relaxes downward.']
         }
       },
       tags: {
-        torso: { verified: [], phrases: ['one shoulder dropped', 'opposite shoulder forward', 'long upright neck'] },
-        arms: { verified: ['hand up'], phrases: ['hand hovering beside temple', 'gap between hand and cheek', 'elbow opened out'] }
+        torso: { verified: [], phrases: ['one shoulder dropped low', 'opposite shoulder forward', 'long upright neck'] },
+        arms: { verified: [], phrases: ['hand raised beside temple', 'fingertips apart from hair', 'gap between palm and cheek', 'elbow low and open'] }
       },
       figure: { narrow: 0.85, shoulderTilt: -7, headShift: -1, near: 'shoulder:1', twist: -1,
-        arms: [{ at: 'eyes', dx: 12, dy: -3, bend: 1, hintY: -2, elbowOut: 1.5 }, { at: 'hip', dx: -12, dy: 11, bend: -1 }] }
+        arms: [{ at: 'eyes', dx: 12, dy: -3, bend: 1, hintY: 8, elbowOut: 1.5 }, { at: 'hip', dx: -12, dy: 11, bend: -1 }] }
     },
     {
       id: 'wall_side_lean', sourceId: 'ME-18', line: 'mode', labelJa: '壁に肩を預けて体を斜めにする',
