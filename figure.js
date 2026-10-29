@@ -179,12 +179,23 @@
     ], ground: 126, supports: { hands: [P(35, 124), P(29, 123)] } });
   }
 
+  // 正面から見た腰掛け（モード・エディトリアルの座位）。太ももは手前へ向かうので短く描く。
+  function frontSeated(ed) {
+    var props = [{ kind: 'seat', x: CX - 18, y: 97, w: 36, h: 5 }];
+    if (ed.seat === 'stool') props.push({ kind: 'seat', x: CX - 2, y: 102, w: 4, h: 32 });
+    else props.push({ kind: 'backrest', x: CX - 15, y: 52, w: 30, h: 44 });
+    return { view: 'front', hip: P(CX, 95), neck: P(CX, 53), head: P(CX, 42), legs: [
+      { hip: P(CX + 7, 95), knee: P(CX + 12, 107), foot: P(CX + 13, 134) }, { hip: P(CX - 7, 95), knee: P(CX - 12, 107), foot: P(CX - 13, 134) }
+    ], ground: 136, props: props };
+  }
+
   /** 図の向き：その姿勢がいちばん見分けやすい向きを選ぶ */
   function chooseBase(s) {
     var pose = s.pose, sp = pose.supportPose, posture = pose.posture;
     if (SPECIAL[sp]) return SPECIAL[sp]();
     var ed = editorialSpec(s);
     if (ed && ed.base === 'floor_sit_back') return floorSitBack();
+    if (ed && ed.base === 'front_seated') return frontSeated(ed);
     if (posture === 'reclining' || sp === 'leaning_on_elbows' || sp === 'propped_up') return lying(s);
     if (sp === 'sonkyo' || sp === 'shiko_stance') return frontLowSquat(s, sp);
     if (posture === 'sitting') return sideSitting(s);
@@ -213,14 +224,24 @@
     var upperRotation = 0;
     var ed = editorialSpec(s);
     var edFront = ed && b.view === 'front' ? ed : null;
+    var edSide = ed && b.view === 'side' && ed.sideOK ? ed : null;
+    if (edFront && edFront.bodyLean) {
+      // 体全体を足元から傾ける（壁にもたれるなど）。足の位置は動かさない。
+      var pivot = P(b.hip.x, b.ground);
+      b.hip = rotate(b.hip, pivot, edFront.bodyLean); b.neck = rotate(b.neck, pivot, edFront.bodyLean); b.head = rotate(b.head, pivot, edFront.bodyLean);
+      b.legs.forEach(function (leg) { leg.hip = rotate(leg.hip, pivot, edFront.bodyLean); leg.knee = rotate(leg.knee, pivot, edFront.bodyLean); });
+    }
+    if (edFront && edFront.hipShift) { b.hip = add(b.hip, edFront.hipShift, 0); b.legs.forEach(function (leg) { leg.hip = add(leg.hip, edFront.hipShift, 0); leg.knee = add(leg.knee, edFront.hipShift / 2, 0); }); }
     if (!SPECIAL[pose.supportPose] && pose.posture !== 'reclining') {
       if (b.view === 'side') upperRotation = facing * (lean === 'forward' ? 16 : lean === 'backward' ? -12 : 0);
       else if (lean === 'sideways') upperRotation = 8;
     }
     if (edFront && edFront.lean) upperRotation += edFront.lean;
+    if (edSide && edSide.sideLean) upperRotation += facing * edSide.sideLean;
     if (upperRotation) { b.neck = rotate(b.neck, b.hip, upperRotation); b.head = rotate(b.head, b.hip, upperRotation); }
     if (edFront && edFront.ribShift) { b.neck = add(b.neck, edFront.ribShift, 0); b.head = add(b.head, edFront.ribShift, 0); }
     if (edFront && edFront.fold) { b.neck = mid(b.hip, b.neck, 0.9); b.head = add(b.head, 0, 5); }
+    if (edSide && edSide.fold) { var oldNeck = b.neck; b.neck = mid(b.hip, b.neck, edSide.fold); b.head = add(b.head, b.neck.x - oldNeck.x, b.neck.y - oldNeck.y); }
     var forwardInFront = b.view === 'front' && lean === 'forward';
     if (forwardInFront) { b.neck = mid(b.hip, b.neck, 0.94); b.head = add(b.head, 0, 3); }
 
@@ -230,7 +251,7 @@
     var shoulderCenter = add(b.neck, down.x * 3, down.y * 3);
     var shoulders;
     if (b.view === 'front') {
-      var halfW = 13 * narrow;
+      var halfW = 13 * narrow * (edFront && edFront.narrow || 1);
       var perp = { x: -down.y, y: down.x };                            // 肩の左右方向
       var dropR = pose.shoulders.emphasis === 'one_lowered' ? 2 : 0;
       var sa = add(shoulderCenter, perp.x * halfW, perp.y * halfW), sb = add(shoulderCenter, -perp.x * halfW, -perp.y * halfW);
@@ -254,9 +275,35 @@
     if (ed) {
       if (edFront && edFront.headTilt != null) b.face.tilt = edFront.headTilt;
       if (edFront && edFront.face) b.face.kind = edFront.face;
+      if (edSide && edSide.face) b.face.kind = edSide.face;
       b.editorial = ed;
+      if (edFront) editorialProps(b, edFront);
     }
     return b;
+  }
+
+  // 壁・椅子の背・肘掛けは、肩の位置に合わせて置く（腕を預ける点 b.anchors も作る）
+  function editorialProps(b, ed) {
+    if (!ed.wall && !ed.chairRail && !ed.armrest) return;
+    var props = (b.props || []).slice(), anchors = {};
+    if (ed.wall) {
+      var ws = b.shoulders[ed.wall > 0 ? 0 : 1], wx = ed.wall > 0 ? ws.x + 1.5 : ws.x - 8.5;
+      props.push({ kind: 'wall', x: round(wx), y: 6, w: 7, h: round(b.ground - 6) });
+    }
+    if (ed.chairRail) {
+      var rs = b.shoulders[0], ry = rs.y + 20, rx = rs.x - 1;
+      props.push({ kind: 'rail', x: round(rx), y: round(ry + 1.4), w: 24, h: 3 },
+        { kind: 'backrest', x: round(rx + 20), y: round(ry + 4), w: 4, h: round(b.ground - ry - 4) },
+        { kind: 'seat', x: round(rx + 20), y: round(Math.max(ry + 30, 96)), w: 14, h: 4 });
+      anchors.rail = P(rx + 1, ry);
+    }
+    if (ed.armrest) {
+      var as = b.shoulders[0], ay = as.y + 20, ax = as.x + 3;
+      props.push({ kind: 'armrest', x: round(ax - 4), y: round(ay + 1.4), w: 16, h: 3 }, { kind: 'armrest', x: round(ax + 8), y: round(ay + 4), w: 3, h: round(Math.max(97 - ay - 4, 2)) });
+      anchors.armrest = P(ax, ay);
+    }
+    b.props = props;
+    b.anchors = anchors;
   }
 
   /** 顔の印：front（両目）／three_quarter（両目を寄せる）／profile（片目と鼻）／back（後頭部） */
@@ -395,10 +442,20 @@
     if (s.restraint && s.restraint.type !== 'none' && s.restraint.placement !== 'none') return null;
     if (s.interaction && s.interaction.viewerHandInteraction && s.interaction.viewerHandInteraction !== 'none') return null;
     var sup = b.supports && b.supports.hands;
-    if (b.view !== 'front' && !(sup && ed.arms.every(function (t) { return t.support != null; }))) return null;
+    if (b.view !== 'front' && !ed.sideOK && !(sup && ed.arms.every(function (t) { return t.support != null; }))) return null;
     return ed.arms.map(function (t, i) {
       if (t.support != null) return { to: sup[t.support], bend: -b.facing };
-      function at(spec) { var a = spec.at === 'collar' ? add(b.neck, 0, 5) : spec.at === 'hip' ? b.hip : spec.at === 'shoulder' ? b.shoulders[i] : L[spec.at]; return add(a, spec.dx || 0, spec.dy || 0); }
+      function at(spec) {
+        var key = spec.at, a;
+        if (key === 'collar') a = add(b.neck, 0, 5);
+        else if (key === 'hip') a = b.hip;
+        else if (key === 'shoulder') a = b.shoulders[i];
+        else if (/^knee[01]$/.test(key)) a = b.legs[Number(key.slice(-1))].knee;
+        else if (/^thigh[01]$/.test(key)) a = L.thigh[Number(key.slice(-1))];
+        else if (b.anchors && b.anchors[key]) a = b.anchors[key];
+        else a = L[key];
+        return add(a, spec.dx || 0, spec.dy || 0);
+      }
       // elbow を持つ指定は例外用の個別調整（顔の前の前腕など、2関節の計算では置けない形）
       return { to: at(t), bend: t.bend, hintY: t.hintY, hidden: !!t.hidden, toward: !!t.toward, elbowOut: t.elbowOut, fixedElbow: t.elbow ? at(t.elbow) : null };
     });

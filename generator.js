@@ -171,7 +171,7 @@
     var pose = selected(D.editorialPoses, s.pose.editorialPose);
     if (!pose || pose.id === 'none') return;
     var shot = selected(D.shotSizes, pose.recommendedShot);
-    var title = 'ポーズ：' + pose.labelJa + '（' + pose.avId + '）';
+    var title = 'ポーズ：' + pose.labelJa + '（' + (pose.sourceId || pose.avId) + '）';
     if (D.editorialShotTooTight(pose.id, s.camera.shotSize)) {
       push(out.ja, title + '（画角外・保持中。推奨：' + (shot ? shot.labelJa : pose.recommendedShot) + '）');
       return;

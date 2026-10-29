@@ -55,7 +55,7 @@
   test('データ：すべての選択肢に日本語ラベル', function () { [D.postures, D.motionStates, D.weights, D.armActions, D.headYaws, D.gazeTargets, D.shotSizes, D.placements].forEach(function (list) { list.forEach(function (x) { ok(x.labelJa); }); }); });
   test('データ：腕の使用手数は0〜2', function () { D.armActions.concat(D.combinedArms).forEach(function (x) { ok(x.resources.hands >= 0 && x.resources.hands <= 2); }); });
   test('データ：複合腕は2本の手を使う', function () { D.combinedArms.forEach(function (x) { eq(x.resources.hands, 2); }); });
-  test('データ：ビルトインプリセットは既存77件＋モード系8件', function () { eq(D.presets.length, 85); eq(D.presets.filter(function (p) { return p.meta.collection !== 'editorial'; }).length, 77); eq(D.presets.filter(function (p) { return p.meta.collection === 'editorial'; }).length, 8); });
+  test('データ：ビルトインプリセットは既存77件＋アヴァンギャルド8件＋モード・エディトリアル9件', function () { eq(D.presets.length, 94); var c = D.getPresetCollectionCounts(D.presets); eq([c.basic + c.relationship + c.special, c.editorial, c.mode_editorial], [77, 8, 9]); });
   test('データ：全プリセットにshotSizeがある', function () { D.presets.forEach(function (p) { ok(p.patch.camera && p.patch.camera.shotSize); }); });
   test('データ：既存15プリセットを保持', function () { legacyPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：relationship既存15件が揃う', function () { relationshipExistingIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
@@ -63,7 +63,7 @@
   test('データ：背面5件・顔隠し2件・背中主役5件が揃う', function () { relationshipAddedIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：手のやりとり6件が揃う', function () { viewerHandPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：既存の拘束・演出8件が揃う', function () { specialPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
-  test('データ：全プリセットにcollectionがある', function () { D.presets.forEach(function (p) { ok(['basic', 'relationship', 'special', 'editorial'].indexOf(p.meta.collection) >= 0); }); });
+  test('データ：全プリセットにcollectionがある', function () { D.presets.forEach(function (p) { ok(['basic', 'relationship', 'special', 'editorial', 'mode_editorial'].indexOf(p.meta.collection) >= 0); }); });
   test('データ：basic 15件・relationship 46件・special 16件', function () { var c = D.getPresetCollectionCounts(D.presets); eq([c.basic, c.relationship, c.special], [15, 46, 16]); });
   test('データ：全プリセットにposeFamilyが1つある', function () { D.presets.forEach(function (p) { ok(D.presetPoseFamilyLabels[p.meta.poseFamily], p.id); }); });
   test('データ：既存の特殊8件は拘束・固定系統を保持', function () { specialPresetIds.forEach(function (id) { eq(D.presets.filter(function (p) { return p.id === id; })[0].meta.poseFamily, 'restraint'); }); });
@@ -81,14 +81,15 @@
   test('分類：全身用shotSizeを判定', function () { ['full_body', 'wide', 'wide_shot'].forEach(function (shot) { eq(D.getPresetFramingGroup({ patch: { camera: { shotSize: shot } } }), 'full'); }); });
   test('分類：未知のshotSizeはother', function () { eq(D.getPresetFramingGroup({ patch: { camera: { shotSize: 'unknown' } } }), 'other'); });
   test('分類：全プリセットがアップ・半身・全身のいずれか', function () { D.presets.forEach(function (p) { ok(['up', 'half', 'full'].indexOf(D.getPresetFramingGroup(p)) >= 0); }); });
-  test('分類：既存はアップ13・半身33・全身31、モード系はアップ1・半身7', function () {
-    var old = D.presets.filter(function (p) { return p.meta.collection !== 'editorial'; });
+  test('分類：既存はアップ13・半身33・全身31、アヴァンギャルドはアップ1・半身7、モード・エディトリアルは半身9', function () {
+    var old = D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) < 0; });
     var c = D.getPresetFramingCounts(old); eq([c.up, c.half, c.full], [13, 33, 31]);
     var e = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'editorial'; })); eq([e.up, e.half, e.full], [1, 7, 0]);
+    var m = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'mode_editorial'; })); eq([m.up, m.half, m.full], [0, 9, 0]);
   });
   test('分類：分類別件数の合計が全件数', function () { var c = D.getPresetFramingCounts(D.presets); eq(c.up + c.half + c.full + c.other, c.all); });
-  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 14); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
-  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 40); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
+  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 13 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'up'; }).length, '既存13件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
+  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 33 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'half'; }).length, '既存33件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
   test('フィルター：全身だけを返す', function () { var list = D.filterPresets(D.presets, 'full', false); eq(list.length, 31); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'full'); }); });
   test('フィルター：相手視点だけを返す', function () { var list = D.filterPresets(D.presets, 'all', true); eq(list.length, 46); list.forEach(function (p) { ok(p.meta.audienceTags.indexOf('viewer_perspective') >= 0); }); });
   test('フィルター：relationshipのアップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', { collection: 'relationship' }); eq(list.length, 12); });
@@ -1376,10 +1377,11 @@
 
   // ---- モード・アヴァンギャルド系（2026-10-29b） ----
   var M = PCW.modelOutput;
-  var edPoses = D.editorialPoses.filter(function (p) { return p.id !== 'none'; });
+  var allEdPoses = D.editorialPoses.filter(function (p) { return p.id !== 'none'; }), edPoses = allEdPoses.filter(function (p) { return !p.line; });
+  function sid(pose) { return pose.sourceId || pose.avId; }
   var edPresets = D.presets.filter(function (p) { return p.meta.collection === 'editorial'; });
   var adoptedAv = ['AV-005', 'AV-006', 'AV-009', 'AV-011', 'AV-012', 'AV-013', 'AV-015', 'AV-017'];
-  function edPreset(poseId) { return edPresets.filter(function (p) { return p.patch.pose.editorialPose === poseId; })[0]; }
+  function edPreset(poseId) { return D.presets.filter(function (p) { return p.patch.pose && p.patch.pose.editorialPose === poseId; })[0]; }
   function edState(poseId, extra) { var st = S.applyPatch(S.initial(), edPreset(poseId).patch); return extra ? S.applyPatch(st, extra) : st; }
   function edTexts(pose) {
     var out = [];
@@ -1405,7 +1407,7 @@
   });
   test('モード系：身体情報（骨盤・胸郭・頭・左右の腕・支持・奥行き・推奨画角）をすべて持つ', function () {
     var order = D.editorialShotOrder;
-    edPoses.forEach(function (pose) {
+    allEdPoses.forEach(function (pose) {
       ['pelvis', 'ribcage', 'head', 'armA', 'armB', 'support', 'depth'].forEach(function (k) { ok(pose.body[k] && pose.body[k].length >= 4, pose.id + ' ' + k); });
       ok(order.indexOf(pose.minShot) >= 0 && order.indexOf(pose.recommendedShot) >= order.indexOf(pose.minShot), pose.id + ' 画角');
       ok(['bust_shot', 'upper_body', 'waist_up', 'knee_up'].indexOf(pose.recommendedShot) >= 0, pose.id + ' 推奨は胸上〜膝上（全身主眼ではない）');
@@ -1418,7 +1420,7 @@
       var pose = S.option(D.editorialPoses, p.patch.pose.editorialPose);
       ok(pose && pose.id !== 'none', p.id);
       eq(p.patch.camera.shotSize, pose.recommendedShot, p.id + ' 画角');
-      eq(p.meta.poseFamily, 'editorial_sculpt'); eq(p.meta.avId, pose.avId); eq(p.nameJa, pose.labelJa);
+      eq(p.meta.poseFamily, 'editorial_sculpt'); eq(p.meta.avId, sid(pose)); eq(p.nameJa, pose.labelJa);
       ok(!p.patch.pose.arms && !p.patch.pose.head && !p.patch.pose.pelvis && !p.patch.pose.torso && !p.patch.pose.shoulders, p.id + ' 腕・頭・骨盤は既存項目で上書きしない');
       eq(issueIds(edState(pose.id)).filter(function (id) { return /^editorial_/.test(id); }), [], p.id + ' 初期状態に警告なし');
     });
@@ -1430,63 +1432,63 @@
   });
   test('モード系：英語に左右・性別・年齢・外見・表情・服装・照明・画風・品質の語を入れない', function () {
     var banned = /\b(left|right|girl|boy|woman|man|female|male|adult|bust|busty|smil\w*|expression|dress|shirt|skirt|outfit|cloth\w*|hair color|masterpiece|quality|lighting|light|photo\w*|vogue|fashion|editorial|model|elegant|beautiful|sexy)\b/i;
-    edPoses.forEach(function (pose) { edTexts(pose).forEach(function (t) { ok(!banned.test(t), pose.avId + '：' + t); ok(!/\b(no|not|without|avoid|exclude)\b/i.test(t), pose.avId + ' 否定語：' + t); }); });
+    allEdPoses.forEach(function (pose) { edTexts(pose).forEach(function (t) { ok(!banned.test(t), sid(pose) + '：' + t); ok(!/\b(no|not|without|avoid|exclude)\b/i.test(t), sid(pose) + ' 否定語：' + t); }); });
   });
   test('モード系：確認済みタグはDanbooru一覧で確認した語だけ', function () {
-    edPoses.forEach(function (pose) { ['torso', 'arms'].forEach(function (k) { pose.tags[k].verified.forEach(function (t) { ok(D.editorialVerifiedTags[t] > 0, pose.avId + ' ' + t); }); }); });
+    allEdPoses.forEach(function (pose) { ['torso', 'arms'].forEach(function (k) { pose.tags[k].verified.forEach(function (t) { ok((pose.line === 'mode' ? D.modeVerifiedTags : D.editorialVerifiedTags)[t] > 0, sid(pose) + ' ' + t); }); }); });
   });
   test('モード系：3モデルの出力が揃い、人数・構文が混入しない', function () {
-    edPoses.forEach(function (pose) {
+    allEdPoses.forEach(function (pose) {
       var st = edState(pose.id);
       var ts = M.single(st, 'tsubaki', {}).text, sd = M.single(st, 'sdxl', {}).text, na = M.single(st, 'nai', {}).text;
-      ok(ts.indexOf(pose.prompt.torso.detailed[0]) >= 0, pose.avId + ' Tsubakiは自然文');
-      ok(/\.$/.test(ts) && !/::|\{|\}|\(|\)/.test(ts), pose.avId + ' Tsubakiに重み構文なし');
-      pose.tags.torso.phrases.concat(pose.tags.arms.phrases).forEach(function (t) { ok(sd.indexOf(t) >= 0 && na.indexOf(t) >= 0, pose.avId + ' タグ ' + t); });
+      ok(ts.indexOf(pose.prompt.torso.detailed[0]) >= 0, sid(pose) + ' Tsubakiは自然文');
+      ok(/\.$/.test(ts) && !/::|\{|\}|\(|\)/.test(ts), sid(pose) + ' Tsubakiに重み構文なし');
+      pose.tags.torso.phrases.concat(pose.tags.arms.phrases).forEach(function (t) { ok(sd.indexOf(t) >= 0 && na.indexOf(t) >= 0, sid(pose) + ' タグ ' + t); });
       [sd, na].forEach(function (text) {
-        ok(!/\.\s|\.$/.test(text), pose.avId + ' タグ出力に文の句点なし');
-        eq(text.split(', ').filter(function (x) { return x === 'solo'; }).length, 1, pose.avId + ' soloは1回');
-        ok(!/\b(two (people|persons|characters|girls|boys|women|men)|2girls|2boys|multiple (people|persons|characters)|Person [AB]|couple)\b/i.test(text), pose.avId + ' 人数の混入なし');
-        ok(unique(text.split(', ')), pose.avId + ' 重複句なし');
+        ok(!/\.\s|\.$/.test(text), sid(pose) + ' タグ出力に文の句点なし');
+        eq(text.split(', ').filter(function (x) { return x === 'solo'; }).length, 1, sid(pose) + ' soloは1回');
+        ok(!/\b(two (people|persons|characters|girls|boys|women|men)|2girls|2boys|multiple (people|persons|characters)|Person [AB]|couple)\b/i.test(text), sid(pose) + ' 人数の混入なし');
+        ok(unique(text.split(', ')), sid(pose) + ' 重複句なし');
       });
-      [ts, sd].forEach(function (text) { ok(!/adult|bust/i.test(text), pose.avId + ' Tsubaki・SDXLにadult/bustなし：' + text); });
+      [ts, sd].forEach(function (text) { ok(!/adult|bust/i.test(text), sid(pose) + ' Tsubaki・SDXLにadult/bustなし：' + text); });
       var emph = M.single(st, 'nai', { emphasis: true, naiEmphasisStyle: 'numeric' }).text;
-      eq((emph.match(/::/g) || []).length % 2, 0, pose.avId + ' NAIの数値強調は閉じている');
+      eq((emph.match(/::/g) || []).length % 2, 0, sid(pose) + ' NAIの数値強調は閉じている');
       var brace = M.single(st, 'nai', { emphasis: true }).text;
-      eq((brace.match(/\{/g) || []).length, (brace.match(/\}/g) || []).length, pose.avId + ' NAIの括弧');
+      eq((brace.match(/\{/g) || []).length, (brace.match(/\}/g) || []).length, sid(pose) + ' NAIの括弧');
     });
   });
   test('モード系：候補ごとの語彙が十分に異なる（タグ集合の重なり50%未満）', function () {
-    var sets = edPoses.map(function (pose) { return editorialPart(edState(pose.id), { tagSubject: true }).compact; });
+    var sets = allEdPoses.map(function (pose) { return editorialPart(edState(pose.id), { tagSubject: true }).compact; });
     for (var i = 0; i < sets.length; i++) for (var j = i + 1; j < sets.length; j++) {
       var a = sets[i], b = sets[j], inter = a.filter(function (x) { return b.indexOf(x) >= 0; }).length, uni = new Set(a.concat(b)).size;
-      ok(inter / uni < 0.5, edPoses[i].avId + '×' + edPoses[j].avId + ' 重なり ' + inter + '/' + uni);
+      ok(inter / uni < 0.5, sid(allEdPoses[i]) + '×' + sid(allEdPoses[j]) + ' 重なり ' + inter + '/' + uni);
     }
-    ok(unique(edPoses.map(function (pose) { return G.compact(edState(pose.id)); })), '汎用出力はすべて異なる');
+    ok(unique(allEdPoses.map(function (pose) { return G.compact(edState(pose.id)); })), '汎用出力はすべて異なる');
   });
   test('モード系：画角が狭すぎると出力を保持して推奨画角へ案内し、利用者の画角は変えない', function () {
-    edPoses.forEach(function (pose) {
+    allEdPoses.forEach(function (pose) {
       var order = D.editorialShotOrder, tight = order[order.indexOf(pose.minShot) - 1];
       var st = edState(pose.id, { 'camera.shotSize': tight });
-      eq(st.camera.shotSize, tight, pose.avId + ' 画角は保持');
-      eq(editorialPart(st).compact, [], pose.avId + ' 出力しない');
-      ok(G.structureJa(st).indexOf('画角外・保持中') >= 0, pose.avId + ' 保持の表示');
+      eq(st.camera.shotSize, tight, sid(pose) + ' 画角は保持');
+      eq(editorialPart(st).compact, [], sid(pose) + ' 出力しない');
+      ok(G.structureJa(st).indexOf('画角外・保持中') >= 0, sid(pose) + ' 保持の表示');
       var issue = A.check(st).filter(function (x) { return x.id === 'editorial_shot_too_tight'; })[0];
-      ok(issue && issue.severity === 'warning', pose.avId + ' 警告');
+      ok(issue && issue.severity === 'warning', sid(pose) + ' 警告');
       eq(issue.resolutions[0].patch, { 'camera.shotSize': pose.recommendedShot });
       var fixed = S.applyPatch(st, issue.resolutions[0].patch);
-      ok(issueIds(fixed).indexOf('editorial_shot_too_tight') < 0 && editorialPart(fixed).compact.length > 0, pose.avId + ' 推奨画角で復帰');
-      ok(editorialPart(edState(pose.id, { 'camera.shotSize': pose.minShot })).compact.length > 0, pose.avId + ' 最小画角では出力');
+      ok(issueIds(fixed).indexOf('editorial_shot_too_tight') < 0 && editorialPart(fixed).compact.length > 0, sid(pose) + ' 推奨画角で復帰');
+      ok(editorialPart(edState(pose.id, { 'camera.shotSize': pose.minShot })).compact.length > 0, sid(pose) + ' 最小画角では出力');
     });
   });
   test('モード系：腕を利用者が指定すると、このポーズの腕は出さずに利用者の指定を優先する', function () {
-    edPoses.forEach(function (pose) {
+    allEdPoses.forEach(function (pose) {
       var st = edState(pose.id, { 'pose.arms.primary.action': 'hand_touching_chin' });
       var part = editorialPart(st);
-      pose.prompt.arms.compact.forEach(function (t) { ok(part.compact.indexOf(t) < 0, pose.avId + ' 腕を出さない'); });
-      pose.prompt.torso.compact.forEach(function (t) { ok(part.compact.indexOf(t) >= 0, pose.avId + ' 胴は出す'); });
+      pose.prompt.arms.compact.forEach(function (t) { ok(part.compact.indexOf(t) < 0, sid(pose) + ' 腕を出さない'); });
+      pose.prompt.torso.compact.forEach(function (t) { ok(part.compact.indexOf(t) >= 0, sid(pose) + ' 胴は出す'); });
       ok(part.ja.join('').indexOf('利用者の指定を優先') >= 0);
       ok(issueIds(st).indexOf('editorial_arms_user_override') >= 0);
-      ok(/hand (on|touching the) chin/.test(G.compact(st)), pose.avId + ' 利用者の腕');
+      ok(/hand (on|touching the) chin/.test(G.compact(st)), sid(pose) + ' 利用者の腕');
     });
   });
   test('モード系：基本姿勢の食い違い・身体の流れの重なり・特殊ポーズを案内する（自動では変えない）', function () {
@@ -1507,7 +1509,7 @@
     eq(editorialPart(S.normalize({ pose: { posture: 'standing' }, camera: { shotSize: 'waist_up' } })).ja, [], '未選択なら何も出さない');
   });
   test('モード系：既存の77件は対象外で、構造表示にモード系の項目が出ない', function () {
-    D.presets.filter(function (p) { return p.meta.collection !== 'editorial'; }).forEach(function (p) {
+    D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) < 0; }).forEach(function (p) {
       var st = presetState(p.id);
       eq(st.pose.editorialPose, 'none', p.id);
       ok(G.structureJa(st).indexOf('モード系') < 0, p.id);
@@ -1515,18 +1517,89 @@
     });
   });
   test('モード系：図は補助線を持ち、腕は肩につながり、設定の変更に追従する', function () {
-    edPoses.forEach(function (pose) {
+    allEdPoses.forEach(function (pose) {
       var st = edState(pose.id), m = F.compute(st);
-      ok(m && m.editorial, pose.avId + ' 補助線');
-      m.arms.forEach(function (a, i) { eq([a.shoulder.x, a.shoulder.y], [m.shoulders[i].x, m.shoulders[i].y], pose.avId + ' 肩につながる'); });
+      ok(m && m.editorial, sid(pose) + ' 補助線');
+      m.arms.forEach(function (a, i) { eq([a.shoulder.x, a.shoulder.y], [m.shoulders[i].x, m.shoulders[i].y], sid(pose) + ' 肩につながる'); });
       var plain = F.svg(S.applyPatch(st, { 'pose.editorialPose': 'none' })), withPose = F.svg(st);
-      ok(plain !== withPose, pose.avId + ' 指定の有無で図が変わる');
+      ok(plain !== withPose, sid(pose) + ' 指定の有無で図が変わる');
       ok(withPose.indexOf('pf-editorial') >= 0 && plain.indexOf('pf-editorial') < 0);
       var armed = F.compute(S.applyPatch(st, { 'pose.arms.mode': 'combined', 'pose.arms.combined': 'arms_crossed' }));
-      ok(JSON.stringify(armed.arms) !== JSON.stringify(m.arms), pose.avId + ' 腕の指定に追従');
+      ok(JSON.stringify(armed.arms) !== JSON.stringify(m.arms), sid(pose) + ' 腕の指定に追従');
     });
     eq(F.compute(edState('floor_back_hands')).viewKey, 'side', '床座りは横から');
     eq(F.compute(edState('floor_back_hands', { 'pose.posture': 'standing' })).editorial, null, '姿勢が食い違うときは補助線を出さない');
+  });
+
+  // ---- モード・エディトリアル（通常モード系、2026-10-29c） ----
+  var modePoses = allEdPoses.filter(function (p) { return p.line === 'mode'; });
+  var modePresets = D.presets.filter(function (p) { return p.meta.collection === 'mode_editorial'; });
+  test('モード・エディトリアル：Manus28候補すべてに判定があり、採用は内部IDと1対1', function () {
+    eq(D.modeCandidateLog.map(function (c) { return c.id; }), Array.from({ length: 28 }, function (_, i) { return 'ME-' + String(i + 1).padStart(2, '0'); }));
+    var adopted = D.modeCandidateLog.filter(function (c) { return c.status === 'adopted'; });
+    eq(adopted.map(function (c) { return c.internalId; }), modePoses.map(function (p) { return p.id; }));
+    eq(adopted.map(function (c) { return c.id; }), modePoses.map(function (p) { return p.sourceId; }));
+    D.modeCandidateLog.forEach(function (c) {
+      ok(['adopted', 'merged', 'reproducible', 'near', 'held'].indexOf(c.status) >= 0, c.id);
+      ok(c.nameJa && c.nameJa.length >= 5, c.id + ' 元の候補名');
+      if (c.status === 'adopted') return;
+      ok(c.reasonJa && c.reasonJa.length >= 15 && Array.isArray(c.duplicateOf), c.id + ' 理由と重複先');
+      c.duplicateOf.forEach(function (ref) {
+        ok(/^AV-0\d\d$/.test(ref) ? D.editorialCandidateLog.some(function (a) { return a.avId === ref && a.status === 'adopted'; }) : /^ME-\d\d$/.test(ref) ? D.modeCandidateLog.some(function (m) { return m.id === ref; }) : D.presets.some(function (p) { return p.id === ref; }), c.id + ' 重複先が実在：' + ref);
+      });
+      if (c.status === 'merged') ok(c.duplicateOf.every(function (ref) { return D.modeCandidateLog.some(function (m) { return m.id === ref && m.status === 'adopted'; }); }), c.id + ' 統合先は採用候補');
+    });
+  });
+  test('モード・エディトリアル：プリセット9件は独立した分類で、推奨画角は胸上〜膝上', function () {
+    eq(modePresets.length, 9); eq(modePoses.length, 9);
+    modePresets.forEach(function (p) {
+      var pose = S.option(D.editorialPoses, p.patch.pose.editorialPose);
+      ok(pose && pose.line === 'mode', p.id);
+      eq(p.id, 'mode_' + pose.id); eq(p.meta.poseFamily, 'mode_twist'); eq(p.meta.sourceId, pose.sourceId); eq(p.nameJa, pose.labelJa);
+      ok(['bust_shot', 'upper_body', 'waist_up', 'knee_up'].indexOf(p.patch.camera.shotSize) >= 0, p.id + ' 全身ではない');
+      ok(!p.patch.pose.arms && !p.patch.pose.head && !p.patch.pose.pelvis && !p.patch.pose.torso && !p.patch.pose.shoulders, p.id + ' 既存の腕・頭・骨盤項目は上書きしない');
+    });
+    eq(D.filterPresets(D.presets, 'all', { collection: 'mode_editorial' }).length, 9);
+    eq(D.filterPresets(D.presets, 'all', { collection: 'editorial' }).length, 8, 'アヴァンギャルドとは別の分類');
+    ok(D.presetCollections.mode_editorial.labelJa !== D.presetCollections.editorial.labelJa);
+    var html = D.renderPresetCollectionFilters('all', D.presets);
+    ok(html.indexOf('data-collection-filter="mode_editorial"') >= 0 && html.indexOf('data-collection-filter="editorial"') >= 0);
+    eq(D.getPresetPoseFamilyCounts(D.presets).mode_twist, 9);
+  });
+  test('モード・エディトリアル：資料の定型句（性別・服装・背景・非性的など）を出力しない', function () {
+    var boiler = /gender-neutral|neutral (face|expression)|fully clothed|non-sexual|tailor|studio|background|modest|structured clothing|garment|collar|cuff|sleeve|lens|eye contact|gaze/i;
+    modePoses.forEach(function (pose) {
+      edTexts(pose).forEach(function (t) { ok(!boiler.test(t), pose.sourceId + '：' + t); });
+      ['tsubaki', 'sdxl', 'nai'].forEach(function (t) { ok(!/gender|clothed|non-sexual|tailor|studio/i.test(M.single(edState(pose.id), t, {}).text), pose.sourceId + ' ' + t); });
+    });
+  });
+  test('モード系：胴体の英語は腕に依存しない（腕を利用者が指定しても意味が通る）', function () {
+    allEdPoses.forEach(function (pose) {
+      pose.prompt.torso.compact.concat(pose.prompt.torso.detailed, pose.tags.torso.phrases).forEach(function (t) { ok(!/\b(hands?|fingertips?|forearms?|elbows?|arms?)\b/i.test(t), sid(pose) + '：' + t); });
+    });
+  });
+  test('モード・エディトリアル：家具・壁は姿勢に必要な候補だけに出し、図にも描く', function () {
+    var props = { wall_side_lean: /wall/, chair_back_rest: /chair/, stool_edge_twist: /stool/, elbow_on_knee_lean: /chair/, armrest_elbow: /armchair/ };
+    modePoses.forEach(function (pose) {
+      var text = edTexts(pose).join(' ');
+      if (props[pose.id]) ok(props[pose.id].test(text), pose.sourceId + ' 必要な物');
+      else ok(!/\b(wall|chair|stool|armchair|armrest|seat)\b/i.test(text), pose.sourceId + ' 不要な物を書かない');
+    });
+    var kinds = function (id) { return F.compute(edState(id)).props.map(function (p) { return p.kind; }); };
+    ok(kinds('wall_side_lean').indexOf('wall') >= 0, '壁');
+    ok(kinds('chair_back_rest').indexOf('rail') >= 0, '椅子の背');
+    ok(kinds('armrest_elbow').indexOf('armrest') >= 0, '肘掛け');
+    eq(F.compute(edState('stool_edge_twist')).viewKey, 'front', 'スツールの座位は正面から（ひねりを示すため）');
+    eq(F.compute(edState('elbow_on_knee_lean')).viewKey, 'side', '膝に肘の前傾は横から');
+    eq(F.compute(edState('wall_side_lean', { 'pose.editorialPose': 'none' })).props.filter(function (p) { return p.kind === 'wall'; }).length, 0, '未選択なら壁は描かない');
+  });
+  test('モード・エディトリアル：座位の候補は座る姿勢でだけ図を補正し、立ち姿への変更を案内する', function () {
+    ['stool_edge_twist', 'elbow_on_knee_lean', 'armrest_elbow'].forEach(function (id) {
+      var st = edState(id, { 'pose.posture': 'standing' });
+      ok(issueIds(st).indexOf('editorial_posture_mismatch') >= 0, id);
+      eq(F.compute(st).editorial, null, id + ' 図の補正なし');
+      eq(st.pose.posture, 'standing', id + ' 姿勢は利用者の選択のまま');
+    });
   });
 
   function run() {
