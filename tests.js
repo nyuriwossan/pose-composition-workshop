@@ -1822,10 +1822,14 @@
     ok(P.structureJa(o).indexOf('【場所】温泉・大浴場（二人が浸かる）') >= 0);
     eq(P.normalize({ poseId: 'pair_daily_bath_side', surface: 'home_bath' }).surface, 'wide_bath', '家庭の湯船で横並びは選べない');
   });
-  test('日常：「あーん」は一人用の相手視点プリセットへつながり、おすすめ表情で口元を補う', function () {
+  test('日常：「あーん」は一人用の相手視点プリセットへつながり、おすすめ表情でBの口を開ける', function () {
     var p = P.poseById('pair_daily_feeding');
     eq(p.related, ['relationship_offer_bite_to_viewer']); ok(D.presets.some(function (x) { return x.id === p.related[0]; }));
-    eq(P.applySuggestion(pairState(p.id)).state.people.b.expression, { main: 'shy', gaze: null, sub: 'parted_lips' });
+    eq(P.applySuggestion(pairState(p.id)).state.people.b.expression, { main: 'shy', gaze: null, sub: 'open_mouth' });
+    var sug = P.applySuggestion(pairState(p.id, { 'people.b.gender': 'male' })).state, o = allOutputs(sug, {});
+    ok(o.n.b.indexOf('open mouth') >= 0 && o.n.a.indexOf('open mouth') < 0, 'NAIはBの欄だけ');
+    ok(tagsOf(o.x.text).indexOf('open mouth') >= 0 && o.t.text.indexOf('Person B has a shy, embarrassed expression, with the mouth open.') >= 0);
+    ok(P.filterExpressions('sub', 'あーん').some(function (x) { return x.id === 'open_mouth'; }), '表情の検索でも見つかる');
   });
   test('日常：料理・勉強は場面を決める小物を3出力先に含め、互いに混ざらない', function () {
     function all(id) { var st = pairState(id); return [P.render(st, 'tsubaki', {}).text, P.render(st, 'sdxl', {}).text, P.render(st, 'nai', {}).text].join(' | '); }

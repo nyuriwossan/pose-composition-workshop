@@ -308,7 +308,7 @@
       gazes: { allowed: ['b_focus_a_looks', 'mutual', 'both_focus'], defaultId: 'b_focus_a_looks' },
       keywords: ['あーん', 'あーんする', '食べさせる', '一口', 'スプーン', '食事', 'しょくじ', 'ご飯', 'ごはん', 'デザート', 'ケーキ', '向かい合う', 'テーブル', 'いちゃいちゃ', '日常'],
       related: ['relationship_offer_bite_to_viewer'],
-      suggest: { a: ex('gentle_smile'), b: ex('shy', null, 'parted_lips') }
+      suggest: { a: ex('gentle_smile'), b: ex('shy', null, 'open_mouth') }
     }),
     pose({
       id: 'pair_daily_counter_handoff', source: 'DC-009（A/Bを入れ替え：立って渡す側をAに）', category: 'daily_table', family: 'standing_leaning',

@@ -50,6 +50,8 @@
     sub: [
       e('gasp', '息を呑む', 'はっとしたニュアンス', 'lips parted in a small gasp', [':o'], { mouthOpen: true, keywords: ['いきをのむ', 'はっと'] }),
       e('parted_lips', '口を少し開ける', '近距離感を出す', 'lips slightly parted', ['parted lips'], { keywords: ['くちをあける', '唇'] }),
+      // 2026-10-30：「あーん」のように口をはっきり開ける表情（parted lips より大きく開く）
+      e('open_mouth', '口を開ける', 'あーん・話しかけるなど、口をはっきり開ける', 'the mouth open', ['open mouth'], { mouthOpen: true, keywords: ['くちをあける', 'あーん', '口を開く', '大きく開ける'] }),
       e('pressed_lips', '唇を引き結ぶ', '我慢・緊張', 'lips pressed together', ['closed mouth'], { keywords: ['くちびる', '口を結ぶ', '我慢'] }),
       e('faint_smile', '微かに笑う', '控えめな笑み', 'a faint smile', ['light smile'], { keywords: ['かすかに', '控えめ', 'ほほえみ'] }),
       e('heavy_blush', '赤面強め', '顔全体が赤い', 'a deeply flushed face', ['full-face blush'], { keywords: ['せきめん', '真っ赤', '赤い'] }),
