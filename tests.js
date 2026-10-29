@@ -55,7 +55,7 @@
   test('データ：すべての選択肢に日本語ラベル', function () { [D.postures, D.motionStates, D.weights, D.armActions, D.headYaws, D.gazeTargets, D.shotSizes, D.placements].forEach(function (list) { list.forEach(function (x) { ok(x.labelJa); }); }); });
   test('データ：腕の使用手数は0〜2', function () { D.armActions.concat(D.combinedArms).forEach(function (x) { ok(x.resources.hands >= 0 && x.resources.hands <= 2); }); });
   test('データ：複合腕は2本の手を使う', function () { D.combinedArms.forEach(function (x) { eq(x.resources.hands, 2); }); });
-  test('データ：ビルトインプリセットは既存77件＋アヴァンギャルド8件＋モード・エディトリアル9件', function () { eq(D.presets.length, 94); var c = D.getPresetCollectionCounts(D.presets); eq([c.basic + c.relationship + c.special, c.editorial, c.mode_editorial], [77, 8, 9]); });
+  test('データ：ビルトインプリセットは既存77件＋アヴァンギャルド8件＋モード・エディトリアル9件＋舞踊的な上半身4件', function () { eq(D.presets.length, 98); var c = D.getPresetCollectionCounts(D.presets); eq([c.basic + c.relationship + c.special, c.editorial, c.mode_editorial, c.dance], [77, 8, 9, 4]); });
   test('データ：全プリセットにshotSizeがある', function () { D.presets.forEach(function (p) { ok(p.patch.camera && p.patch.camera.shotSize); }); });
   test('データ：既存15プリセットを保持', function () { legacyPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：relationship既存15件が揃う', function () { relationshipExistingIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
@@ -63,7 +63,7 @@
   test('データ：背面5件・顔隠し2件・背中主役5件が揃う', function () { relationshipAddedIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：手のやりとり6件が揃う', function () { viewerHandPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：既存の拘束・演出8件が揃う', function () { specialPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
-  test('データ：全プリセットにcollectionがある', function () { D.presets.forEach(function (p) { ok(['basic', 'relationship', 'special', 'editorial', 'mode_editorial'].indexOf(p.meta.collection) >= 0); }); });
+  test('データ：全プリセットにcollectionがある', function () { D.presets.forEach(function (p) { ok(['basic', 'relationship', 'special', 'editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) >= 0); }); });
   test('データ：basic 15件・relationship 46件・special 16件', function () { var c = D.getPresetCollectionCounts(D.presets); eq([c.basic, c.relationship, c.special], [15, 46, 16]); });
   test('データ：全プリセットにposeFamilyが1つある', function () { D.presets.forEach(function (p) { ok(D.presetPoseFamilyLabels[p.meta.poseFamily], p.id); }); });
   test('データ：既存の特殊8件は拘束・固定系統を保持', function () { specialPresetIds.forEach(function (id) { eq(D.presets.filter(function (p) { return p.id === id; })[0].meta.poseFamily, 'restraint'); }); });
@@ -82,14 +82,15 @@
   test('分類：未知のshotSizeはother', function () { eq(D.getPresetFramingGroup({ patch: { camera: { shotSize: 'unknown' } } }), 'other'); });
   test('分類：全プリセットがアップ・半身・全身のいずれか', function () { D.presets.forEach(function (p) { ok(['up', 'half', 'full'].indexOf(D.getPresetFramingGroup(p)) >= 0); }); });
   test('分類：既存はアップ13・半身33・全身31、アヴァンギャルドはアップ1・半身7、モード・エディトリアルは半身9', function () {
-    var old = D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) < 0; });
+    var old = D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) < 0; });
     var c = D.getPresetFramingCounts(old); eq([c.up, c.half, c.full], [13, 33, 31]);
     var e = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'editorial'; })); eq([e.up, e.half, e.full], [1, 7, 0]);
     var m = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'mode_editorial'; })); eq([m.up, m.half, m.full], [0, 9, 0]);
+    var d = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'dance'; })); eq([d.up, d.half, d.full], [0, 4, 0]);
   });
   test('分類：分類別件数の合計が全件数', function () { var c = D.getPresetFramingCounts(D.presets); eq(c.up + c.half + c.full + c.other, c.all); });
-  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 13 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'up'; }).length, '既存13件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
-  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 33 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'half'; }).length, '既存33件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
+  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 13 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'up'; }).length, '既存13件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
+  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 33 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'half'; }).length, '既存33件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
   test('フィルター：全身だけを返す', function () { var list = D.filterPresets(D.presets, 'full', false); eq(list.length, 31); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'full'); }); });
   test('フィルター：相手視点だけを返す', function () { var list = D.filterPresets(D.presets, 'all', true); eq(list.length, 46); list.forEach(function (p) { ok(p.meta.audienceTags.indexOf('viewer_perspective') >= 0); }); });
   test('フィルター：relationshipのアップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', { collection: 'relationship' }); eq(list.length, 12); });
@@ -1435,7 +1436,7 @@
     allEdPoses.forEach(function (pose) { edTexts(pose).forEach(function (t) { ok(!banned.test(t), sid(pose) + '：' + t); ok(!/\b(no|not|without|avoid|exclude)\b/i.test(t), sid(pose) + ' 否定語：' + t); }); });
   });
   test('モード系：確認済みタグはDanbooru一覧で確認した語だけ', function () {
-    allEdPoses.forEach(function (pose) { ['torso', 'arms'].forEach(function (k) { pose.tags[k].verified.forEach(function (t) { ok((pose.line === 'mode' ? D.modeVerifiedTags : D.editorialVerifiedTags)[t] > 0, sid(pose) + ' ' + t); }); }); });
+    allEdPoses.forEach(function (pose) { ['torso', 'arms'].forEach(function (k) { pose.tags[k].verified.forEach(function (t) { ok(({ mode: D.modeVerifiedTags, dance: D.danceVerifiedTags }[pose.line] || D.editorialVerifiedTags)[t] > 0, sid(pose) + ' ' + t); }); }); });
   });
   test('モード系：3モデルの出力が揃い、人数・構文が混入しない', function () {
     allEdPoses.forEach(function (pose) {
@@ -1509,7 +1510,7 @@
     eq(editorialPart(S.normalize({ pose: { posture: 'standing' }, camera: { shotSize: 'waist_up' } })).ja, [], '未選択なら何も出さない');
   });
   test('モード系：既存の77件は対象外で、構造表示にモード系の項目が出ない', function () {
-    D.presets.filter(function (p) { return ['editorial', 'mode_editorial'].indexOf(p.meta.collection) < 0; }).forEach(function (p) {
+    D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) < 0; }).forEach(function (p) {
       var st = presetState(p.id);
       eq(st.pose.editorialPose, 'none', p.id);
       ok(G.structureJa(st).indexOf('モード系') < 0, p.id);
@@ -1600,6 +1601,70 @@
       eq(F.compute(st).editorial, null, id + ' 図の補正なし');
       eq(st.pose.posture, 'standing', id + ' 姿勢は利用者の選択のまま');
     });
+  });
+
+  // ---- 舞踊的な上半身（2026-10-29f） ----
+  var dancePoses = allEdPoses.filter(function (p) { return p.line === 'dance'; });
+  var dancePresets = D.presets.filter(function (p) { return p.meta.collection === 'dance'; });
+  function refExists(ref) {
+    if (/^AV-0\d\d$/.test(ref)) return D.editorialCandidateLog.some(function (a) { return a.avId === ref && a.status === 'adopted'; });
+    if (/^ME-\d\d$/.test(ref)) return D.modeCandidateLog.some(function (m) { return m.id === ref && m.status === 'adopted'; });
+    if (/^BL-\d\d\d$/.test(ref)) return D.danceCandidateLog.some(function (b) { return b.id === ref; });
+    return D.presets.some(function (p) { return p.id === ref; });
+  }
+  test('舞踊的な上半身：Manus24候補すべてに判定があり、採用は内部IDと1対1、重複先は実在する', function () {
+    eq(D.danceCandidateLog.map(function (c) { return c.id; }), Array.from({ length: 24 }, function (_, i) { return 'BL-' + String(i + 1).padStart(3, '0'); }));
+    var adopted = D.danceCandidateLog.filter(function (c) { return c.status === 'adopted'; });
+    eq(adopted.map(function (c) { return c.internalId; }).sort(), dancePoses.map(function (p) { return p.id; }).sort());
+    dancePoses.forEach(function (p) { ok(adopted.some(function (c) { return c.id === p.sourceId && c.internalId === p.id; }), p.id); });
+    D.danceCandidateLog.forEach(function (c) {
+      ok(['adopted', 'merged', 'near', 'held'].indexOf(c.status) >= 0, c.id);
+      if (c.status === 'adopted') return;
+      ok(c.reasonJa && c.reasonJa.length >= 15, c.id + ' 理由');
+      c.duplicateOf.forEach(function (ref) { ok(refExists(ref), c.id + ' 重複先が実在：' + ref); });
+      if (c.status === 'merged') ok(c.duplicateOf.some(function (ref) { return D.danceCandidateLog.some(function (b) { return b.id === ref && b.status === 'adopted'; }); }), c.id + ' 統合先に採用候補');
+    });
+    ok(/入れ替え/.test(S.option(D.danceCandidateLog, 'BL-004').dataFix), 'BL-004の左右の欄の入れ替えを記録');
+  });
+  test('舞踊的な上半身：プリセット4件は独立した分類で、全身を必須にしない', function () {
+    eq(dancePresets.length, 4);
+    dancePresets.forEach(function (p) {
+      var pose = S.option(D.editorialPoses, p.patch.pose.editorialPose);
+      ok(pose && pose.line === 'dance', p.id);
+      eq(p.id, 'dance_' + pose.id); eq(p.meta.poseFamily, 'dance_flow'); eq(p.meta.sourceId, pose.sourceId);
+      ok(['bust_shot', 'upper_body', 'waist_up', 'knee_up'].indexOf(p.patch.camera.shotSize) >= 0 && ['bust_shot', 'upper_body', 'waist_up'].indexOf(pose.minShot) >= 0, p.id + ' 画角');
+      ok(!/エポールマン|カンブレ|ポール・ド・ブラ|クロワゼ|エファセ|エカルテ|バレエ/.test(pose.labelJa), p.id + ' 日本語名は専門用語に頼らない');
+      ok(pose.inspiredBy && pose.inspiredBy.length > 4, p.id + ' 着想元を記録');
+    });
+    eq(D.filterPresets(D.presets, 'all', { collection: 'dance' }).length, 4);
+    ok(D.renderPresetCollectionFilters('all', D.presets).indexOf('data-collection-filter="dance"') >= 0);
+    eq(D.presetCollections.dance.labelJa, '舞踊的な上半身');
+    eq(D.getPresetPoseFamilyCounts(D.presets).dance_flow, 4);
+  });
+  test('舞踊的な上半身：英語に舞踊・舞台衣装・技法名を入れず、身体配置で書く', function () {
+    var banned = /ballet|dance|dancer|tutu|leotard|pointe|stage|costume|choreograph|graham|cambr|paulement|port de bras|crois|effac|cart[eé]|gender|expression|clothed|elegant|graceful/i;
+    dancePoses.forEach(function (pose) {
+      edTexts(pose).forEach(function (t) { ok(!banned.test(t), pose.sourceId + '：' + t); });
+      ['tsubaki', 'sdxl', 'nai'].forEach(function (t) { ok(!banned.test(M.single(edState(pose.id), t, {}).text), pose.sourceId + ' ' + t); });
+      var all = edTexts(pose).join(' ');
+      ok(/pelvis/.test(all) && /(ribcage|chest)/.test(all) && /shoulder/.test(all) && /head/.test(all) && /elbow/.test(all), pose.sourceId + ' 骨盤・胸・肩・頭・肘を書く');
+    });
+  });
+  test('舞踊的な上半身：図の腕は肘をちょうど通る曲線で、他の分類の図には曲線を使わない', function () {
+    function bez(d) { var n = d.match(/-?\d+(\.\d+)?/g).map(Number); return { s: P2(n[0], n[1]), c: P2(n[2], n[3]), h: P2(n[4], n[5]) }; }
+    function P2(x, y) { return { x: x, y: y }; }
+    dancePoses.forEach(function (pose) {
+      var st = edState(pose.id), m = F.compute(st), svgText = F.svg(st);
+      var paths = svgText.match(/<path class="[^"]*pf-curve[^"]*" d="([^"]+)"/g) || [];
+      eq(paths.length, 2, pose.sourceId + ' 2本の腕が曲線');
+      paths.forEach(function (tag, i) {
+        var q = bez(tag.match(/d="([^"]+)"/)[1]);
+        var mid = { x: 0.25 * q.s.x + 0.5 * q.c.x + 0.25 * q.h.x, y: 0.25 * q.s.y + 0.5 * q.c.y + 0.25 * q.h.y };
+        var elbows = m.arms.map(function (a) { return a.elbow; });
+        ok(elbows.some(function (e) { return Math.abs(e.x - mid.x) < 0.3 && Math.abs(e.y - mid.y) < 0.3; }), pose.sourceId + ' 曲線が肘を通る');
+      });
+    });
+    D.presets.filter(function (p) { return p.meta.collection !== 'dance'; }).forEach(function (p) { ok(F.svg(presetState(p.id)).indexOf('pf-curve') < 0, p.id + ' 曲線なし'); });
   });
 
   function run() {

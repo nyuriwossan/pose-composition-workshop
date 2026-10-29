@@ -275,6 +275,7 @@
     if (ed) {
       if (edFront && edFront.headTilt != null) b.face.tilt = edFront.headTilt;
       if (edFront && edFront.face) b.face.kind = edFront.face;
+      if (edFront && edFront.faceDir) b.face.dir = edFront.faceDir;
       if (edSide && edSide.face) b.face.kind = edSide.face;
       b.editorial = ed;
       if (edFront) editorialProps(b, edFront);
@@ -559,7 +560,7 @@
       head: b.head, neck: b.neck, hip: b.hip, arch: b.arch || null, shoulders: b.shoulders, legs: b.legs, arms: arms,
       face: b.face, ground: b.ground, props: b.props || [], heelsUp: !!b.heelsUp, facing: b.facing,
       crop: cropFor(s, b, arms), camera: cameraFor(s, b),
-      editorial: b.editorial ? { near: b.editorial.near || null, twist: b.editorial.twist || 0, axes: b.view === 'front' } : null
+      editorial: b.editorial ? { near: b.editorial.near || null, twist: b.editorial.twist || 0, axes: b.view === 'front', curve: !!b.editorial.curve } : null
     };
   }
 
@@ -617,7 +618,13 @@
     function legSvg(leg, cls) { return poly([leg.hip, leg.knee, leg.foot], cls); }
     function armSvg(a, cls) {
       var c = cls + (a.hidden ? ' pf-hidden' : '') + (a.toward ? ' pf-toward' : '');
-      var s = poly([a.shoulder, a.elbow, a.hand], c);
+      var s;
+      if (m.editorial && m.editorial.curve) {
+        // 舞踊的な腕：肩→肘→手を、肘をちょうど通る2次ベジェ曲線で描く（肘・手の位置は計算どおり）
+        var ctrl = P(2 * a.elbow.x - (a.shoulder.x + a.hand.x) / 2, 2 * a.elbow.y - (a.shoulder.y + a.hand.y) / 2);
+        s = '<path class="' + c + ' pf-curve" d="M' + round(a.shoulder.x) + ' ' + round(a.shoulder.y) + ' Q' + round(ctrl.x) + ' ' + round(ctrl.y) + ' ' + round(a.hand.x) + ' ' + round(a.hand.y) + '"/>' +
+          '<circle class="pf-joint' + (a.hidden ? ' pf-hidden' : '') + '" cx="' + round(a.elbow.x) + '" cy="' + round(a.elbow.y) + '" r="1.5"/>';
+      } else s = poly([a.shoulder, a.elbow, a.hand], c);
       s += '<circle class="pf-hand' + (a.toward ? ' pf-hand--toward' : '') + (a.hidden ? ' pf-hidden' : '') + '" cx="' + round(a.hand.x) + '" cy="' + round(a.hand.y) + '" r="' + (a.toward ? 3.2 : 2.2) + '"/>';
       if (a.mark === 'bound') s += '<circle class="pf-bound" cx="' + round(a.hand.x) + '" cy="' + round(a.hand.y) + '" r="4.2"/>';
       return s;

@@ -65,7 +65,7 @@
   function currentSummary() {
     return S.designSummary(state);
   }
-  var EDITORIAL_LEGEND = '橙の点線＝肩と骨盤の線、橙の丸＝いちばん手前、橙の矢印＝胸郭の回り込み';
+  var EDITORIAL_LEGEND = '橙の点線＝肩と骨盤の線、橙の丸＝いちばん手前、橙の矢印＝胸郭の回り込み、曲線の腕＝肘を通る腕の弧';
   function editorialLegendNeeded(st) { var m = F && F.compute(st); return !!(m && m.editorial); }
   function editorialPose(id) { return option(D.editorialPoses, id); }
   function editorialShotText(p) {
@@ -145,8 +145,10 @@
     if (edActive || state.entryMode === 'detail' || view.expanded.editorial) {
       var edNone = D.editorialPoses.filter(function (x) { return x.id === 'none'; });
       var edMode = D.editorialPoses.filter(function (x) { return x.line === 'mode'; }), edAvant = D.editorialPoses.filter(function (x) { return x.id !== 'none' && !x.line; });
+      var edDance = D.editorialPoses.filter(function (x) { return x.line === 'dance'; });
       edBody = chips('pose.editorialPose', edNone, { max: 1, expandKey: 'editorial' }) +
         (edMode.length ? '<div class="subsection"><h3>モード・エディトリアル（上半身のひねり・自然な非対称）</h3>' + chips('pose.editorialPose', edMode, { max: edMode.length, expandKey: 'editorial' }) + '</div>' : '') +
+        (edDance.length ? '<div class="subsection"><h3>舞踊的な上半身（しなやかな捻り・腕の弧）</h3>' + chips('pose.editorialPose', edDance, { max: edDance.length, expandKey: 'editorial' }) + '</div>' : '') +
         '<div class="subsection"><h3>アヴァンギャルド（彫刻的・幾何学的）</h3>' + chips('pose.editorialPose', edAvant, { max: edAvant.length, expandKey: 'editorial' }) + '</div>';
       if (edActive) edBody += '<p class="editorial-note"><b>' + esc(edPose.labelJa) + '</b>' + esc(edPose.shortJa) + '<br><span>推奨画角：' + esc(label(D.shotSizes, edPose.recommendedShot)) + '（' + esc(label(D.shotSizes, edPose.minShot)) + '以上）。腕を別に指定すると、腕はそちらを優先します。</span></p>';
     } else edBody = '<button class="detail-toggle" type="button" data-expand="editorial">モード系の身体配置を選ぶ</button>';
@@ -330,6 +332,7 @@
     (meta.sceneTags || []).forEach(function (t) { fields.push(D.presetSceneTagLabels[t] || ''); });
     (meta.audienceTags || []).forEach(function (t) { fields.push(D.presetAudienceTagLabels[t] || ''); });
     if (meta.collection === 'editorial') fields.push(meta.avId || '', editorialShotText(p), 'モード', 'アヴァンギャルド', '前衛', '彫刻的', '幾何学');
+    if (meta.collection === 'dance') fields.push(meta.sourceId || '', editorialShotText(p), '舞踊', 'バレエ', 'コンテンポラリー', 'しなやか', '螺旋', '腕の弧', '捻り');
     if (meta.collection === 'mode_editorial') fields.push(meta.sourceId || '', editorialShotText(p), 'モード', 'エディトリアル', 'ファッション', 'ひねり', '非対称', '洗練');
     return fields;
   }
@@ -385,7 +388,7 @@
     var users = Store.listPresets().filter(function (p) { return p.kind !== 'pair'; });
     var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(userPresetRow).join('') : '';
     var displayToggle = '<div class="segmented display-tabs" role="group" aria-label="プリセットの表示方法"><button type="button" data-preset-display="name" aria-pressed="' + (view.presetDisplay !== 'figure') + '">名前で選ぶ</button><button type="button" data-preset-display="figure" aria-pressed="' + (view.presetDisplay === 'figure') + '">図で選ぶ</button></div>';
-    var hasEditorial = visiblePresets.some(function (p) { return ['editorial', 'mode_editorial'].indexOf((p.meta || {}).collection) >= 0; });
+    var hasEditorial = visiblePresets.some(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf((p.meta || {}).collection) >= 0; });
     var figureNote = view.presetDisplay === 'figure' ? '<p class="figure-note">' + esc(F.note) + ' 点線の枠は撮影範囲、青い印はカメラの高さです。' + (hasEditorial ? esc(EDITORIAL_LEGEND) + '。' : '') + '</p>' : '';
     openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + displayToggle + filters + figureNote + '<div class="preset-list' + (view.presetDisplay === 'figure' ? ' preset-list--figure' : '') + '" id="presetList">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
   }

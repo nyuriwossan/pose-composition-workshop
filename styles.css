@@ -398,3 +398,7 @@ textarea.person-prompt { min-height: 104px; font-family: ui-monospace, SFMono-Re
 .editorial-note { margin: 10px 0 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
 .editorial-note b { display: block; }
 .editorial-note span { color: var(--muted); font-size: 12px; }
+/* 舞踊的な上半身：曲線の腕と肘の印 */
+.pose-figure .pf-curve { fill: none; }
+.pose-figure .pf-joint { fill: var(--paper-strong); stroke: var(--ink); stroke-width: 1.2; }
+.pose-figure .pf-joint.pf-hidden { stroke: #9a958a; }
