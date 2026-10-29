@@ -1686,7 +1686,7 @@
     'pair_daily_bath_side', 'pair_daily_bath_facing', 'pair_daily_bath_back_rest'];
   var dailyPoses = function () { return dailyIds.map(function (id) { return P.poseById(id); }); };
   var oldPairPoses = function () { return D.pairPoses.slice(0, 46); };
-  var newGazeIds = ['both_focus', 'a_focus_b_looks', 'b_focus_a_looks', 'a_focus_b_closed'], newSurfaceIds = ['dining', 'low_table', 'kotatsu'];
+  var newGazeIds = ['both_focus', 'a_focus_b_looks', 'b_focus_a_looks', 'a_focus_b_closed'], newSurfaceIds = ['dining', 'low_table', 'kotatsu', 'home_bath', 'wide_bath', 'onsen'];
   function dailyEnglish(p) {
     return [p.models.tsubaki.overview, p.models.tsubaki.a, p.models.tsubaki.b, p.models.tsubaki.roleEn.a, p.models.tsubaki.roleEn.b, p.models.nai.nl]
       .concat(p.contacts.map(function (c) { return c.tsubaki; }), p.focus ? [p.focus.en] : []).join(' | ');
@@ -1810,6 +1810,17 @@
       ok(!P.shotState(p, 'full_body').ok && P.shotState(p, 'full_body').reason, p.id); ok(!P.shotState(p, 'knee_up').ok, p.id);
       ok(!/naked|nude|topless|bare|skin|breast|chest is|exposed|towel/i.test(JSON.stringify(p.models)), p.id);
     });
+  });
+  test('日常：お風呂の横並び・対角は広めの湯船か温泉だけ、背中を預ける形は家庭の湯船も選べる', function () {
+    eq(P.poseById('pair_daily_bath_side').surface.allowed, ['wide_bath', 'onsen']); eq(P.poseById('pair_daily_bath_facing').surface.allowed, ['wide_bath', 'onsen']);
+    eq(P.poseById('pair_daily_bath_back_rest').surface, { mode: 'in', allowed: ['home_bath', 'wide_bath', 'onsen'], defaultId: 'home_bath' });
+    var w = pairState('pair_daily_bath_side');
+    ok(P.render(w, 'tsubaki', {}).text.indexOf('They sit in a wide bathtub with room for two side by side.') >= 0);
+    ok(tagsOf(P.render(w, 'nai', {}).base).indexOf('bathtub') >= 0 && tagsOf(P.render(w, 'sdxl', {}).text).indexOf('bathtub') >= 0);
+    var o = pairState('pair_daily_bath_facing', { surface: 'onsen' }), all = [P.render(o, 'tsubaki', {}).text, P.render(o, 'sdxl', {}).text, P.render(o, 'nai', {}).text].join(' ');
+    ok(all.indexOf('onsen') >= 0 && all.indexOf('hot spring') >= 0 && all.indexOf('bathtub') < 0, '温泉ではbathtubを出さない');
+    ok(P.structureJa(o).indexOf('【場所】温泉・大浴場（二人が浸かる）') >= 0);
+    eq(P.normalize({ poseId: 'pair_daily_bath_side', surface: 'home_bath' }).surface, 'wide_bath', '家庭の湯船で横並びは選べない');
   });
   test('日常：「あーん」は一人用の相手視点プリセットへつながり、おすすめ表情で口元を補う', function () {
     var p = P.poseById('pair_daily_feeding');

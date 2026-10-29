@@ -301,7 +301,7 @@
     out.push(p.models.tsubaki.b);
     out.push(sentence('Contact points: ' + p.contacts.map(function (c) { return c.tsubaki; }).join('; ')));
     var surf = byId(D.pairSurfaces, s.surface);
-    if (surf) out.push(p.surface.mode === 'seat' ? 'Person B is seated on ' + surf.en + '.' : p.surface.mode === 'both_seat' ? 'Both are seated on ' + surf.en + '.' : 'They are on ' + surf.en + '.');
+    if (surf) out.push(p.surface.mode === 'seat' ? 'Person B is seated on ' + surf.en + '.' : p.surface.mode === 'both_seat' ? 'Both are seated on ' + surf.en + '.' : p.surface.mode === 'in' ? 'They sit in ' + surf.en + '.' : 'They are on ' + surf.en + '.');
     var g = gazeOf(p, s.gaze);
     // 人物別の視線を選んだ場合は、上の表情文で一人ずつ書いたので二人の視線文は出さない
     if (g && !anyGaze) out.push(fillEn(g.tsubaki, p));
@@ -361,7 +361,7 @@
     var g = gazeOf(p, s.gaze), anyGaze = anyPersonGaze(infos);
     if (g && g.nai.base && !anyGaze) g.nai.base.forEach(addBase);
     var surf = byId(D.pairSurfaces, s.surface);
-    if (surf && (p.surface.mode === 'on' || p.surface.mode === 'both_seat')) addBase(surf.onTag);
+    if (surf && (p.surface.mode === 'on' || p.surface.mode === 'both_seat' || p.surface.mode === 'in')) addBase(surf.onTag);
     var angle = byId(D.pairAngles, s.camera.angle), shot = byId(D.pairShots, s.camera.shot);
     if (angle) angle.tags.forEach(addBase);
     if (shot) shot.tags.forEach(addBase);
@@ -418,7 +418,7 @@
     lines.push('【位置関係】' + rel.join('／'));
     lines.push('【接触点】\n' + p.contacts.map(function (c) { return '・' + c.ja; }).join('\n'));
     var surf = byId(D.pairSurfaces, s.surface);
-    if (surf) lines.push('【場所】' + surf.labelJa + (p.surface.mode === 'seat' ? '（Bが座る）' : p.surface.mode === 'both_seat' ? '（二人が座る）' : ''));
+    if (surf) lines.push('【場所】' + surf.labelJa + (p.surface.mode === 'seat' ? '（Bが座る）' : p.surface.mode === 'both_seat' ? '（二人が座る）' : p.surface.mode === 'in' ? '（二人が浸かる）' : ''));
     // 場面を決める小物・行為を英語へ含めているポーズだけ表示する（日常の料理・勉強など）
     if (p.sceneJa) lines.push('【場面を決める小物】' + p.sceneJa);
     if (s.gaze) lines.push('【視線】' + gazeLabel(p, s.gaze));

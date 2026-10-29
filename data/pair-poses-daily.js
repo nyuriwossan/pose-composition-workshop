@@ -30,7 +30,11 @@
   D.pairSurfaces.push(
     { id: 'dining', labelJa: '椅子とテーブル', en: 'chairs at a table', onTag: 'chair', seatTag: 'on chair' },
     { id: 'low_table', labelJa: '床とローテーブル', en: 'the floor at a low table', onTag: 'on floor', seatTag: 'on floor' },
-    { id: 'kotatsu', labelJa: 'こたつ', en: 'the floor with their legs under a kotatsu', onTag: 'kotatsu', seatTag: 'kotatsu' }
+    { id: 'kotatsu', labelJa: 'こたつ', en: 'the floor with their legs under a kotatsu', onTag: 'kotatsu', seatTag: 'kotatsu' },
+    // お風呂（mode: in で「They sit in ＿.」になる）。家庭の湯船は一人分の幅が多いため、横並び・対角は広めの湯船か温泉に限る
+    { id: 'home_bath', labelJa: '家庭の湯船', en: 'an ordinary home bathtub', onTag: 'bathtub', seatTag: 'bathtub' },
+    { id: 'wide_bath', labelJa: '広めの湯船', en: 'a wide bathtub with room for two side by side', onTag: 'bathtub', seatTag: 'bathtub' },
+    { id: 'onsen', labelJa: '温泉・大浴場', en: 'a large hot spring bath', onTag: 'onsen', seatTag: 'onsen' }
   );
 
   // ---- カメラ：斜め後ろから（optIn：このポーズが angles に含めたときだけ画面に出す） ----
@@ -392,46 +396,49 @@
     // ================= 日常・お風呂（姿勢・向き・距離・接触点だけを書く） =================
     pose({
       id: 'pair_daily_bath_side', source: 'DC-005', category: 'daily_bath', family: 'sitting_kneeling',
-      label: '湯船で肩を並べる', short: '湯船の同じ壁に並んでもたれ、肩だけを触れ合わせる。外側の腕はそれぞれ自分の側の縁に置く。',
+      label: '湯船で肩を並べる', short: '広めの湯船か温泉で、同じ壁に並んでもたれ、肩だけを触れ合わせる。外側の腕はそれぞれ自分の側の縁に置く。',
       roles: ['肩を寄せる側', '肩を並べる側'], rel: ['level', 'none', 'side_by_side'],
       place: ['Bの隣で湯船の壁に上背を預け、胸のあたりまで湯に浸かる。Bに近い肩だけをBへ軽く寄せ、外側の前腕を自分の側の縁に置く。', 'Aの隣で同じ壁に上背を預け、外側の前腕を自分の側の縁に置く。内側の腕は自分の体の近くに収める。'],
-      contacts: [['both', '肩どうし → 軽く触れている（接点はここだけ）', 'only their inner shoulders lightly touch'], ['a', 'Aの外側の前腕 → 自分の側の湯船の縁', "Person A's outer forearm rests on the rim at their own side"], ['b', 'Bの外側の前腕 → 自分の側の湯船の縁', "Person B's outer forearm rests on the rim at their own side"]],
+      contacts: [['both', '肩どうし → 軽く触れている（接点はここだけ）', 'only their inner shoulders lightly touch'], ['a', 'Aの外側の前腕 → 自分の側の湯船の縁', "Person A's outer forearm rests on the edge of the bath at their own side"], ['b', 'Bの外側の前腕 → 自分の側の湯船の縁', "Person B's outer forearm rests on the edge of the bath at their own side"]],
       roleEn: ['the one leaning a shoulder in', 'the one sitting shoulder to shoulder'],
-      ts: ['Person A and Person B sit side by side in a bathtub, both leaning back against the same tub wall, partially submerged in the water.', 'Person A leans the inner shoulder lightly against Person B.', 'Person B leans back beside Person A, the inner arm kept close to the body.'],
-      sdxl: [['bathtub', 'side-by-side', 'partially submerged'], ['shoulder-to-shoulder', 'leaning back']],
-      nai: { core: ['bathtub', 'side-by-side', 'partially submerged', 'shoulder-to-shoulder'], a: ['leaning back'], b: ['leaning back'], nl: 'the two sit side by side in a bathtub, leaning back against the same wall with their shoulders touching' },
-      focus: { ja: '同じ方向', en: 'the same direction ahead', tags: ['looking ahead'] },
+      ts: ['Person A and Person B sit side by side in the bath, both leaning back against the same wall of the bath, partially submerged in the water.', 'Person A leans the inner shoulder lightly against Person B.', 'Person B leans back beside Person A, the inner arm kept close to the body.'],
+      sdxl: [['side-by-side', 'partially submerged', 'shoulder-to-shoulder'], ['leaning back']],
+      nai: { core: ['side-by-side', 'partially submerged', 'shoulder-to-shoulder'], a: ['leaning back'], b: ['leaning back'], nl: 'the two sit side by side in a wide bath, leaning back against the same wall with their shoulders touching' },
+      focus: { ja: '同じ方向', en: 'the view ahead of them', tags: ['looking ahead'] },
       camera: cam(['three_quarter', 'rear_three_quarter', 'high', 'eye_level', 'side'], ['three_quarter', 'rear_three_quarter'], 'three_quarter', 'upper_body', ['upper_body', 'close'], { low: '湯面より下からは見られません。', overhead: '真上からは肩の接点と縁の支えが読めません。' }, BATH_SHOTS),
+      surface: { mode: 'in', allowed: ['wide_bath', 'onsen'], defaultId: 'wide_bath' },
       gazes: { allowed: ['both_focus', 'b_focus_a_looks', 'mutual', 'eyes_closed'], defaultId: 'both_focus' },
       keywords: ['お風呂', '風呂', 'おふろ', '湯船', 'ゆぶね', '入浴', '一緒に入る', '並ぶ', '肩', '温泉', 'くつろぐ', '日常'],
       suggest: { a: ex('gentle_smile'), b: ex(null, 'half_closed', 'faint_smile') }
     }),
     pose({
       id: 'pair_daily_bath_facing', source: 'DC-020', category: 'daily_bath', family: 'sitting_kneeling',
-      label: '湯船で向かい合って話す', short: '湯船の対角の角に座り、それぞれ近い壁と縁で体を支えて向かい合う。体は触れない。',
+      label: '湯船で向かい合って話す', short: '広めの湯船か温泉の対角の角に座り、それぞれ近い壁と縁で体を支えて向かい合う。体は触れない。',
       roles: ['奥の角に座る側', '手前の角に座る側'], rel: ['level', 'none', 'face_to_face'],
       place: ['湯船の奥の角に座り、上背を近い壁へ軽く寄せる。上体を中央へ向け、片前腕を最も近い縁に置く。', 'Aと対角の手前の角に座り、上背を近い壁へ軽く寄せる。上体を中央へ向け、片前腕を最も近い縁に置く。'],
-      contacts: [['a', 'Aの片前腕 → 近い湯船の縁', "one of Person A's forearms rests on the nearest rim"], ['b', 'Bの片前腕 → 近い湯船の縁', "one of Person B's forearms rests on the nearest rim"], ['both', '体 → 湯面をはさんで離れている', 'open water stays between them']],
+      contacts: [['a', 'Aの片前腕 → 近い湯船の縁', "one of Person A's forearms rests on the nearest edge of the bath"], ['b', 'Bの片前腕 → 近い湯船の縁', "one of Person B's forearms rests on the nearest edge of the bath"], ['both', '体 → 湯面をはさんで離れている', 'open water stays between them']],
       roleEn: ['the one in the far corner', 'the one in the near corner'],
-      ts: ['Person A and Person B sit in opposite corners of a bathtub, facing each other across the water, partially submerged.', 'Person A sits in the far corner with the upper back against the tub wall.', 'Person B sits in the near corner with the upper back against the tub wall.'],
-      sdxl: [['bathtub', 'facing another', 'partially submerged'], ['leaning back']],
-      nai: { core: ['bathtub', 'facing another', 'partially submerged'], a: ['leaning back'], b: ['leaning back'], nl: 'the two sit in opposite corners of a bathtub, facing each other across the water' },
+      ts: ['Person A and Person B sit in opposite corners of the bath, facing each other across the water, partially submerged.', 'Person A sits in the far corner with the upper back against the wall of the bath.', 'Person B sits in the near corner with the upper back against the wall of the bath.'],
+      sdxl: [['facing another', 'partially submerged'], ['leaning back']],
+      nai: { core: ['facing another', 'partially submerged'], a: ['leaning back'], b: ['leaning back'], nl: 'the two sit in opposite corners of a wide bath, facing each other across the water' },
       camera: cam(['three_quarter', 'high', 'side', 'eye_level'], ['three_quarter', 'high'], 'three_quarter', 'upper_body', ['upper_body'], { low: '湯面より下からは見られません。', overhead: '真上からは向かい合う顔が見えません。' }, { full_body: BATH_SHOTS.full_body, knee_up: BATH_SHOTS.knee_up, close: '二人が離れているため、顔まわりの画角には収まりません。' }),
+      surface: { mode: 'in', allowed: ['wide_bath', 'onsen'], defaultId: 'wide_bath' },
       gazes: { allowed: ['mutual', 'a_gazes_b', 'eyes_closed', 'both_viewer'], defaultId: 'mutual' },
       keywords: ['お風呂', '風呂', 'おふろ', '湯船', 'ゆぶね', '入浴', '一緒に入る', '向かい合う', '話す', '対角', '温泉', '日常'],
       suggest: { a: ex('gentle_smile'), b: ex('slight_smile') }
     }),
     pose({
       id: 'pair_daily_bath_back_rest', source: 'DC-021（身体配置の矛盾を修正）', category: 'daily_bath', family: 'sitting_kneeling',
-      label: '湯船で背中を預ける', short: 'Aが湯船の壁にもたれ、その前に少し横へずれて座ったBが、上背をAの胸に預ける。腕は回さない。',
+      label: '湯船で背中を預ける', short: 'Aが湯船の壁にもたれ、その前に少し横へずれて座ったBが、上背をAの胸に預ける。腕は回さない。家庭の湯船でも収まる形。',
       roles: ['後ろで受け止める側', '前で背中を預ける側'], rel: ['level', 'b_front', 'same_direction'],
       place: ['湯船の奥側に座り、上背を奥の壁に預ける。両手はそれぞれ湯船の縁に置き、Bには腕を回さない。', 'Aの前に、少し横へずれて座る。上背の片側だけをAの胸に預け、片手を自分の側の縁に置く。'],
-      contacts: [['b', 'Bの上背の片側 → Aの胸', "one side of Person B's upper back rests against Person A's chest"], ['a', 'Aの両手 → 湯船の縁', "Person A's hands rest on the rims of the tub"], ['b', 'Bの片手 → 自分の側の縁', "one of Person B's hands rests on the rim at their own side"]],
+      contacts: [['b', 'Bの上背の片側 → Aの胸', "one side of Person B's upper back rests against Person A's chest"], ['a', 'Aの両手 → 湯船の縁', "Person A's hands rest on the edges of the bath"], ['b', 'Bの片手 → 自分の側の縁', "one of Person B's hands rests on the edge of the bath at their own side"]],
       roleEn: ['the one sitting behind as a backrest', 'the one in front leaning back'],
-      ts: ['Person A sits at the back of a bathtub leaning against the tub wall, and Person B is in front of Person A, seated slightly off to one side and leaning back against Person A, both partially submerged.', 'Person A keeps both hands resting along the rims.', 'Person B rests one hand on the rim at their own side.'],
-      sdxl: [['bathtub', 'leaning back', 'partially submerged'], ['leaning on person']],
-      nai: { core: ['bathtub', 'partially submerged'], actions: [['leaning on person', 'b']], a: ['leaning back'], b: ['leaning back'], nl: 'one person sits at the back of a bathtub while the other sits in front, leaning back against their chest' },
+      ts: ['Person A sits at the back of the bath leaning against its wall, and Person B is in front of Person A, seated slightly off to one side and leaning back against Person A, both partially submerged.', 'Person A keeps both hands resting along the edges of the bath.', 'Person B rests one hand on the edge of the bath at their own side.'],
+      sdxl: [['leaning back', 'partially submerged'], ['leaning on person']],
+      nai: { core: ['partially submerged'], actions: [['leaning on person', 'b']], a: ['leaning back'], b: ['leaning back'], nl: 'one person sits at the back of the bath while the other sits in front, leaning back against their chest' },
       camera: cam(['side', 'three_quarter', 'high', 'eye_level'], ['side', 'three_quarter'], 'side', 'upper_body', ['upper_body', 'close'], { low: '湯面より下からは見られません。', overhead: '真上からは前後の重なりが読めません。' }, BATH_SHOTS),
+      surface: { mode: 'in', allowed: ['home_bath', 'wide_bath', 'onsen'], defaultId: 'home_bath' },
       gazes: { allowed: ['back_gazes_front', 'front_looks_back', 'eyes_closed', 'both_viewer'], defaultId: 'back_gazes_front' },
       keywords: ['お風呂', '風呂', 'おふろ', '湯船', 'ゆぶね', '入浴', '一緒に入る', '背中を預ける', 'もたれる', '前後', '温泉', '日常'],
       suggest: { a: ex('gentle_smile', 'look_down'), b: ex(null, 'half_closed', 'affectionate') }
@@ -483,7 +490,7 @@
     'giving': 3767, 'mug': 28187, 'table': 84769, 'reaching': 29748, 'looking at object': 8899, 'elbow on table': 822, 'food': 442029,
     'feeding': 9142, 'holding spoon': 11094, 'looking at food': 1984, 'plate': 44749, 'counter': 3282, 'stool': 11014, 'holding plate': 13694,
     'leaning on object': 2915, 'pointing': 65269, 'bathtub': 9669, 'partially submerged': 35074, 'facing another': 12091,
-    'leaning on person': 6528, 'looking at another': 264736, 'chair': 91462, 'kotatsu': 7130, 'from behind': 232537,
+    'leaning on person': 6528, 'looking at another': 264736, 'chair': 91462, 'kotatsu': 7130, 'onsen': 18611, 'from behind': 232537,
     'own hands together': 78093, 'cooking': 9165, 'kitchen': 6817, 'cutting board': 1804, 'holding knife': 24424, 'vegetable': 5263,
     'holding bowl': 7086, 'whisk': 2915, 'cookbook': 130, 'desk': 40794, 'studying': 641
   };
