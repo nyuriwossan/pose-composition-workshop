@@ -369,6 +369,10 @@ textarea.person-prompt { min-height: 104px; font-family: ui-monospace, SFMono-Re
 .pose-figure .pf-camera rect, .pose-figure .pf-camera path { fill: var(--indigo); }
 .pose-figure .pf-label { fill: var(--muted); font-size: 8px; font-weight: 700; }
 .pose-figure .pf-empty { fill: var(--muted); font-size: 8px; }
+/* モード系の補助線：肩・骨盤の線（角度差）、いちばん手前の印、胸郭の回り込み */
+.pose-figure .pf-axis { stroke: var(--accent); stroke-width: 1.3; stroke-dasharray: 3 2.4; stroke-linecap: round; opacity: .9; }
+.pose-figure .pf-near { fill: none; stroke: var(--accent); stroke-width: 1.6; }
+.pose-figure .pf-twist { fill: none; stroke: var(--accent); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; }
 
 /* 図で選ぶ（プリセット） */
 .display-tabs { margin: 10px 0 12px; }
@@ -387,3 +391,10 @@ textarea.person-prompt { min-height: 104px; font-family: ui-monospace, SFMono-Re
 .structure-strip--figure { display: grid; grid-template-columns: 92px minmax(0, 1fr); gap: 12px; align-items: center; }
 .strip-figure { border-radius: 10px; background: var(--paper); overflow: hidden; }
 .strip-note { margin-top: 4px; font-weight: 600 !important; letter-spacing: 0 !important; line-height: 1.5; }
+
+/* モード系の身体配置 */
+.preset-card .preset-shot { color: var(--indigo); font-weight: 700; font-size: 11px; line-height: 1.4; overflow-wrap: anywhere; }
+.preset-card--figure .preset-shot { display: block; margin-top: 2px; }
+.editorial-note { margin: 10px 0 0; font-size: 13px; line-height: 1.6; overflow-wrap: anywhere; }
+.editorial-note b { display: block; }
+.editorial-note span { color: var(--muted); font-size: 12px; }

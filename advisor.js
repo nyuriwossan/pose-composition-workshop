@@ -48,6 +48,42 @@
     ]));
     if (shot === 'knee_up' && s.pose.lowerBody.footDirection) out.push(issue('feet_hidden_knee_up', 'warning', 'visibility', '足先は膝上の画角に写りません', '足先の細かな向きは、この画角では効果が期待できません。', ['camera.shotSize', 'pose.lowerBody.footDirection'], []));
   }
+  // モード・アヴァンギャルド系の身体配置。利用者の選択は変えず、案内と解決案だけを出す。
+  function editorialIssues(s, out) {
+    var pose = S.option(D.editorialPoses, s.pose.editorialPose);
+    if (!pose || pose.id === 'none') return;
+    var rec = S.option(D.shotSizes, pose.recommendedShot), min = S.option(D.shotSizes, pose.minShot);
+    var recLabel = rec ? rec.labelJa : pose.recommendedShot;
+    if (D.editorialShotTooTight(pose.id, s.camera.shotSize)) out.push(issue('editorial_shot_too_tight', 'warning', 'visibility', '「' + pose.labelJa + '」の要点が画角に入りません', '肩・肘・腕の位置関係が切れるため、このポーズの指定は保持したまま出力していません。' + (min ? min.labelJa + '以上、' : '') + 'おすすめは' + recLabel + 'です。', ['camera.shotSize', 'pose.editorialPose'], [
+      { labelJa: recLabel + 'へ変更', patch: { 'camera.shotSize': pose.recommendedShot } }
+    ]));
+    else if (!s.camera.shotSize) out.push(issue('editorial_shot_unset', 'info', 'visibility', '撮影範囲が未設定です', '「' + pose.labelJa + '」は' + recLabel + 'で見せやすいポーズです。', ['camera.shotSize', 'pose.editorialPose'], [
+      { labelJa: recLabel + 'にする', patch: { 'camera.shotSize': pose.recommendedShot } }
+    ]));
+    if (pose.postures && s.pose.posture && pose.postures.indexOf(s.pose.posture) < 0) {
+      var need = S.option(D.postures, pose.postures[0]);
+      var patch = { 'pose.posture': pose.postures[0] };
+      if (pose.supportType) patch['pose.support.type'] = pose.supportType;
+      out.push(issue('editorial_posture_mismatch', 'warning', 'support', '基本姿勢とモード系ポーズが揃っていません', '「' + pose.labelJa + '」は' + (need ? need.labelJa : pose.postures[0]) + '姿勢で組み立てたポーズです。今の基本姿勢のままだと、骨盤や支持点の説明が食い違います。', ['pose.posture', 'pose.editorialPose'], [
+        { labelJa: (need ? need.labelJa : pose.postures[0]) + 'へ変更', patch: patch }
+      ]));
+    }
+    var overlap = [];
+    if (s.pose.pelvis.orientation) overlap.push('骨盤');
+    if (s.pose.torso.relationToPelvis || s.pose.torso.lean !== 'neutral') overlap.push('上半身');
+    if (s.pose.shoulders.emphasis) overlap.push('肩');
+    if (s.pose.head.tilt !== 'level') overlap.push('首の傾き');
+    if (overlap.length) out.push(issue('editorial_body_overlap', 'info', 'bodyFlow', 'モード系ポーズと身体の流れの指定が重なっています', overlap.join('・') + 'の指定が、「' + pose.labelJa + '」の胸郭・肩・頭の説明と食い違う場合があります。どちらも出力します。', ['pose.editorialPose', 'pose.pelvis', 'pose.torso', 'pose.shoulders', 'pose.head.tilt'], [
+      { labelJa: '身体の流れの指定を外す', patch: { 'pose.pelvis.orientation': null, 'pose.pelvis.shift': 'none', 'pose.torso.relationToPelvis': null, 'pose.torso.lean': 'neutral', 'pose.shoulders.emphasis': null, 'pose.head.tilt': 'level' } }
+    ]));
+    var arms = s.pose.arms;
+    if ((arms.mode === 'combined' && arms.combined) || arms.primary.action || arms.secondary.action) out.push(issue('editorial_arms_user_override', 'info', 'arms', '腕は利用者の指定を優先しています', '「' + pose.labelJa + '」の腕の配置は出力していません。このポーズの腕を使う場合は、腕の指定を外してください。', ['pose.arms', 'pose.editorialPose'], [
+      { labelJa: '腕の指定を外す', patch: { 'pose.arms.mode': 'separate', 'pose.arms.primary.action': null, 'pose.arms.secondary.action': null, 'pose.arms.combined': null } }
+    ]));
+    if (s.pose.supportPose && s.pose.supportPose !== 'none') out.push(issue('editorial_special_pose_overlap', 'warning', 'support', '特殊ポーズとモード系ポーズを同時に指定しています', '支持姿勢の手足の配置と、このポーズの胸郭・腕の配置が食い違いやすくなります。', ['pose.supportPose', 'pose.editorialPose'], [
+      { labelJa: 'モード系ポーズを外す', patch: { 'pose.editorialPose': 'none' } }
+    ]));
+  }
   function interactionIssues(s, out) {
     if (s.interaction.target !== 'viewer') return;
     var high = ['slightly_high', 'high', 'top_down'].indexOf(s.camera.elevation) >= 0;
@@ -258,6 +294,7 @@
       { labelJa: (recommendedSpace === 'right' ? '右' : '左') + '側に余白', patch: { 'composition.negativeSpace': recommendedSpace } }
     ]));
     visibilityIssues(s, out);
+    editorialIssues(s, out);
     interactionIssues(s, out);
     restraintIssues(s, out);
     if (s.output.suppressPhotographyEquipment) out.push(issue('photography_equipment_suppression', 'info', 'output', '撮影機材の誤描画を抑えます', '一部の生成モデルが視点指定を撮影機材として描く問題を抑える補助文を出力します。', ['output.suppressPhotographyEquipment'], []));

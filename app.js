@@ -65,9 +65,16 @@
   function currentSummary() {
     return S.designSummary(state);
   }
+  var EDITORIAL_LEGEND = '橙の点線＝肩と骨盤の線、橙の丸＝いちばん手前、橙の矢印＝胸郭の回り込み';
+  function editorialLegendNeeded(st) { var m = F && F.compute(st); return !!(m && m.editorial); }
+  function editorialPose(id) { return option(D.editorialPoses, id); }
+  function editorialShotText(p) {
+    var pose = p && p.patch && p.patch.pose && editorialPose(p.patch.pose.editorialPose);
+    return pose && pose.id !== 'none' ? '推奨：' + label(D.shotSizes, pose.recommendedShot) + '（' + label(D.shotSizes, pose.minShot) + '以上）' : '';
+  }
   function structureStrip() {
     var figure = F && state.pose.posture ? '<div class="strip-figure" aria-hidden="false">' + F.svg(state, { size: 'strip', label: true, ariaLabel: '現在の設計の模式図' }) + '</div>' : '';
-    return '<div class="structure-strip' + (figure ? ' structure-strip--figure' : '') + '">' + figure + '<div class="strip-copy"><small>現在の構造</small><p>' + esc(currentSummary()) + '</p>' + (figure ? '<small class="strip-note">図は設計の目安です（点線の枠＝撮影範囲、青い印＝カメラの高さ）</small>' : '') + '</div></div>';
+    return '<div class="structure-strip' + (figure ? ' structure-strip--figure' : '') + '">' + figure + '<div class="strip-copy"><small>現在の構造</small><p>' + esc(currentSummary()) + '</p>' + (figure ? '<small class="strip-note">図は設計の目安です（点線の枠＝撮影範囲、青い印＝カメラの高さ' + (editorialLegendNeeded(state) ? '、' + EDITORIAL_LEGEND : '') + '）</small>' : '') + '</div></div>';
   }
   function heading(step) {
     return '<div class="section-heading"><p class="eyebrow">STEP ' + step + ' / 6</p><h1>' + esc(stepInfo[step].title) + '</h1><p>' + esc(stepInfo[step].copy) + '</p></div>' + structureStrip();
@@ -133,7 +140,14 @@
       '<div class="subsection"><h3>上半身との関係</h3>' + chips('pose.torso.relationToPelvis', D.torsoRelations, { max: 4, expandKey: 'torso' }) + '</div>' +
       '<div class="subsection"><h3>肩</h3>' + chips('pose.shoulders.emphasis', D.shoulders, { max: 6, expandKey: 'shoulders' }) + '</div>' +
       (state.entryMode === 'detail' || view.expanded.bodyDetail ? '<div class="subsection"><h3>腰のずれ</h3>' + chips('pose.pelvis.shift', D.pelvisShifts, { max: 3, expandKey: 'shift' }) + '</div><div class="subsection"><h3>上半身の傾き</h3>' + chips('pose.torso.lean', D.torsoLeans, { max: 4, expandKey: 'lean' }) + '</div>' : '<button class="detail-toggle" type="button" data-expand="bodyDetail">詳しく調整</button>'));
-    main.innerHTML = heading(2) + flows + lower + upper;
+    var edPose = editorialPose(state.pose.editorialPose), edActive = edPose && edPose.id !== 'none';
+    var edBody = '';
+    if (edActive || state.entryMode === 'detail' || view.expanded.editorial) {
+      edBody = chips('pose.editorialPose', D.editorialPoses, { max: D.editorialPoses.length, expandKey: 'editorial' });
+      if (edActive) edBody += '<p class="editorial-note"><b>' + esc(edPose.labelJa) + '</b>' + esc(edPose.shortJa) + '<br><span>推奨画角：' + esc(label(D.shotSizes, edPose.recommendedShot)) + '（' + esc(label(D.shotSizes, edPose.minShot)) + '以上）。腕を別に指定すると、腕はそちらを優先します。</span></p>';
+    } else edBody = '<button class="detail-toggle" type="button" data-expand="editorial">モード系の身体配置を選ぶ</button>';
+    var editorial = card('モード系の身体配置（任意）', '胸郭・肩・頭・腕の位置関係をまとめて指定します。画風や衣装は加えません。', edBody);
+    main.innerHTML = heading(2) + flows + lower + upper + editorial;
   }
   function renderStep3() {
     var used = A.handUsage(state);
@@ -285,7 +299,7 @@
       var preview = S.applyPatch(S.initial(), p.patch);
       return '<button class="preset-card preset-card--figure' + (selected ? ' is-selected' : '') + '" type="button" data-load-preset="' + attr(p.id) + '" aria-pressed="' + selected + '">' +
         '<span class="figure-frame">' + F.svg(preview, { size: 'card', label: true, ariaLabel: p.nameJa + 'の模式図' }) + '</span>' +
-        '<strong>' + esc(p.nameJa) + '</strong>' + (selected ? '<span class="selected-badge">選択中</span>' : '') + '</button>';
+        '<strong>' + esc(p.nameJa) + '</strong>' + (editorialShotText(p) ? '<small class="preset-shot">' + esc(editorialShotText(p)) + '</small>' : '') + (selected ? '<span class="selected-badge">選択中</span>' : '') + '</button>';
     }).join('');
   }
   function presetCardsHtml(list) {
@@ -300,7 +314,7 @@
       if (meta.poseFamily && D.presetPoseFamilyLabels[meta.poseFamily]) cardTags.push(D.presetPoseFamilyLabels[meta.poseFamily]);
       var tags = cardTags.slice(0, 3).map(function (tag) { return '<span class="preset-tag">' + esc(tag) + '</span>'; }).join('');
       var selected = p.id === selectedId;
-      return '<button class="preset-card' + (selected ? ' is-selected' : '') + '" type="button" data-load-preset="' + attr(p.id) + '" aria-pressed="' + selected + '"><strong>' + esc(p.nameJa) + (selected ? ' <span class="selected-badge">選択中</span>' : '') + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
+      return '<button class="preset-card' + (selected ? ' is-selected' : '') + '" type="button" data-load-preset="' + attr(p.id) + '" aria-pressed="' + selected + '"><strong>' + esc(p.nameJa) + (selected ? ' <span class="selected-badge">選択中</span>' : '') + '</strong><small>' + esc(p.descriptionJa) + '</small>' + (editorialShotText(p) ? '<small class="preset-shot">' + esc(editorialShotText(p)) + '</small>' : '') + (tags ? '<span class="preset-tags">' + tags + '</span>' : '') + '</button>';
     }).join('');
   }
   function userPresetRow(p) {
@@ -311,6 +325,7 @@
     (meta.moodTags || []).forEach(function (t) { fields.push(D.presetMoodTagLabels[t] || ''); });
     (meta.sceneTags || []).forEach(function (t) { fields.push(D.presetSceneTagLabels[t] || ''); });
     (meta.audienceTags || []).forEach(function (t) { fields.push(D.presetAudienceTagLabels[t] || ''); });
+    if (meta.collection === 'editorial') fields.push(meta.avId || '', editorialShotText(p), 'モード', 'アヴァンギャルド', 'エディトリアル', 'ハイファッション', '彫刻的', '非対称');
     return fields;
   }
   function visibleSinglePresets() {
@@ -365,7 +380,8 @@
     var users = Store.listPresets().filter(function (p) { return p.kind !== 'pair'; });
     var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(userPresetRow).join('') : '';
     var displayToggle = '<div class="segmented display-tabs" role="group" aria-label="プリセットの表示方法"><button type="button" data-preset-display="name" aria-pressed="' + (view.presetDisplay !== 'figure') + '">名前で選ぶ</button><button type="button" data-preset-display="figure" aria-pressed="' + (view.presetDisplay === 'figure') + '">図で選ぶ</button></div>';
-    var figureNote = view.presetDisplay === 'figure' ? '<p class="figure-note">' + esc(F.note) + ' 点線の枠は撮影範囲、青い印はカメラの高さです。</p>' : '';
+    var hasEditorial = visiblePresets.some(function (p) { return (p.meta || {}).collection === 'editorial'; });
+    var figureNote = view.presetDisplay === 'figure' ? '<p class="figure-note">' + esc(F.note) + ' 点線の枠は撮影範囲、青い印はカメラの高さです。' + (hasEditorial ? esc(EDITORIAL_LEGEND) + '。' : '') + '</p>' : '';
     openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + displayToggle + filters + figureNote + '<div class="preset-list' + (view.presetDisplay === 'figure' ? ' preset-list--figure' : '') + '" id="presetList">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
   }
   function saveSheet(kind) {

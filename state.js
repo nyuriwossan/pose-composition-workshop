@@ -50,7 +50,8 @@
         arms: { mode: 'separate', primary: { action: null }, secondary: { action: null }, combined: null },
         head: { yaw: null, pitch: 'neutral', tilt: 'level' },
         gaze: { target: null, direction: null, eyes: 'open' },
-        expression: 'none'
+        expression: 'none',
+        editorialPose: 'none'
       },
       camera: { shotSize: null, elevation: 'eye_level', roll: 'level' },
       interaction: { target: 'none', distance: 'normal', approach: 'none', viewerHandInteraction: 'none', viewerHandVisible: false },
@@ -96,6 +97,7 @@
     s.pose.gaze.direction = known(D.gazeDirections, s.pose.gaze.direction, null);
     s.pose.gaze.eyes = known(D.eyeStates, s.pose.gaze.eyes, 'open');
     s.pose.expression = known(D.expressions, s.pose.expression, 'none');
+    s.pose.editorialPose = known(D.editorialPoses, s.pose.editorialPose, 'none');
     s.camera.shotSize = known(D.shotSizes, s.camera.shotSize, null);
     s.camera.elevation = known(D.elevations, s.camera.elevation, 'eye_level');
     s.camera.roll = known(D.rolls, s.camera.roll, 'level');

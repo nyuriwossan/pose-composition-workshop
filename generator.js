@@ -162,6 +162,42 @@
     });
     return { compact: compact, detailed: detailed };
   }
+  // モード・アヴァンギャルド系の身体配置（data/editorial.js）。未選択なら何も出さない。
+  function editorialArmsOwnedByUser(s) {
+    var arms = s.pose.arms;
+    return !!((arms.mode === 'combined' && arms.combined) || arms.primary.action || arms.secondary.action);
+  }
+  function editorialBlock(s, opts, out) {
+    var pose = selected(D.editorialPoses, s.pose.editorialPose);
+    if (!pose || pose.id === 'none') return;
+    var shot = selected(D.shotSizes, pose.recommendedShot);
+    var title = 'ポーズ：' + pose.labelJa + '（' + pose.avId + '）';
+    if (D.editorialShotTooTight(pose.id, s.camera.shotSize)) {
+      push(out.ja, title + '（画角外・保持中。推奨：' + (shot ? shot.labelJa : pose.recommendedShot) + '）');
+      return;
+    }
+    var armsByUser = editorialArmsOwnedByUser(s), armsByRestraint = restraintActive(s);
+    var parts = ['torso'];
+    if (!armsByUser && !armsByRestraint) parts.push('arms');
+    parts.forEach(function (part) {
+      if (opts && opts.tagSubject) {
+        var t = pose.tags[part];
+        t.verified.concat(t.phrases).forEach(function (x) { push(out.compact, x); });
+      } else pose.prompt[part].compact.forEach(function (x) { push(out.compact, x); });
+      pose.prompt[part].detailed.forEach(function (x) { push(out.detailed, x); });
+    });
+    var body = pose.body;
+    push(out.ja, title);
+    push(out.ja, '骨盤：' + body.pelvis);
+    push(out.ja, '胸郭・肩：' + body.ribcage);
+    push(out.ja, '頭：' + body.head);
+    if (armsByRestraint) push(out.ja, '腕：拘束・固定の指定を優先（このポーズの腕は出力しません）');
+    else if (armsByUser) push(out.ja, '腕：利用者の指定を優先（このポーズの腕は出力しません）');
+    else { push(out.ja, '片方の腕：' + body.armA); push(out.ja, '反対の腕：' + body.armB); }
+    push(out.ja, '支持：' + body.support);
+    push(out.ja, '手前と奥：' + body.depth);
+    push(out.ja, '推奨画角：' + (shot ? shot.labelJa : pose.recommendedShot));
+  }
   function blocks(raw, opts) {
     // opts は出力先別の語彙差し替え用。省略時は従来出力と完全に同じ。
     var lexicon = opts && opts.lexicon || {};
@@ -173,6 +209,7 @@
     var s = effectiveState(raw);
     var b = {
       subjectPosture: { compact: [], detailed: [], ja: [] },
+      editorial: { compact: [], detailed: [], ja: [] },
       lowerBody: { compact: [], detailed: [], ja: [] },
       bodyFlow: { compact: [], detailed: [], ja: [] },
       arms: { compact: [], detailed: [], ja: [] },
@@ -264,6 +301,7 @@
       if (pa) push(b.arms.ja, '片方の手：' + pa.labelJa + (PCW.advisor.armHidden(pa, s.camera.shotSize) ? '（画角外・保持中）' : ''));
       if (sa) push(b.arms.ja, '反対の手：' + sa.labelJa + (PCW.advisor.armHidden(sa, s.camera.shotSize) ? '（画角外・保持中）' : ''));
     }
+    editorialBlock(s, opts, b.editorial);
     var rb = restraintBlock(s, opts);
     rb.compact.forEach(function (x) { push(b.restraint.compact, x); });
     rb.detailed.forEach(function (x) { push(b.restraint.detailed, x); });
@@ -427,7 +465,7 @@
       // Sensitive-to-structure blocks are preserved verbatim, including chain anchors and the single Viewer hand.
       var protectedBlock = ['restraint', 'interaction', 'outputAssist'].indexOf(key) >= 0;
       var destination = key === 'restraint' || key === 'outputAssist' ? layers.stability :
-        ['subjectPosture', 'arms', 'head', 'gaze'].indexOf(key) >= 0 ? layers.semantic : layers.modifiers;
+        ['subjectPosture', 'editorial', 'arms', 'head', 'gaze'].indexOf(key) >= 0 ? layers.semantic : layers.modifiers;
       b[key].compact.forEach(function (clause) {
         if (protectedBlock) { push(destination, clause); return; }
         clause.split(/,\s*/).forEach(function (part) {
@@ -462,7 +500,7 @@
     return groups.join(' ').replace(/\.\.+/g, '.').trim();
   }
   function structureJa(raw) {
-    var b = blocks(raw), names = { subjectPosture: '姿勢', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', restraint: '拘束・固定', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', outputAssist: '出力補助', custom: '自由入力' };
+    var b = blocks(raw), names = { subjectPosture: '姿勢', editorial: 'モード系の身体配置', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', restraint: '拘束・固定', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', outputAssist: '出力補助', custom: '自由入力' };
     var lines = [];
     Object.keys(b).forEach(function (key) {
       if (b[key].ja.length) lines.push('【' + names[key] + '】\n' + b[key].ja.join('\n'));
@@ -487,5 +525,5 @@
     if (s.output.preserveClothing) add(['nudity', 'bare torso', 'exposed buttocks', 'shirt removal', 'underwear-only outfit']);
     return out.join(', ');
   }
-  PCW.generator = { blocks: blocks, compactLayers: compactLayers, compact: compact, detailed: detailed, structureJa: structureJa, negative: negative, hasClothingDescription: hasClothingDescription, restraintActive: restraintActive };
+  PCW.generator = { editorialArmsOwnedByUser: editorialArmsOwnedByUser, blocks: blocks, compactLayers: compactLayers, compact: compact, detailed: detailed, structureJa: structureJa, negative: negative, hasClothingDescription: hasClothingDescription, restraintActive: restraintActive };
 })(window);

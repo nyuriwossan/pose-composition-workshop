@@ -159,10 +159,32 @@
     ], ground: 110, props: [bed] });
   }
 
+  /*
+   * モード系の身体配置（data/editorial.js の figure）。未選択・特殊姿勢・寝姿・基本姿勢の食い違いでは null を返し、
+   * 従来の図をそのまま描く（既存プリセットの図は1文字も変わらない）。
+   */
+  function editorialSpec(s) {
+    var D = PCW.data, id = s.pose.editorialPose;
+    if (!id || id === 'none' || !D || !D.editorialPoses) return null;
+    var p = D.editorialPoses.filter(function (x) { return x.id === id; })[0];
+    if (!p || !p.figure) return null;
+    if (SPECIAL[s.pose.supportPose] || s.pose.posture === 'reclining' || (s.pose.lyingOrientation && s.pose.lyingOrientation !== 'none')) return null;
+    if (p.postures && p.postures.indexOf(s.pose.posture) < 0) return null;
+    return p.figure;
+  }
+  // 床に座り、両手を骨盤の後ろへつく（横から）。手の支点を持つ。
+  function floorSitBack() {
+    return side({ hip: P(56, 121), neck: P(43, 82), head: P(40, 71), legs: [
+      { hip: P(57, 121), knee: P(80, 103), foot: P(101, 124) }, { hip: P(55, 121), knee: P(77, 106), foot: P(97, 125) }
+    ], ground: 126, supports: { hands: [P(35, 124), P(29, 123)] } });
+  }
+
   /** 図の向き：その姿勢がいちばん見分けやすい向きを選ぶ */
   function chooseBase(s) {
     var pose = s.pose, sp = pose.supportPose, posture = pose.posture;
     if (SPECIAL[sp]) return SPECIAL[sp]();
+    var ed = editorialSpec(s);
+    if (ed && ed.base === 'floor_sit_back') return floorSitBack();
     if (posture === 'reclining' || sp === 'leaning_on_elbows' || sp === 'propped_up') return lying(s);
     if (sp === 'sonkyo' || sp === 'shiko_stance') return frontLowSquat(s, sp);
     if (posture === 'sitting') return sideSitting(s);
@@ -189,11 +211,16 @@
     // 上半身の傾き（基本骨格に傾きが含まれる特殊姿勢には重ねない）
     var lean = pose.torso.lean;
     var upperRotation = 0;
+    var ed = editorialSpec(s);
+    var edFront = ed && b.view === 'front' ? ed : null;
     if (!SPECIAL[pose.supportPose] && pose.posture !== 'reclining') {
       if (b.view === 'side') upperRotation = facing * (lean === 'forward' ? 16 : lean === 'backward' ? -12 : 0);
       else if (lean === 'sideways') upperRotation = 8;
     }
+    if (edFront && edFront.lean) upperRotation += edFront.lean;
     if (upperRotation) { b.neck = rotate(b.neck, b.hip, upperRotation); b.head = rotate(b.head, b.hip, upperRotation); }
+    if (edFront && edFront.ribShift) { b.neck = add(b.neck, edFront.ribShift, 0); b.head = add(b.head, edFront.ribShift, 0); }
+    if (edFront && edFront.fold) { b.neck = mid(b.hip, b.neck, 0.9); b.head = add(b.head, 0, 5); }
     var forwardInFront = b.view === 'front' && lean === 'forward';
     if (forwardInFront) { b.neck = mid(b.hip, b.neck, 0.94); b.head = add(b.head, 0, 3); }
 
@@ -213,11 +240,22 @@
     } else {
       shoulders = [shoulderCenter, add(shoulderCenter, -facing * 1.5, 0)];
     }
+    if (edFront) {
+      var tilt = edFront.shoulderTilt || 0, hipTilt = edFront.hipTilt || 0;
+      if (tilt) { shoulders[0] = add(shoulders[0], 0, -tilt / 2); shoulders[1] = add(shoulders[1], 0, tilt / 2); }
+      if (hipTilt) { b.legs[0].hip = add(b.legs[0].hip, 0, -hipTilt / 2); b.legs[1].hip = add(b.legs[1].hip, 0, hipTilt / 2); }
+      if (edFront.headShift) b.head = add(b.head, edFront.headShift, edFront.headDrop || 0);
+    }
     b.shoulders = shoulders;            // [+1側（手前）, -1側（奥）]
     b.back = back;
     b.facing = facing;
     b.down = down;
     b.face = faceMarker(s, b);
+    if (ed) {
+      if (edFront && edFront.headTilt != null) b.face.tilt = edFront.headTilt;
+      if (edFront && edFront.face) b.face.kind = edFront.face;
+      b.editorial = ed;
+    }
     return b;
   }
 
@@ -348,9 +386,28 @@
     return { shoulder: shoulder, elbow: elbow, hand: hand, upper: a, fore: c };
   }
 
+  // モード系の腕：腕が未指定で、拘束・Viewerとの手のやりとりがないときだけ使う（利用者の腕指定を優先）
+  function editorialTargets(s, b, L) {
+    var ed = b.editorial;
+    if (!ed || !ed.arms) return null;
+    var arms = s.pose.arms;
+    if ((arms.mode === 'combined' && arms.combined) || arms.primary.action || arms.secondary.action) return null;
+    if (s.restraint && s.restraint.type !== 'none' && s.restraint.placement !== 'none') return null;
+    if (s.interaction && s.interaction.viewerHandInteraction && s.interaction.viewerHandInteraction !== 'none') return null;
+    var sup = b.supports && b.supports.hands;
+    if (b.view !== 'front' && !(sup && ed.arms.every(function (t) { return t.support != null; }))) return null;
+    return ed.arms.map(function (t, i) {
+      if (t.support != null) return { to: sup[t.support], bend: -b.facing };
+      function at(spec) { var a = spec.at === 'collar' ? add(b.neck, 0, 5) : spec.at === 'hip' ? b.hip : spec.at === 'shoulder' ? b.shoulders[i] : L[spec.at]; return add(a, spec.dx || 0, spec.dy || 0); }
+      // elbow を持つ指定は例外用の個別調整（顔の前の前腕など、2関節の計算では置けない形）
+      return { to: at(t), bend: t.bend, hintY: t.hintY, hidden: !!t.hidden, toward: !!t.toward, elbowOut: t.elbowOut, fixedElbow: t.elbow ? at(t.elbow) : null };
+    });
+  }
+
   function buildArms(s, b) {
     var L = landmarks(b), arms = s.pose.arms, targets;
-    if (arms.mode === 'combined' && arms.combined) targets = combinedTargets(arms.combined, b, L);
+    targets = editorialTargets(s, b, L);
+    if (!targets && arms.mode === 'combined' && arms.combined) targets = combinedTargets(arms.combined, b, L);
     if (!targets) {
       var p = arms.primary.action, q = arms.secondary.action;
       if (!p && !q) targets = implicitArms(s, b, L);
@@ -362,7 +419,7 @@
     return targets.map(function (t, i) {
       var shoulder = b.shoulders[i];
       var hint = b.view === 'front' ? (t.bend || (i === 0 ? 1 : -1)) * (t.elbowOut || 1) : (t.bend || -b.facing);
-      var solved = solveArm(shoulder, t.to, hint, t.toward, t.hintY);
+      var solved = t.fixedElbow ? { shoulder: shoulder, elbow: t.fixedElbow, hand: t.to, upper: dist(shoulder, t.fixedElbow), fore: dist(t.fixedElbow, t.to) } : solveArm(shoulder, t.to, hint, t.toward, t.hintY);
       solved.near = i === 0;
       solved.hidden = !!t.hidden;
       solved.toward = !!t.toward;
@@ -444,7 +501,8 @@
       view: b.view, viewKey: viewKey, viewLabel: VIEW_LABELS[viewKey],
       head: b.head, neck: b.neck, hip: b.hip, arch: b.arch || null, shoulders: b.shoulders, legs: b.legs, arms: arms,
       face: b.face, ground: b.ground, props: b.props || [], heelsUp: !!b.heelsUp, facing: b.facing,
-      crop: cropFor(s, b, arms), camera: cameraFor(s, b)
+      crop: cropFor(s, b, arms), camera: cameraFor(s, b),
+      editorial: b.editorial ? { near: b.editorial.near || null, twist: b.editorial.twist || 0, axes: b.view === 'front' } : null
     };
   }
 
@@ -458,6 +516,28 @@
     else if (f.kind === 'three_quarter') g += '<circle class="pf-eye" cx="' + round(h.x + d * 1) + '" cy="' + round(h.y + dy) + '" r="1.1"/><circle class="pf-eye" cx="' + round(h.x + d * 5.5) + '" cy="' + round(h.y + dy) + '" r="1.1"/>';
     else if (f.kind === 'profile') g += '<circle class="pf-eye" cx="' + round(h.x + d * 4) + '" cy="' + round(h.y + dy - 0.5) + '" r="1.1"/><path class="pf-nose" d="M' + round(h.x + d * 7.6) + ' ' + round(h.y + dy) + ' l' + (d * 2.6) + ' 2.2 l' + (-d * 2.4) + ' 0.8"/>';
     else g += '<path class="pf-hair" d="M' + round(h.x - 7) + ' ' + round(h.y - 1) + ' Q' + round(h.x) + ' ' + round(h.y + 6) + ' ' + round(h.x + 7) + ' ' + round(h.y - 1) + '"/>';
+    return g + '</g>';
+  }
+
+  // モード系の補助線：肩の線と骨盤の線を延長して角度差を見せ、いちばん手前の部位に印、胸郭の回り込みに矢印を付ける
+  function editorialSvg(m) {
+    var e = m.editorial, g = '<g class="pf-editorial">';
+    function ext(a, b, k) { var dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1; return [add(a, -dx / l * k, -dy / l * k), add(b, dx / l * k, dy / l * k)]; }
+    if (e.axes) {
+      var sh = ext(m.shoulders[1], m.shoulders[0], 7), hp = ext(m.legs[1].hip, m.legs[0].hip, 9);
+      g += line(sh[0], sh[1], 'pf-axis') + line(hp[0], hp[1], 'pf-axis');
+    }
+    if (e.near) {
+      var parts = e.near.split(':'), arm = m.arms[Number(parts[1]) || 0];
+      var pt = parts[0] === 'shoulder' ? m.shoulders[Number(parts[1]) || 0] : arm && arm[parts[0]];
+      if (pt) g += '<circle class="pf-near" cx="' + round(pt.x) + '" cy="' + round(pt.y) + '" r="4.6"/>';
+    }
+    if (e.twist) {
+      var c = mid(m.neck, m.hip, 0.3), d = e.twist > 0 ? 1 : -1, r = 15;
+      var a0 = add(c, -d * r, 2), a1 = add(c, d * r, 2);
+      g += '<path class="pf-twist" d="M' + round(a0.x) + ' ' + round(a0.y) + ' Q' + round(c.x) + ' ' + round(c.y + 9) + ' ' + round(a1.x) + ' ' + round(a1.y) + '"/>' +
+        '<path class="pf-twist pf-twist-head" d="M' + round(a1.x - d * 4) + ' ' + round(a1.y - 1) + ' L' + round(a1.x) + ' ' + round(a1.y) + ' L' + round(a1.x - d * 2) + ' ' + round(a1.y + 4) + '"/>';
+    }
     return g + '</g>';
   }
 
@@ -501,6 +581,7 @@
     out.push('<circle class="pf-head' + (m.face.kind === 'back' ? ' pf-head--back' : '') + '" cx="' + round(m.head.x) + '" cy="' + round(m.head.y) + '" r="' + HEAD_R + '"/>');
     out.push(faceSvg(m));
     nearArms.forEach(function (a) { out.push(armSvg(a, 'pf-limb')); });
+    if (m.editorial) out.push(editorialSvg(m));
     var body = out.join('');
     // 撮影範囲：枠の外を薄くし、枠を点線で示す
     var overlay = '';

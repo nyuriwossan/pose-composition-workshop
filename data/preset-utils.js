@@ -17,7 +17,8 @@
     rear_turn: '背面・振り返り',
     viewer_hand: 'Viewerとの手のやりとり',
     restraint: '拘束・固定',
-    special_pose: '特殊ポーズ・運動'
+    special_pose: '特殊ポーズ・運動',
+    editorial_sculpt: 'モード・彫刻的な上半身'
   };
   function inferPresetPoseFamily(preset) {
     var meta = preset && preset.meta || {};
@@ -65,7 +66,7 @@
       counts.all += 1;
       if (counts[collection] != null) counts[collection] += 1;
       return counts;
-    }, { all: 0, basic: 0, relationship: 0, special: 0 });
+    }, { all: 0, basic: 0, relationship: 0, special: 0, editorial: 0 });
   }
   function getPresetPoseFamilyCounts(presets) {
     return (presets || []).reduce(function (counts, preset) {
@@ -92,7 +93,7 @@
   }
   function renderPresetCollectionFilters(active, presets) {
     var counts = getPresetCollectionCounts(presets);
-    return [['all', 'すべて'], ['basic', '基本ポーズ'], ['relationship', '恋人・親しい相手'], ['special', '特殊・演出']].map(function (row) {
+    return [['all', 'すべて'], ['basic', '基本ポーズ'], ['relationship', '恋人・親しい相手'], ['special', '特殊・演出'], ['editorial', 'モード・アヴァンギャルド']].map(function (row) {
       return '<button type="button" class="collection-filter" data-collection-filter="' + row[0] + '" aria-pressed="' + (active === row[0]) + '">' + row[1] + ' <b>' + counts[row[0]] + '</b></button>';
     }).join('');
   }
