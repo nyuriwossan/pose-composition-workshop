@@ -142,6 +142,26 @@
   function fillJa(text, p) {
     return String(text).replace(/\{front\}/g, (roleOf(p, 'front') || 'a').toUpperCase()).replace(/\{back\}/g, (roleOf(p, 'back') || 'b').toUpperCase());
   }
+  // 「見る先」を持つ視線（日常ポーズ用、focus:true）だけ、{focus} をポーズの見る先へ置き換えた写しを返す。
+  // それ以外の視線は元のオブジェクトをそのまま返すので、既存ポーズの出力は変わらない。
+  var DEFAULT_FOCUS = { ja: '同じもの', en: 'the same thing', tags: ['looking at object'] };
+  function resolveGaze(p, g) {
+    if (!g || !g.focus) return g;
+    var f = (p && p.focus) || DEFAULT_FOCUS, r = clone(g);
+    function en(t) { return String(t).replace(/\{focus\}/g, f.en); }
+    function tags(list) {
+      var out = [];
+      (list || []).forEach(function (t) { (t === '{focus}' ? f.tags : [t]).forEach(function (x) { if (out.indexOf(x) < 0) out.push(x); }); });
+      return out;
+    }
+    r.labelJa = String(g.labelJa).replace(/\{focus\}/g, f.ja);
+    r.tsubaki = en(g.tsubaki);
+    Object.keys(r.roles || {}).forEach(function (k) { r.roles[k] = en(r.roles[k]); });
+    r.sdxl = tags(g.sdxl);
+    Object.keys(r.nai || {}).forEach(function (k) { r.nai[k] = tags(g.nai[k]); });
+    return r;
+  }
+  function gazeOf(p, id) { return resolveGaze(p, byId(D.pairGazes, id)); }
   function fillEn(text, p) {
     var front = roleOf(p, 'front'), back = roleOf(p, 'back');
     return String(text)
@@ -149,7 +169,7 @@
       .replace(/\{front\}/g, 'Person ' + (front || 'a').toUpperCase())
       .replace(/\{back\}/g, 'Person ' + (back || 'b').toUpperCase());
   }
-  function gazeLabel(p, gazeId) { var g = byId(D.pairGazes, gazeId); return g ? fillJa(g.labelJa, p) : ''; }
+  function gazeLabel(p, gazeId) { var g = gazeOf(p, gazeId); return g ? fillJa(g.labelJa, p) : ''; }
   function sentence(text) {
     var t = String(text || '').trim().replace(/\s+/g, ' ').replace(/[.]+$/, '');
     return t ? t.charAt(0).toUpperCase() + t.slice(1) + '.' : '';
@@ -262,7 +282,7 @@
     if (who.length) out.push(sentence(who.join(', and ')));
     // 外見は「誰が・どの位置の人物か」と結び付けて、ポーズ説明より前に置く
     var described = infos.filter(function (info) { return info.adapted.text; });
-    var g0 = byId(D.pairGazes, s.gaze), anyGaze = anyPersonGaze(infos);
+    var g0 = gazeOf(p, s.gaze), anyGaze = anyPersonGaze(infos);
     infos.forEach(function (info) {
       if (info.adapted.text) {
         var role = p.models.tsubaki.roleEn && p.models.tsubaki.roleEn[info.id];
@@ -282,7 +302,7 @@
     out.push(sentence('Contact points: ' + p.contacts.map(function (c) { return c.tsubaki; }).join('; ')));
     var surf = byId(D.pairSurfaces, s.surface);
     if (surf) out.push(p.surface.mode === 'seat' ? 'Person B is seated on ' + surf.en + '.' : p.surface.mode === 'both_seat' ? 'Both are seated on ' + surf.en + '.' : 'They are on ' + surf.en + '.');
-    var g = byId(D.pairGazes, s.gaze);
+    var g = gazeOf(p, s.gaze);
     // 人物別の視線を選んだ場合は、上の表情文で一人ずつ書いたので二人の視線文は出さない
     if (g && !anyGaze) out.push(fillEn(g.tsubaki, p));
     var angle = byId(D.pairAngles, s.camera.angle), shot = byId(D.pairShots, s.camera.shot);
@@ -313,7 +333,7 @@
     });
     function add(t) { if (used.indexOf(t) < 0 && cores.indexOf(M.coreOf(t)) < 0) { used.push(t); cores.push(M.coreOf(t)); M.push(tags, t); } }
     // 人物A → 人物Bの順に表情。視線を選んでいない人物には、二人の視線から導いた視線を使う
-    var g = byId(D.pairGazes, s.gaze), anyGaze = anyPersonGaze(infos);
+    var g = gazeOf(p, s.gaze), anyGaze = anyPersonGaze(infos);
     infos.forEach(function (info) {
       expressionTags(info.person, 'sdxl').forEach(add);
       if (anyGaze && !info.person.expression.gaze) gazeRoleTags(p, g, info.id).forEach(add);
@@ -338,7 +358,7 @@
     var used = core.slice();
     M.push(base, M.emphasize('nai', pr, core));
     function addBase(t) { if (used.indexOf(t) < 0) { used.push(t); M.push(base, t); } }
-    var g = byId(D.pairGazes, s.gaze), anyGaze = anyPersonGaze(infos);
+    var g = gazeOf(p, s.gaze), anyGaze = anyPersonGaze(infos);
     if (g && g.nai.base && !anyGaze) g.nai.base.forEach(addBase);
     var surf = byId(D.pairSurfaces, s.surface);
     if (surf && (p.surface.mode === 'on' || p.surface.mode === 'both_seat')) addBase(surf.onTag);
@@ -421,6 +441,9 @@
       var allGaze = infos.every(function (x) { return !!x.person.expression.gaze; });
       out.push({ id: 'person_gaze_override', severity: 'info', textJa: allGaze ? '二人とも人物別の視線を選んだため、「場所・視線」の二人の視線（' + gazeLabel(p, s.gaze) + '）は使いません。' : '人物別の視線を選んだため、「場所・視線」の二人の視線（' + gazeLabel(p, s.gaze) + '）は、視線を選んでいない人物にだけ当てはめます。' });
     }
+    // 斜め後ろからの角度（日常ポーズだけが持つ）で、顔を見合う視線を選んだときの案内
+    var gz0 = byId(D.pairGazes, s.gaze);
+    if (s.camera.angle === 'rear_three_quarter' && gz0 && !gz0.focus && gz0.id !== 'eyes_closed') out.push({ id: 'rear_angle_faces', severity: 'info', textJa: '「斜め後ろから」は二人の背中と同じ前方を写す角度です。顔や視線を見せたいときは「斜め前から」を選んでください。' });
     var vh = (D.pairGazeVerticalHints || {})[p.relation.vertical];
     if (vh) infos.forEach(function (x) {
       var gz = exprItem('gaze', x.person.expression.gaze);

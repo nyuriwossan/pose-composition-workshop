@@ -582,7 +582,7 @@
   }
 
   // 2026-10-28：二人用ポーズを46種へ拡張。当初の7種が先頭に同じ順で残っていることを確認する。
-  test('二人用：当初の7種類が先頭にそのまま残り、全46種', function () { eq(ids(D.pairPoses).slice(0, 7), pairIds); eq(D.pairPoses.length, 46); });
+  test('二人用：当初の7種類が先頭にそのまま残り、全66種（2026-10-30に日常20種を追加）', function () { eq(ids(D.pairPoses).slice(0, 7), pairIds); eq(D.pairPoses.length, 66); });
   test('二人用：IDは一意で、一人用プリセットIDと衝突しない', function () { ok(unique(ids(D.pairPoses))); ids(D.pairPoses).forEach(function (id) { ok(ids(D.presets).indexOf(id) < 0, id); }); });
   test('二人用：意味データの必須項目（人数・A/B配置・接触点・カメラ・モデル別表現・検索語）', function () {
     D.pairPoses.forEach(function (p) {
@@ -1096,11 +1096,11 @@
     return st;
   }
   var EA = { main: 'confident_smile', gaze: 'look_down' }, EB = { main: 'shy', gaze: 'look_up', sub: 'parted_lips' };
-  test('拡張ポーズ：追加39種がそろい、既存7種の後ろに並ぶ', function () { eq(ids(D.pairPoses).slice(7), newPairIds); });
-  test('拡張ポーズ：全46種にカテゴリがあり、カテゴリ別件数の合計が全数と一致', function () {
+  test('拡張ポーズ：追加39種がそろい、既存7種の後ろに並ぶ', function () { eq(ids(D.pairPoses).slice(7, 46), newPairIds); });
+  test('拡張ポーズ：全66種にカテゴリがあり、カテゴリ別件数の合計が全数と一致', function () {
     D.pairPoses.forEach(function (p) { ok(D.pairPoseCategories[p.category], p.id); });
-    var c = P.categoryCounts(''); eq(c.all, 46);
-    eq(Object.keys(D.pairPoseCategories).reduce(function (n, k) { return n + (c[k] || 0); }, 0), 46);
+    var c = P.categoryCounts(''); eq(c.all, 66);
+    eq(Object.keys(D.pairPoseCategories).reduce(function (n, k) { return n + (c[k] || 0); }, 0), 66);
     eq([c.embrace, c.seated, c.bed, c.standing, c.carry], [11, 8, 11, 9, 7]);
   });
   test('拡張ポーズ：新規ポーズごとにTsubaki・SDXL・NovelAIの出力に主ポーズが入る', function () {
@@ -1149,7 +1149,7 @@
     eq(P.normalize({ poseId: 'pair_lap_facing', people: { a: { gender: 'male', prompt: 'x' } } }).people.a.expression, { main: null, gaze: null, sub: null });
     eq(P.normalize({ people: { a: { expression: { main: 'nope', gaze: 5, sub: 'tense' } } } }).people.a.expression, { main: null, gaze: null, sub: 'tense' });
   });
-  test('表情：全空欄なら、全46ポーズ×全出力先の出力が表情機能の追加前と変わらない（明示的に null を入れても同じ）', function () {
+  test('表情：全空欄なら、全ポーズ×全出力先の出力が表情機能の追加前と変わらない（明示的に null を入れても同じ）', function () {
     D.pairPoses.forEach(function (pose) {
       prefVariants.forEach(function (pr) {
         var base = pairState(pose.id, { 'people.a.gender': 'male' });
@@ -1218,7 +1218,7 @@
     ok(P.issues(exprState('pair_princess_carry', null, { gaze: 'look_up' }), 'nai', {}).some(function (i) { return i.id === 'gaze_vertical_b'; }));
     ok(!P.issues(exprState('pair_over_supine', { gaze: 'look_down' }, { gaze: 'look_up' }), 'nai', {}).some(function (i) { return /^gaze_vertical/.test(i.id); }));
   });
-  test('表情：全46ポーズ×表情の組み合わせ×出力先で、空・重複・強調構文の混入・adult/bustがない', function () {
+  test('表情：全ポーズ×表情の組み合わせ×出力先で、空・重複・強調構文の混入・adult/bustがない', function () {
     var combos = [[EA, EB], [{ main: 'dreamy', sub: 'heavy_blush' }, null], [null, { gaze: 'teary', sub: 'restrained' }], [{ main: 'teasing_smile', gaze: 'side_glance', sub: 'tense' }, { main: 'blush', gaze: 'closed', sub: 'affectionate' }]];
     D.pairPoses.forEach(function (pose) {
       combos.forEach(function (c, i) {
@@ -1678,6 +1678,151 @@
       });
     });
     D.presets.filter(function (p) { return p.meta.collection !== 'dance'; }).forEach(function (p) { ok(F.svg(presetState(p.id)).indexOf('pf-curve') < 0, p.id + ' 曲線なし'); });
+  });
+
+  // ---- 二人用「日常」ポーズ20種（2026-10-30） ----
+  var dailyIds = ['pair_daily_shared_book', 'pair_daily_watch_forward', 'pair_daily_gaming', 'pair_daily_head_on_shoulder', 'pair_daily_sofa_floor', 'pair_daily_sofa_ends', 'pair_daily_bed_headboard', 'pair_daily_floor_board', 'pair_daily_phone_show', 'pair_daily_floor_talk',
+    'pair_daily_mug_handoff', 'pair_daily_table_talk', 'pair_daily_feeding', 'pair_daily_counter_handoff', 'pair_daily_counter_side', 'pair_daily_table_side_touch', 'pair_daily_cookbook',
+    'pair_daily_bath_side', 'pair_daily_bath_facing', 'pair_daily_bath_back_rest'];
+  var dailyPoses = function () { return dailyIds.map(function (id) { return P.poseById(id); }); };
+  var oldPairPoses = function () { return D.pairPoses.slice(0, 46); };
+  var newGazeIds = ['both_focus', 'a_focus_b_looks', 'b_focus_a_looks', 'a_focus_b_closed'], newSurfaceIds = ['dining', 'low_table', 'kotatsu'];
+  function dailyEnglish(p) {
+    return [p.models.tsubaki.overview, p.models.tsubaki.a, p.models.tsubaki.b, p.models.tsubaki.roleEn.a, p.models.tsubaki.roleEn.b, p.models.nai.nl]
+      .concat(p.contacts.map(function (c) { return c.tsubaki; }), p.focus ? [p.focus.en] : []).join(' | ');
+  }
+  function dailyTags(p) {
+    var m = p.models, out = m.sdxl.core.concat(m.sdxl.placement, m.nai.core, m.nai.a, m.nai.b, m.nai.actions.map(function (x) { return x.tag; }), p.focus ? p.focus.tags : []);
+    return out;
+  }
+  test('日常：20種がそろい、既存46種の後ろに同じ順で並ぶ', function () {
+    eq(ids(D.pairPoses).slice(46), dailyIds); eq(ids(D.pairPoses).slice(7, 46), newPairIds); eq(ids(D.pairPoses).slice(0, 7), pairIds);
+    dailyPoses().forEach(function (p) { ok(p.daily && p.source, p.id); });
+  });
+  test('日常：3カテゴリ（くつろぎ10・食卓と台所7・お風呂3）で絞り込め、既存5カテゴリの件数は変わらない', function () {
+    var c = P.categoryCounts('');
+    eq([c.daily_relax, c.daily_table, c.daily_bath], [10, 7, 3]);
+    eq([c.embrace, c.seated, c.bed, c.standing, c.carry], [11, 8, 11, 9, 7]);
+    eq(Object.keys(D.pairPoseCategories), ['embrace', 'seated', 'bed', 'standing', 'carry', 'daily_relax', 'daily_table', 'daily_bath']);
+    ['daily_relax', 'daily_table', 'daily_bath'].forEach(function (k) { ok(P.filterPoses('', k).every(function (p) { return p.category === k; }), k); });
+  });
+  test('日常：日本語で検索できる（あーん・お風呂・映画・ゲーム・こたつ・ひらがな）', function () {
+    function found(q) { return ids(P.filterPoses(q, 'all')); }
+    ok(found('あーん').indexOf('pair_daily_feeding') >= 0); ok(found('食べさせる').indexOf('pair_daily_feeding') >= 0);
+    ok(found('おふろ').indexOf('pair_daily_bath_side') >= 0); ok(found('湯船').length === 3);
+    ok(found('映画').indexOf('pair_daily_watch_forward') >= 0); ok(found('げーむ').indexOf('pair_daily_gaming') >= 0);
+    ok(found('こたつ').indexOf('pair_daily_mug_handoff') >= 0); ok(found('日常').length >= 20);
+    ok(found('バックハグ').indexOf('pair_hug_from_behind') >= 0, '既存の検索は変わらない');
+  });
+  test('日常：Manus候補26件すべてに判定と理由があり、採用・統合先が実在する', function () {
+    var log = D.dailyPairCandidateLog, kinds = ['adopted', 'merged_candidate', 'existing', 'hold'];
+    eq(log.length, 26); eq(log.map(function (x) { return x.id; }), Array.from({ length: 26 }, function (_, i) { return 'DC-' + String(i + 1).padStart(3, '0'); }));
+    log.forEach(function (x) {
+      ok(kinds.indexOf(x.decision) >= 0 && x.reasonJa && x.reasonJa.length > 15, x.id);
+      if (x.decision === 'hold') eq(x.poseId, null, x.id); else ok(P.poseById(x.poseId), x.id + ' ' + x.poseId);
+      if (x.decision === 'existing') ok(ids(oldPairPoses()).indexOf(x.poseId) >= 0, x.id + ' 既存46件');
+      if (x.decision === 'adopted' || x.decision === 'merged_candidate') ok(dailyIds.indexOf(x.poseId) >= 0, x.id);
+    });
+    var adopted = log.filter(function (x) { return x.decision === 'adopted'; }).map(function (x) { return x.poseId; });
+    eq(adopted.length, 18); ok(unique(adopted));
+    eq(dailyIds.filter(function (id) { return adopted.indexOf(id) < 0; }), ['pair_daily_gaming', 'pair_daily_feeding'], 'DC以外の追加は派生のゲームと「あーん」だけ');
+  });
+  test('日常：SDXL・NovelAIのタグはすべて danbooru.csv で実在を確認したもの', function () {
+    var extra = [];
+    D.pairGazes.filter(function (g) { return newGazeIds.indexOf(g.id) >= 0; }).forEach(function (g) { extra = extra.concat(g.sdxl, g.nai.a, g.nai.b); });
+    D.pairSurfaces.filter(function (x) { return newSurfaceIds.indexOf(x.id) >= 0; }).forEach(function (x) { extra.push(x.onTag, x.seatTag); });
+    extra = extra.concat(D.pairAngles.filter(function (a) { return a.optIn; })[0].tags);
+    dailyPoses().forEach(function (p) { dailyTags(p).forEach(function (t) { ok(D.dailyPairVerifiedTags[t] > 0, p.id + ' ' + t); }); });
+    extra.filter(function (t) { return t !== '{focus}'; }).forEach(function (t) { ok(D.dailyPairVerifiedTags[t] > 0, t); });
+    ok(!dailyPoses().some(function (p) { return /shared food|shared bathing|mouth-to-mouth/.test(JSON.stringify(p.models)); }), '別の意味を持つ別名・性的文脈のタグを使わない');
+  });
+  test('日常：英語に性別・年齢・表情・服装・背景・照明・品質の語、左右、adult/bustを入れない', function () {
+    var banned = /\b(man|men|woman|women|boy|girl|male|female|young|teen\w*|smil\w*|blush\w*|happy|sad|cry\w*|grin\w*|dress\w*|shirt|skirt|cloth\w*|towel|naked|nude|swimsuit|background|lighting|light|sunlight|shadow|masterpiece|quality|beautiful|cute|left|right)\b/i;
+    dailyPoses().forEach(function (p) {
+      var en = dailyEnglish(p), tags = dailyTags(p).join(', ');
+      ok(!banned.test(en), p.id + ' ' + (en.match(banned) || [])[0]); ok(!banned.test(tags), p.id + ' tags');
+      ok(!MO.hasPixaiForbidden(en + tags), p.id + ' adult/bust');
+    });
+  });
+  test('日常：A/Bの役割が逆転しない（渡す・食べさせる・頭を預ける・背中を預ける・指さす）', function () {
+    function nai(id, extra) { return P.render(pairState(id, extra), 'nai', {}); }
+    var feed = nai('pair_daily_feeding'); ok(feed.a.indexOf('source#feeding') >= 0 && feed.b.indexOf('target#feeding') >= 0 && feed.a.indexOf('holding spoon') >= 0 && feed.b.indexOf('holding spoon') < 0);
+    var mug = nai('pair_daily_mug_handoff'); ok(mug.a.indexOf('source#giving') >= 0 && mug.b.indexOf('target#giving') >= 0 && mug.b.indexOf('reaching') >= 0);
+    var plate = nai('pair_daily_counter_handoff'); ok(plate.a.indexOf('source#giving') >= 0 && /standing/.test(plate.a) && /stool/.test(plate.b));
+    var head = nai('pair_daily_head_on_shoulder'); ok(head.b.indexOf("head on another's shoulder") >= 0 && head.a.indexOf("head on another's shoulder") < 0);
+    var bath = nai('pair_daily_bath_back_rest'); ok(bath.b.indexOf('source#leaning on person') >= 0 && bath.a.indexOf('target#leaning on person') >= 0);
+    var cook = nai('pair_daily_cookbook'); ok(cook.a.indexOf('pointing') >= 0 && cook.b.indexOf('pointing') < 0 && cook.b.indexOf('holding book') >= 0);
+    var t = P.render(pairState('pair_daily_feeding'), 'tsubaki', {}).text;
+    ok(t.indexOf('Person A feeds Person B') >= 0 && t.indexOf("holds the spoon up to Person B's mouth") >= 0);
+    // A⇄Bの入れ替えは人物の入力だけを入れ替え、ポーズの役割は動かさない
+    var sw = P.swapPeople(pairState('pair_daily_feeding', { 'people.a.gender': 'male', 'people.b.prompt': 'red scarf' }));
+    var o = P.render(sw, 'nai', {}); ok(o.a.indexOf('source#feeding') >= 0 && o.a.indexOf('red scarf') >= 0 && /^girl|^boy/.test(o.b) === true);
+    dailyPoses().forEach(function (p) { ok(p.roles.a !== p.roles.b && p.models.tsubaki.roleEn.a !== p.models.tsubaki.roleEn.b, p.id + ' 役割名'); });
+  });
+  test('日常：見る先（{focus}）が全視線・全出力先・人物別の視線で置き換わり、記号が漏れない', function () {
+    dailyPoses().forEach(function (p) {
+      p.gazes.allowed.forEach(function (g) {
+        var label = P.gazeLabel(p, g); ok(label && label.indexOf('{') < 0, p.id + ' ' + g);
+        [pairState(p.id, { gaze: g }), exprState(p.id, { gaze: 'look_at' }, null, { gaze: g })].forEach(function (st) {
+          prefVariants.forEach(function (pr) {
+            var o = allOutputs(st, pr), all = [o.t.text, o.x.text, o.n.text, P.structureJa(st)].join(' ');
+            ok(all.indexOf('{focus}') < 0 && all.indexOf('{other}') < 0 && all.indexOf('{A}') < 0, p.id + ' ' + g);
+          });
+        });
+      });
+    });
+    var book = pairState('pair_daily_shared_book', { gaze: 'a_focus_b_looks' });
+    eq(P.gazeLabel(P.poseById('pair_daily_shared_book'), 'a_focus_b_looks'), 'Aは本を見て、BはAを見る');
+    ok(P.render(book, 'tsubaki', {}).text.indexOf('Person A looks at the same page of the book, while Person B looks at Person A.') >= 0);
+    var x = P.render(book, 'nai', {}); ok(x.a.indexOf('looking down') >= 0 && x.b.indexOf('looking at another') >= 0);
+    // 人物Bだけ視線を選ぶと、Aには二人の視線から導いた「見る先」が入る
+    var mixed = exprState('pair_daily_watch_forward', null, { gaze: 'look_at' }, { gaze: 'both_focus' });
+    var mt = P.render(mixed, 'tsubaki', {}).text; ok(mt.indexOf('Person A is looking at the same thing ahead of them') >= 0, mt);
+  });
+  test('日常：追加した視線・場所・斜め後ろの角度は、既存46種では選べない', function () {
+    oldPairPoses().forEach(function (p) {
+      newGazeIds.forEach(function (g) { ok(p.gazes.allowed.indexOf(g) < 0, p.id); });
+      newSurfaceIds.forEach(function (sf) { ok(p.surface.allowed.indexOf(sf) < 0, p.id); });
+      ok(p.camera.angles.indexOf('rear_three_quarter') < 0 && !p.focus, p.id);
+      var st = P.normalize({ poseId: p.id, gaze: 'both_focus', surface: 'kotatsu', camera: { angle: 'rear_three_quarter' } });
+      eq([st.gaze, st.surface, st.camera.angle], [p.gazes.defaultId, p.surface.defaultId, p.camera.defaultAngle], p.id);
+    });
+    eq(dailyPoses().filter(function (p) { return p.camera.angles.indexOf('rear_three_quarter') >= 0; }).map(function (p) { return p.id; }), ['pair_daily_watch_forward', 'pair_daily_gaming', 'pair_daily_head_on_shoulder', 'pair_daily_bath_side']);
+  });
+  test('日常：斜め後ろから＋顔を見合う視線のときだけ案内を出す', function () {
+    function has(st) { return P.issues(st, 'tsubaki', {}).some(function (i) { return i.id === 'rear_angle_faces'; }); }
+    ok(has(pairState('pair_daily_watch_forward', { 'camera.angle': 'rear_three_quarter', gaze: 'mutual' })));
+    ok(!has(pairState('pair_daily_watch_forward', { 'camera.angle': 'rear_three_quarter', gaze: 'both_focus' })));
+    ok(!has(pairState('pair_daily_watch_forward', { 'camera.angle': 'three_quarter', gaze: 'mutual' })));
+    var r = P.render(pairState('pair_daily_watch_forward', { 'camera.angle': 'rear_three_quarter' }), 'sdxl', {}).text; ok(tagsOf(r).indexOf('from behind') >= 0);
+  });
+  test('日常：食卓の場所（椅子とテーブル・床とローテーブル・こたつ）が3出力先に反映される', function () {
+    var k = pairState('pair_daily_mug_handoff', { surface: 'kotatsu' });
+    ok(P.render(k, 'tsubaki', {}).text.indexOf('Both are seated on the floor with their legs under a kotatsu.') >= 0);
+    ok(tagsOf(P.render(k, 'sdxl', {}).text).indexOf('kotatsu') >= 0 && tagsOf(P.render(k, 'nai', {}).base).indexOf('kotatsu') >= 0);
+    ok(P.render(pairState('pair_daily_table_talk'), 'tsubaki', {}).text.indexOf('Both are seated on chairs at a table.') >= 0);
+    ok(P.structureJa(pairState('pair_daily_feeding', { surface: 'low_table' })).indexOf('【場所】床とローテーブル（二人が座る）') >= 0);
+  });
+  test('日常：お風呂は全身・膝上を選べず、露出を示す語を含まない', function () {
+    D.pairPoses.filter(function (p) { return p.category === 'daily_bath'; }).forEach(function (p) {
+      ok(!P.shotState(p, 'full_body').ok && P.shotState(p, 'full_body').reason, p.id); ok(!P.shotState(p, 'knee_up').ok, p.id);
+      ok(!/naked|nude|topless|bare|skin|breast|chest is|exposed|towel/i.test(JSON.stringify(p.models)), p.id);
+    });
+  });
+  test('日常：「あーん」は一人用の相手視点プリセットへつながり、おすすめ表情で口元を補う', function () {
+    var p = P.poseById('pair_daily_feeding');
+    eq(p.related, ['relationship_offer_bite_to_viewer']); ok(D.presets.some(function (x) { return x.id === p.related[0]; }));
+    eq(P.applySuggestion(pairState(p.id)).state.people.b.expression, { main: 'shy', gaze: null, sub: 'parted_lips' });
+  });
+  test('日常：保存・復元・リセットで、新しいポーズと選択（場所・見る先の視線・斜め後ろ）が保持される', function () {
+    var st = P.set(exprState('pair_daily_mug_handoff', { main: 'gentle_smile' }, null, { surface: 'kotatsu', gaze: 'b_focus_a_looks', 'people.a.gender': 'male' }), 'people.b.prompt', 'red scarf');
+    var mem = memoryStore();
+    ok(Store.savePairDraft(st, mem)); var back = Store.loadPairDraft(mem);
+    eq([back.poseId, back.surface, back.gaze, back.people.a.expression.main, back.people.b.prompt], ['pair_daily_mug_handoff', 'kotatsu', 'b_focus_a_looks', 'gentle_smile', 'red scarf']);
+    Store.savePreset('こたつ', st, mem, 'pair'); eq(Store.listPresets(mem)[0].state.surface, 'kotatsu');
+    var rear = P.normalize(JSON.parse(JSON.stringify(pairState('pair_daily_gaming', { 'camera.angle': 'rear_three_quarter' })))); eq(rear.camera.angle, 'rear_three_quarter');
+    var reset = P.resetPoseOnly(st); eq([reset.poseId, reset.surface, reset.gaze, reset.people.b.prompt], [null, null, null, 'red scarf']);
+    var sw = P.selectPose(st, 'pair_hug_from_behind').state; eq([sw.surface, sw.gaze], [null, 'back_gazes_front'], '既存ポーズへ切り替えると成立しない値は既定へ');
   });
 
   function run() {

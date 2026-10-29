@@ -43,7 +43,7 @@
     if (p && !ui.picking) {
       return '<section class="design-card pair-selected"><div class="card-head"><div><small class="mini-label">選択中のポーズ</small><h2>' + ctx.esc(p.labelJa) + '</h2><p>' + ctx.esc(p.shortJa) + '</p></div><button type="button" class="btn btn--nowrap" data-pair-action="pick">変更</button></div></section>';
     }
-    return '<section class="design-card"><div class="card-head"><div><h2>ポーズを選ぶ</h2><p>日本語で検索できます（例：膝、バックハグ、壁、お姫様抱っこ）。</p></div><span class="count-pill">' + D.pairPoses.length + '種</span></div>' +
+    return '<section class="design-card"><div class="card-head"><div><h2>ポーズを選ぶ</h2><p>日本語で検索できます（例：膝、バックハグ、壁、お姫様抱っこ、あーん、お風呂）。</p></div><span class="count-pill">' + D.pairPoses.length + '種</span></div>' +
       '<label class="field-label visually-hidden" for="pairSearch">ポーズを検索</label><input id="pairSearch" type="search" data-pair-search placeholder="ポーズを検索" value="' + ctx.attr(ui.query) + '" autocomplete="off">' +
       '<div class="tag-filters pair-family-filters" role="group" aria-label="カテゴリで絞り込み" id="pairFamilyFilters">' + familyFilters(ctx) + '</div>' +
       '<div class="pair-pose-list" id="pairPoseList">' + poseListHtml(ctx, s.poseId) + '</div>' +
@@ -148,7 +148,8 @@
   }
   function camera(ctx, s, p) {
     return '<section class="design-card"><div class="card-head"><div><h2>カメラ</h2><p>★は推奨。ポーズと矛盾する候補は選べません。</p></div></div>' +
-      '<div class="subsection subsection--first"><h3>角度</h3>' + optionChips(ctx, 'camera.angle', D.pairAngles, s.camera.angle, function (id) { return P.angleState(p, id); }) + '</div>' +
+      // optIn の角度（斜め後ろから）は、そのポーズが使える場合だけ表示する（既存ポーズの画面は変えない）
+      '<div class="subsection subsection--first"><h3>角度</h3>' + optionChips(ctx, 'camera.angle', D.pairAngles.filter(function (a) { return !a.optIn || p.camera.angles.indexOf(a.id) >= 0; }), s.camera.angle, function (id) { return P.angleState(p, id); }) + '</div>' +
       '<div class="subsection"><h3>撮影範囲</h3>' + optionChips(ctx, 'camera.shot', D.pairShots, s.camera.shot, function (id) { return P.shotState(p, id); }) + '</div></section>';
   }
   function scene(ctx, s, p) {
