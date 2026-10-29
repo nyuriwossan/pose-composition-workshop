@@ -1653,8 +1653,15 @@
   test('舞踊的な上半身：BL-012は形の比喩を使わず、体の前面をカメラへ向ける指定を持つ', function () {
     var pose = S.option(D.editorialPoses, 'curl_and_open');
     edTexts(pose).forEach(function (t) { ok(!/hollow|round|curl|spiral|circle|ring|ribbon|sphere|orb|oval|arc|wrap|frame|back view|from behind/i.test(t), t); });
-    ['tsubaki', 'sdxl', 'nai'].forEach(function (t) { ok(/front of the torso fac(es|ing) the viewer|facing viewer/.test(M.single(edState('curl_and_open'), t, {}).text), t + ' 前面をカメラへ'); });
+    ['tsubaki', 'sdxl', 'nai'].forEach(function (t) { ok(/front of the torso (faces?|facing) the viewer|facing viewer/.test(M.single(edState('curl_and_open'), t, {}).text), t + ' 前面をカメラへ'); });
     ok(/前面/.test(pose.viewRule));
+    var sd = M.single(edState('curl_and_open'), 'sdxl', {}).text;
+    ok(sd.indexOf('outstretched arm') >= 0 && sd.indexOf('outstretched arm') < sd.indexOf('facing viewer'), '開く腕を先に出す');
+    ok(!/chest drawn|chin lowered|pulled forward and down/.test(edTexts(pose).join(' ')), '身を縮める語を使わない');
+    var other = M.single(edState('delayed_spiral'), 'sdxl', {}).text;
+    ok(other.indexOf('pelvis facing viewer') < other.indexOf('low rounded arm'), 'armsFirst のない候補は従来どおり胴→腕');
+    var armed = G.blocks(edState('curl_and_open', { 'pose.arms.primary.action': 'hand_on_hip' })).editorial.compact;
+    eq(armed.filter(function (t) { return /outstretched|stomach/.test(t); }).length, 0, '腕を利用者が指定すれば腕は出さない');
   });
   test('舞踊的な上半身：図の腕は肘をちょうど通る曲線で、他の分類の図には曲線を使わない', function () {
     function bez(d) { var n = d.match(/-?\d+(\.\d+)?/g).map(Number); return { s: P2(n[0], n[1]), c: P2(n[2], n[3]), h: P2(n[4], n[5]) }; }

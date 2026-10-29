@@ -178,7 +178,8 @@
     }
     var armsByUser = editorialArmsOwnedByUser(s), armsByRestraint = restraintActive(s);
     var parts = ['torso'];
-    if (!armsByUser && !armsByRestraint) parts.push('arms');
+    // armsFirst：腕の形がポーズの主役の候補だけ、腕の英語を先に出す（生成で腕の指定が負けにくいように）
+    if (!armsByUser && !armsByRestraint) parts = pose.armsFirst ? ['arms', 'torso'] : ['torso', 'arms'];
     parts.forEach(function (part) {
       if (opts && opts.tagSubject) {
         var t = pose.tags[part];

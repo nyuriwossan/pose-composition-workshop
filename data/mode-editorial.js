@@ -284,7 +284,7 @@
     { id: 'ME-13', nameJa: '頭上の片腕と背面の反対腕', status: 'near', duplicateOf: ['AV-015', 'AV-011'], reasonJa: '片腕を上げ反対を背中へ回す腕の構成がアヴァンギャルドのAV-015と同じ' },
     { id: 'ME-14', nameJa: 'こめかみの曲げ腕と下向きの反対腕', status: 'near', duplicateOf: ['ME-10', 'AV-006'], reasonJa: '高い肘＋長く下ろす腕はAV-006、こめかみの手はME-10と重なる。既存の「髪に触れる」＋腕を下ろすでも作れる' },
     { id: 'ME-15', nameJa: '斜め前へ伸ばす腕と背中へ引く腕', status: 'near', duplicateOf: ['AV-015'], reasonJa: '斜め上へ伸ばす腕＋背中へ引く腕がAV-015と同じ構成' },
-    { id: 'ME-16', nameJa: '横へ開く腕と低い反対腕', status: 'held', duplicateOf: ['AV-006'], reasonJa: '支えのない水平の腕は踊りのような演技的な形に寄りやすく、高い腕と低い腕のジグザグはAV-006と近い' },
+    { id: 'ME-16', nameJa: '横へ開く腕と低い反対腕', status: 'held', duplicateOf: ['AV-006'], reasonJa: '支えのない水平の腕は踊りのような演技的な形に寄りやすく、高い腕と低い腕のジグザグはAV-006と近い（2026-10-29：舞踊的な上半身のBL-012を、利用者の判断で近い形に書き直した）' },
     { id: 'ME-17', nameJa: '軽い前傾と後ろ脚のコントラポスト', status: 'reproducible', duplicateOf: ['viewer_leaning_down_half', 'AV-013'], reasonJa: '後ろ脚荷重・前傾・上半身をカメラへ・片手腰は既存の項目で作れる。骨格はAV-013の穏やかな版' },
     { id: 'ME-18', nameJa: '壁を支点にした横倒し', status: 'adopted', internalId: 'wall_side_lean' },
     { id: 'ME-19', nameJa: '胸郭の回旋で作る胸上の斜線', status: 'merged', duplicateOf: ['ME-03'], reasonJa: '骨盤を正面に残した胸郭の回旋＋斜めの前腕がME-03と同じ要点のため、ME-03へ統合' },

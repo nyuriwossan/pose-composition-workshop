@@ -18,8 +18,7 @@
   var D = PCW.data = PCW.data || {};
 
   // Danbooruタグ一覧（a1111-sd-webui-tagcomplete の danbooru.csv、2026-10-29取得）と完全一致を確認した語。
-  D.danceVerifiedTags = { 'head tilt': 139388, 'arm up': 208569, 'arm behind back': 37640, 'facing viewer': 62315 };
-  // outstretched arm（65194件）は実在するが、腕をまっすぐ伸ばした絵に寄せる可能性があるため（推測）BL-012では使わない。
+  D.danceVerifiedTags = { 'head tilt': 139388, 'arm up': 208569, 'arm behind back': 37640, 'facing viewer': 62315, 'outstretched arm': 65194, 'hand on own stomach': 8497 };
 
   var poses = [
     {
@@ -75,31 +74,31 @@
         arms: [{ at: 'overhead', dx: 13, dy: 3, bend: 1, hintY: -16, elbowOut: 1.3 }, { at: 'hip', dx: -15, dy: 15, bend: -1 }] }
     },
     {
-      id: 'curl_and_open', sourceId: 'BL-012', line: 'dance', labelJa: '片肩を内へ入れて反対の腕だけ横へ開く',
-      shortJa: '体の前面をカメラへ向けたまま、片方の肩を前下へ入れてその前腕をみぞおちの下へ添える。反対の肩は後ろへ引き、その腕だけを横へ頭の高さまで開く。',
-      minShot: 'upper_body', recommendedShot: 'waist_up', inspiredBy: 'コンテンポラリーの収縮と開放（グラハム・テクニックの収縮）',
+      id: 'curl_and_open', sourceId: 'BL-012', line: 'dance', labelJa: '片手をお腹に添え、反対の腕を横へ開く',
+      shortJa: '体の前面をカメラへ向け、片方の腕を肩の高さで横へ伸ばして顔をその手の方へ向ける。反対の手はお腹に添え、肘は体に寄せる。',
+      minShot: 'upper_body', recommendedShot: 'waist_up', armsFirst: true, inspiredBy: 'コンテンポラリーの収縮と開放（片側を閉じ、片側を開く）',
       viewRule: '体の前面と顔をカメラへ向ける（背面にしない）',
       body: {
-        pelvis: '少し斜めに向け、片脚に荷重', ribcage: '体の前面はカメラ側。胸を少し引いて下げ、片方の肩を前下へ入れる。反対の肩は後ろへ引いて水平に保つ',
-        head: '顎を少し引き、後ろへ引いた肩の側へ顔を向ける（顔はカメラから見える）', armA: '前へ入れた肩の側の肘を曲げて体に寄せ、前腕をみぞおちの下へ添える',
-        armB: '反対の腕は横へ開き、肘を少し曲げて手を頭の高さに置く（手のひらは下向き）', support: '片脚荷重', depth: '前へ入れた肩が手前'
+        pelvis: '少し斜めに向け、片脚に荷重', ribcage: '胸と体の前面をカメラへ少し斜めに向ける。片方の肩をわずかに前へ、反対の肩は後ろへ引いて水平に',
+        head: '頭はまっすぐ起こし、伸ばした手の方へ顔を向ける（顔はカメラから見える）', armA: '片腕を肩の高さで横へ伸ばし、肘をわずかに曲げ、手のひらを下へ',
+        armB: '反対の手をお腹に平らに添え、肘は体に寄せる', support: '片脚荷重', depth: '前へ出た肩が手前、伸ばした腕は体の真横'
       },
       prompt: {
         torso: {
-          compact: ['front of the torso facing the viewer at a slight angle', 'pelvis turned slightly to one side with the weight on one leg', 'chest drawn back and slightly lowered', 'one shoulder pulled forward and down', 'the opposite shoulder pressed back and level', 'chin lowered slightly', 'head turned toward the shoulder held back with the face visible'],
-          detailed: ['The front of the torso faces the viewer at a slight angle, the pelvis turned slightly to one side with the weight on one leg.', 'The chest draws back and lowers slightly as one shoulder pulls forward and down, while the opposite shoulder presses back and stays level.', 'The chin lowers slightly and the head turns toward the shoulder held back, the face remaining visible.']
+          compact: ['chest and front of the torso facing the viewer at a slight angle', 'pelvis turned slightly to one side with the weight on one leg', 'one shoulder slightly forward', 'the opposite shoulder pressed back and level', 'head held level with the face visible'],
+          detailed: ['The chest and the front of the torso face the viewer at a slight angle, the pelvis turned slightly to one side with the weight on one leg.', 'One shoulder sits slightly forward while the opposite shoulder presses back and stays level, and the head is held level with the face visible.']
         },
         arms: {
-          compact: ['on the forward-shoulder side, the elbow bent close to the body with the forearm resting just below the chest', 'the other arm opened out to the side with the elbow slightly bent', 'that hand held at about head height with the palm facing down'],
-          detailed: ['On the forward-shoulder side, the elbow bends close to the body and the forearm rests just below the chest.', 'The other arm opens out to the side with the elbow slightly bent, the hand held at about head height with the palm facing down.']
+          compact: ['one arm outstretched to the side at shoulder height with a slight bend at the elbow', 'that hand open with the palm facing down', 'head turned toward the outstretched hand', 'the other hand resting flat on the stomach with the elbow close to the body'],
+          detailed: ['One arm stretches out to the side at shoulder height with a slight bend at the elbow, the hand open with the palm facing down, and the head turns toward that hand.', 'The other hand rests flat on the stomach with the elbow close to the body.']
         }
       },
       tags: {
-        torso: { verified: ['facing viewer'], phrases: ['one shoulder pulled forward and down', 'other shoulder pressed back', 'chest drawn back', 'chin slightly down', 'face visible'] },
-        arms: { verified: [], phrases: ['forearm resting below chest', 'arm opened out to the side', 'hand at head height', 'palm down', 'elbow slightly bent'] }
+        torso: { verified: ['facing viewer'], phrases: ['one shoulder slightly forward', 'other shoulder pressed back', 'head level', 'face visible'] },
+        arms: { verified: ['outstretched arm', 'hand on own stomach'], phrases: ['arm out to the side at shoulder height', 'slight elbow bend', 'palm down', 'head turned toward outstretched hand'] }
       },
-      figure: { narrow: 0.82, lean: 4, fold: true, shoulderTilt: -3, headShift: -4, headTilt: -8, near: 'shoulder:0', curve: true,
-        arms: [{ at: 'belly', dx: -3, dy: -5, bend: -1 }, { at: 'shoulder', dx: -33, dy: -9, bend: -1, hintY: -4 }] }
+      figure: { narrow: 0.86, shoulderTilt: -2, headShift: -3, face: 'three_quarter', faceDir: -1, near: 'shoulder:0', curve: true,
+        arms: [{ at: 'belly', dx: 3, dy: 2, bend: 1, elbowOut: 1.2 }, { at: 'shoulder', dx: -36, dy: 1, bend: -1, hintY: -2 }] }
     },
     {
       id: 'delayed_spiral', sourceId: 'BL-013', line: 'dance', labelJa: '腰・胸・顔が順にずれる螺旋',
@@ -148,7 +147,7 @@
     { id: 'BL-009', nameJa: '胸を開く斜め後屈', status: 'held', duplicateOf: ['viewer_chest_hand_upward_half'], reasonJa: '推奨の胸上では骨盤が写らず、既存の「上半身を後ろへ傾ける」と区別しにくい。首の過伸展になりやすく、腕に特徴がない' },
     { id: 'BL-010', nameJa: '胸郭の前落ちと首の浮き', status: 'near', duplicateOf: ['AV-013'], reasonJa: '後ろ脚荷重・骨盤を引く・胸郭を前下へ折る・頭を逆へ戻す・腕の長い対角線と後ろ手がAV-013とほぼ同じ' },
     { id: 'BL-011', nameJa: '側屈アーチの肩越し戻し', status: 'held', duplicateOf: ['relationship_rear_three_quarter_turn'], reasonJa: '側屈と回旋の合成は図でも生成でも肩越しの振り返りだけに単純化されやすく、既存の振り返りと区別しにくい' },
-    { id: 'BL-012', nameJa: '螺旋の収縮から開放', status: 'adopted', internalId: 'curl_and_open', dataFix: 'NovelAIで背面構図や球体・図形の演出へ繰り返し流れたため（2026-10-29、利用者の生成確認）、hollowed／rounded／curl などの形の比喩をやめ、体の前面をカメラへ向ける・片方の肩を前下へ・反対の腕を横へ頭の高さまで、の具体的な配置に書き直した' },
+    { id: 'BL-012', nameJa: '螺旋の収縮から開放', status: 'adopted', internalId: 'curl_and_open', dataFix: 'NovelAIで2回崩れた（1回目：背面構図・球体の演出、2回目：両腕を体に巻き付けてうつむく形と胸の光の演出。2026-10-29、利用者の生成確認）。胸を引く・肩を前下へ・顎を引く、が身を縮める姿勢として読まれたと見て（推測）、閉じる側を「片手をお腹に添える」まで弱め、開く腕を英語の先頭に置き（armsFirst）、実在タグ outstretched arm を使う形に変更（利用者の選択）。収縮の要素は弱まり、モード系で保留したME-16（横へ開く腕と低い反対腕）と近い形になった' },
     { id: 'BL-013', nameJa: '胸郭中心の遅延スパイラル', status: 'adopted', internalId: 'delayed_spiral', dataFix: '資料の推奨は胸上だが、骨盤を正面に止める要点が胸上では写らないため、推奨を腰上（最小：上半身）に変更' },
     { id: 'BL-014', nameJa: '片肩から指先の長い流線', status: 'near', duplicateOf: ['AV-013', 'ME-03'], reasonJa: '片腕の長い下向きの対角線＋反対の腕を背中へ、はAV-013の腕と同じ。差は「曲線」という抽象表現だけ' },
     { id: 'BL-015', nameJa: '浮遊する胸郭と低い肘', status: 'near', duplicateOf: ['AV-015'], reasonJa: '骨盤を中央に残して胸郭を横へ滑らせる構成がAV-015と同じ' },
