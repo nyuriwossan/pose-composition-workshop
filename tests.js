@@ -1650,6 +1650,12 @@
       ok(/pelvis/.test(all) && /(ribcage|chest)/.test(all) && /shoulder/.test(all) && /head/.test(all) && /elbow/.test(all), pose.sourceId + ' 骨盤・胸・肩・頭・肘を書く');
     });
   });
+  test('舞踊的な上半身：BL-012は形の比喩を使わず、体の前面をカメラへ向ける指定を持つ', function () {
+    var pose = S.option(D.editorialPoses, 'curl_and_open');
+    edTexts(pose).forEach(function (t) { ok(!/hollow|round|curl|spiral|circle|ring|ribbon|sphere|orb|oval|arc|wrap|frame|back view|from behind/i.test(t), t); });
+    ['tsubaki', 'sdxl', 'nai'].forEach(function (t) { ok(/front of the torso fac(es|ing) the viewer|facing viewer/.test(M.single(edState('curl_and_open'), t, {}).text), t + ' 前面をカメラへ'); });
+    ok(/前面/.test(pose.viewRule));
+  });
   test('舞踊的な上半身：図の腕は肘をちょうど通る曲線で、他の分類の図には曲線を使わない', function () {
     function bez(d) { var n = d.match(/-?\d+(\.\d+)?/g).map(Number); return { s: P2(n[0], n[1]), c: P2(n[2], n[3]), h: P2(n[4], n[5]) }; }
     function P2(x, y) { return { x: x, y: y }; }

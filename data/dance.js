@@ -18,7 +18,7 @@
   var D = PCW.data = PCW.data || {};
 
   // Danbooruタグ一覧（a1111-sd-webui-tagcomplete の danbooru.csv、2026-10-29取得）と完全一致を確認した語。
-  D.danceVerifiedTags = { 'head tilt': 139388, 'arm up': 208569, 'arm behind back': 37640 };
+  D.danceVerifiedTags = { 'head tilt': 139388, 'arm up': 208569, 'arm behind back': 37640, 'facing viewer': 62315 };
   // outstretched arm（65194件）は実在するが、腕をまっすぐ伸ばした絵に寄せる可能性があるため（推測）BL-012では使わない。
 
   var poses = [
@@ -75,30 +75,31 @@
         arms: [{ at: 'overhead', dx: 13, dy: 3, bend: 1, hintY: -16, elbowOut: 1.3 }, { at: 'hip', dx: -15, dy: 15, bend: -1 }] }
     },
     {
-      id: 'curl_and_open', sourceId: 'BL-012', line: 'dance', labelJa: '胸を丸めて片腕だけ開く',
-      shortJa: '胸をくぼませて背中を丸め、片方の肩を内へ巻き込んでその腕を胸の下へたたむ。反対の腕だけを斜め上の外へ開く。',
+      id: 'curl_and_open', sourceId: 'BL-012', line: 'dance', labelJa: '片肩を内へ入れて反対の腕だけ横へ開く',
+      shortJa: '体の前面をカメラへ向けたまま、片方の肩を前下へ入れてその前腕をみぞおちの下へ添える。反対の肩は後ろへ引き、その腕だけを横へ頭の高さまで開く。',
       minShot: 'upper_body', recommendedShot: 'waist_up', inspiredBy: 'コンテンポラリーの収縮と開放（グラハム・テクニックの収縮）',
+      viewRule: '体の前面と顔をカメラへ向ける（背面にしない）',
       body: {
-        pelvis: '斜め後ろへ引き、片脚に荷重', ribcage: '胸をくぼませて背中の上部を丸め、片方の肩を内へ巻き込む。反対の肩は後ろへ開く',
-        head: '巻き込んだ肩から顔をそらす', armA: '巻き込んだ側の肘を内へたたみ、手首を胸の下で止める',
-        armB: '反対の腕は斜め上の外へ伸ばし、肘を柔らかく保つ', support: '片脚荷重', depth: '巻き込んだ肩が手前'
+        pelvis: '少し斜めに向け、片脚に荷重', ribcage: '体の前面はカメラ側。胸を少し引いて下げ、片方の肩を前下へ入れる。反対の肩は後ろへ引いて水平に保つ',
+        head: '顎を少し引き、後ろへ引いた肩の側へ顔を向ける（顔はカメラから見える）', armA: '前へ入れた肩の側の肘を曲げて体に寄せ、前腕をみぞおちの下へ添える',
+        armB: '反対の腕は横へ開き、肘を少し曲げて手を頭の高さに置く（手のひらは下向き）', support: '片脚荷重', depth: '前へ入れた肩が手前'
       },
       prompt: {
         torso: {
-          compact: ['pelvis drawn back on a diagonal', 'chest hollowed and upper back rounded', 'one shoulder curling inward and forward', 'the opposite shoulder opening back', 'head turned away from the curled shoulder'],
-          detailed: ['The pelvis draws back on a diagonal while the chest hollows and the upper back rounds, one shoulder curling inward and forward as the opposite shoulder opens back.', 'The head turns away from the curled shoulder.']
+          compact: ['front of the torso facing the viewer at a slight angle', 'pelvis turned slightly to one side with the weight on one leg', 'chest drawn back and slightly lowered', 'one shoulder pulled forward and down', 'the opposite shoulder pressed back and level', 'chin lowered slightly', 'head turned toward the shoulder held back with the face visible'],
+          detailed: ['The front of the torso faces the viewer at a slight angle, the pelvis turned slightly to one side with the weight on one leg.', 'The chest draws back and lowers slightly as one shoulder pulls forward and down, while the opposite shoulder presses back and stays level.', 'The chin lowers slightly and the head turns toward the shoulder held back, the face remaining visible.']
         },
         arms: {
-          compact: ['on the curled side, the elbow folding inward with the wrist resting below the chest', 'the other arm extending diagonally outward and upward with a soft elbow'],
-          detailed: ['On the curled side, the elbow folds inward with the wrist resting below the chest.', 'The other arm extends diagonally outward and upward with a soft elbow.']
+          compact: ['on the forward-shoulder side, the elbow bent close to the body with the forearm resting just below the chest', 'the other arm opened out to the side with the elbow slightly bent', 'that hand held at about head height with the palm facing down'],
+          detailed: ['On the forward-shoulder side, the elbow bends close to the body and the forearm rests just below the chest.', 'The other arm opens out to the side with the elbow slightly bent, the hand held at about head height with the palm facing down.']
         }
       },
       tags: {
-        torso: { verified: [], phrases: ['hollowed chest', 'rounded upper back', 'one shoulder curled inward', 'other shoulder opened back', 'head turned away from curled shoulder'] },
-        arms: { verified: [], phrases: ['elbow folded inward', 'wrist below chest', 'arm opening diagonally up and out', 'soft elbow'] }
+        torso: { verified: ['facing viewer'], phrases: ['one shoulder pulled forward and down', 'other shoulder pressed back', 'chest drawn back', 'chin slightly down', 'face visible'] },
+        arms: { verified: [], phrases: ['forearm resting below chest', 'arm opened out to the side', 'hand at head height', 'palm down', 'elbow slightly bent'] }
       },
       figure: { narrow: 0.82, lean: 4, fold: true, shoulderTilt: -3, headShift: -4, headTilt: -8, near: 'shoulder:0', curve: true,
-        arms: [{ at: 'belly', dx: -3, dy: -5, bend: -1 }, { at: 'shoulder', dx: -31, dy: -13, bend: -1, hintY: 4 }] }
+        arms: [{ at: 'belly', dx: -3, dy: -5, bend: -1 }, { at: 'shoulder', dx: -33, dy: -9, bend: -1, hintY: -4 }] }
     },
     {
       id: 'delayed_spiral', sourceId: 'BL-013', line: 'dance', labelJa: '腰・胸・顔が順にずれる螺旋',
@@ -147,7 +148,7 @@
     { id: 'BL-009', nameJa: '胸を開く斜め後屈', status: 'held', duplicateOf: ['viewer_chest_hand_upward_half'], reasonJa: '推奨の胸上では骨盤が写らず、既存の「上半身を後ろへ傾ける」と区別しにくい。首の過伸展になりやすく、腕に特徴がない' },
     { id: 'BL-010', nameJa: '胸郭の前落ちと首の浮き', status: 'near', duplicateOf: ['AV-013'], reasonJa: '後ろ脚荷重・骨盤を引く・胸郭を前下へ折る・頭を逆へ戻す・腕の長い対角線と後ろ手がAV-013とほぼ同じ' },
     { id: 'BL-011', nameJa: '側屈アーチの肩越し戻し', status: 'held', duplicateOf: ['relationship_rear_three_quarter_turn'], reasonJa: '側屈と回旋の合成は図でも生成でも肩越しの振り返りだけに単純化されやすく、既存の振り返りと区別しにくい' },
-    { id: 'BL-012', nameJa: '螺旋の収縮から開放', status: 'adopted', internalId: 'curl_and_open' },
+    { id: 'BL-012', nameJa: '螺旋の収縮から開放', status: 'adopted', internalId: 'curl_and_open', dataFix: 'NovelAIで背面構図や球体・図形の演出へ繰り返し流れたため（2026-10-29、利用者の生成確認）、hollowed／rounded／curl などの形の比喩をやめ、体の前面をカメラへ向ける・片方の肩を前下へ・反対の腕を横へ頭の高さまで、の具体的な配置に書き直した' },
     { id: 'BL-013', nameJa: '胸郭中心の遅延スパイラル', status: 'adopted', internalId: 'delayed_spiral', dataFix: '資料の推奨は胸上だが、骨盤を正面に止める要点が胸上では写らないため、推奨を腰上（最小：上半身）に変更' },
     { id: 'BL-014', nameJa: '片肩から指先の長い流線', status: 'near', duplicateOf: ['AV-013', 'ME-03'], reasonJa: '片腕の長い下向きの対角線＋反対の腕を背中へ、はAV-013の腕と同じ。差は「曲線」という抽象表現だけ' },
     { id: 'BL-015', nameJa: '浮遊する胸郭と低い肘', status: 'near', duplicateOf: ['AV-015'], reasonJa: '骨盤を中央に残して胸郭を横へ滑らせる構成がAV-015と同じ' },
