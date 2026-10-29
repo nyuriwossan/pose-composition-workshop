@@ -20,7 +20,7 @@
     'head tilt': 139388, 'hand on own neck': 2066, 'arm across chest': 402,
     'arm at side': 42804, 'against wall': 14753, 'leaning to the side': 10342, 'chair': 91462,
     'leaning on object': 2915, 'stool': 11014, 'arm support': 94468, 'hand on own thigh': 12747, 'leaning forward': 115911,
-    'on chair': 21903, 'elbow on knee': 876, 'armchair': 6376, 'elbow rest': 6876
+    'on chair': 21903, 'armchair': 6376, 'elbow rest': 6876
   };
 
   var poses = [
@@ -113,20 +113,20 @@
       },
       prompt: {
         torso: {
-          compact: ['torso rotated', 'one shoulder dropped noticeably lower than the other', 'the opposite shoulder brought closer to the viewer', 'neck kept long and upright'],
-          detailed: ['The torso rotates, dropping one shoulder noticeably lower than the other while the opposite shoulder comes closer to the viewer.', 'The neck stays long and upright.']
+          compact: ['torso rotated', 'one shoulder pressed down noticeably lower than the other', 'shoulder line clearly slanted', 'the opposite shoulder brought closer to the viewer', 'neck kept long and upright'],
+          detailed: ['The torso rotates, pressing one shoulder down noticeably lower than the other so the shoulder line clearly slants, while the opposite shoulder comes closer to the viewer.', 'The neck stays long and upright.']
         },
         arms: {
-          compact: ['the hand on the dropped-shoulder side raised beside the temple with the fingertips held a little away from the hair', 'a clear gap between the palm and the cheek', 'that elbow kept low and opened outward', 'the other arm relaxed downward'],
-          detailed: ['On the dropped-shoulder side, the hand rises beside the temple with the fingertips held a little away from the hair, leaving a clear gap between the palm and the cheek, while that elbow stays low and opens outward.', 'The other arm relaxes downward.']
+          compact: ['the hand on the dropped-shoulder side raised beside the temple with the fingertips held a little away from the hair', 'a clear gap between the palm and the cheek', 'that elbow pointing forward and down, below shoulder height', 'the forearm rising upright beside the face', 'the other arm relaxed downward'],
+          detailed: ['On the dropped-shoulder side, the hand rises beside the temple with the fingertips held a little away from the hair, leaving a clear gap between the palm and the cheek, while that elbow points forward and down below shoulder height so the forearm rises upright beside the face.', 'The other arm relaxes downward.']
         }
       },
       tags: {
-        torso: { verified: [], phrases: ['one shoulder dropped low', 'opposite shoulder forward', 'long upright neck'] },
-        arms: { verified: [], phrases: ['hand raised beside temple', 'fingertips apart from hair', 'gap between palm and cheek', 'elbow low and open'] }
+        torso: { verified: [], phrases: ['one shoulder pressed down low', 'slanted shoulder line', 'opposite shoulder forward', 'long upright neck'] },
+        arms: { verified: [], phrases: ['hand raised beside temple', 'fingertips apart from hair', 'gap between palm and cheek', 'elbow below shoulder', 'upright forearm beside face'] }
       },
       figure: { narrow: 0.85, shoulderTilt: -7, headShift: -1, near: 'shoulder:1', twist: -1,
-        arms: [{ at: 'eyes', dx: 12, dy: -3, bend: 1, hintY: 8, elbowOut: 1.5 }, { at: 'hip', dx: -12, dy: 11, bend: -1 }] }
+        arms: [{ at: 'eyes', dx: 11, dy: 4, toward: true, elbow: { at: 'shoulder', dx: 6, dy: 3 } }, { at: 'hip', dx: -12, dy: 11, bend: -1 }] }
     },
     {
       id: 'wall_side_lean', sourceId: 'ME-18', line: 'mode', labelJa: '壁に肩を預けて体を斜めにする',
@@ -217,17 +217,17 @@
       },
       prompt: {
         torso: {
-          compact: ['seated on a simple chair', 'torso leaning forward from the hips', 'torso rotated three-quarters', 'shoulders offset front to back', 'head turned back toward the viewer'],
-          detailed: ['The figure sits on a simple chair, the torso leaning forward from the hips and rotated three-quarters with the shoulders offset front to back.', 'The head turns back toward the viewer.']
+          compact: ['seated on a simple chair', 'both feet on the floor', 'torso leaning forward from the hips', 'torso rotated three-quarters', 'shoulders offset front to back', 'head held upright on its own', 'head turned back toward the viewer'],
+          detailed: ['The figure sits on a simple chair with both feet on the floor, the torso leaning forward from the hips and rotated three-quarters with the shoulders offset front to back.', 'The head stays upright on its own and turns back toward the viewer.']
         },
         arms: {
-          compact: ['one elbow and forearm resting on the knee on the same side', 'that hand relaxed past the knee', 'the other hand resting lightly on the thigh'],
-          detailed: ['One elbow and forearm rest on the knee on the same side, the hand relaxed past the knee.', 'The other hand rests lightly on the thigh.']
+          compact: ['one forearm lying across the knee on the same side', 'that hand hanging loosely past the knee, well below the face', 'the other hand resting lightly on the thigh'],
+          detailed: ['One forearm lies across the knee on the same side, the hand hanging loosely past the knee, well below the face.', 'The other hand rests lightly on the thigh.']
         }
       },
       tags: {
-        torso: { verified: ['leaning forward', 'on chair'], phrases: ['torso turned three-quarters', 'head turned to viewer'] },
-        arms: { verified: ['elbow on knee'], phrases: ['forearm over knee', 'other hand on thigh'] }
+        torso: { verified: ['leaning forward', 'on chair'], phrases: ['feet on floor', 'torso turned three-quarters', 'head upright', 'head turned to viewer'] },
+        arms: { verified: [], phrases: ['forearm across knee', 'hand hanging past knee', 'other hand on thigh'] }
       },
       figure: { sideLean: 40, fold: 0.86, face: 'front', sideOK: true,
         arms: [{ at: 'knee0', dx: 9, dy: 5, elbow: { at: 'knee0', dx: -6, dy: -5 } }, { at: 'thigh1', dx: 2, dy: -2, bend: 1 }] }
