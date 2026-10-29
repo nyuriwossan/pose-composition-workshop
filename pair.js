@@ -419,6 +419,8 @@
     lines.push('【接触点】\n' + p.contacts.map(function (c) { return '・' + c.ja; }).join('\n'));
     var surf = byId(D.pairSurfaces, s.surface);
     if (surf) lines.push('【場所】' + surf.labelJa + (p.surface.mode === 'seat' ? '（Bが座る）' : p.surface.mode === 'both_seat' ? '（二人が座る）' : ''));
+    // 場面を決める小物・行為を英語へ含めているポーズだけ表示する（日常の料理・勉強など）
+    if (p.sceneJa) lines.push('【場面を決める小物】' + p.sceneJa);
     if (s.gaze) lines.push('【視線】' + gazeLabel(p, s.gaze));
     lines.push('【カメラ】' + byId(D.pairAngles, s.camera.angle).labelJa + '・' + byId(D.pairShots, s.camera.shot).labelJa);
     return lines.join('\n');

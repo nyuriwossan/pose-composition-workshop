@@ -4,7 +4,9 @@
   var D = PCW.data = PCW.data || {};
 
   // 二人用「日常」ポーズ（2026-10-30）。Manus調査の日常カップル26候補（DC-001〜DC-026）を、
-  // 既存46件と身体構造（位置関係・接触点・視線・支持点）で照合して採用・統合した20件。
+  // 既存46件と身体構造（位置関係・接触点・視線・支持点）で照合して採用・統合した22件。
+  // 料理・勉強のように、身体配置だけでは場面が別のものに流れるポーズは、場面を決める最小限の小物・行為も
+  // 英語に含め、日本語構造に sceneJa として表示する（生成確認の結果、2026-10-30）。
   // 構造は data/pair-poses.js と同じ意味データ。ここで足すカテゴリ・視線・場所・カメラ角度は、
   // 既存46件の allowed に入っていないため、既存ポーズの出力と画面は変わらない。
   // 英語は身体配置・視線・接触・役割・家具との関係だけを書き、性別・年齢・表情・服装・背景・照明・品質の語は入れない。
@@ -12,7 +14,7 @@
 
   // ---- カテゴリ（既存の5分類の後ろに並ぶ） ----
   D.pairPoseCategories.daily_relax = '日常・くつろぎ';
-  D.pairPoseCategories.daily_table = '日常・食卓と台所';
+  D.pairPoseCategories.daily_table = '日常・テーブルと台所';
   D.pairPoseCategories.daily_bath = '日常・お風呂';
 
   // ---- 視線：{focus} はポーズごとの「見る先」（p.focus）に置き換える ----
@@ -59,6 +61,7 @@
         nai: { core: d.nai.core, actions: (d.nai.actions || []).map(function (x) { return { tag: x[0], source: x[1] }; }), a: d.nai.a, b: d.nai.b, nl: d.nai.nl }
       },
       focus: d.focus || null,
+      sceneJa: d.sceneJa || null,
       camera: copy(d.camera),
       surface: copy(d.surface || NONE),
       gazes: copy(d.gazes),
@@ -235,7 +238,23 @@
       suggest: { a: ex('gentle_smile'), b: ex('slight_smile') }
     }),
 
-    // ================= 日常・食卓と台所 =================
+    pose({
+      id: 'pair_daily_counter_side', source: 'DC-012（生成確認を受けて改訂：両前腕で並んで眺める形にし、料理の場面は pair_daily_cooking_side へ分けた）', category: 'daily_relax', family: 'standing_leaning',
+      label: 'カウンターに並んで前腕をのせる', short: '同じカウンター（バー・カフェ・窓辺など）に並んで立ち、二人とも前腕をのせて眺める。肩の間は少しだけ空ける。',
+      roles: ['体を少し相手へ向ける側', '手を重ねて眺める側'], rel: ['level', 'none', 'side_by_side'],
+      place: ['Bの隣に立ち、両前腕をカウンターの縁にのせて軽く前かがみになる。胸だけを少しBの方へ向ける。', 'Aの隣に立ち、両前腕をカウンターの縁にのせて、手を軽く重ねる。'],
+      contacts: [['a', 'Aの両前腕 → カウンターの縁', "both of Person A's forearms rest on the edge of the counter"], ['b', 'Bの両前腕 → カウンターの縁（手を軽く重ねる）', "both of Person B's forearms rest on the edge of the counter, hands loosely clasped"], ['both', '肩どうし → 少し間を空ける（触れない）', 'a small gap remains between their shoulders']],
+      roleEn: ['the one turning slightly toward the other', 'the one with hands clasped on the counter'],
+      ts: ['Person A and Person B stand side by side at a counter, both leaning forward with their forearms resting on the edge, a small gap between their shoulders.', 'Person A leans on both forearms with the chest turned slightly toward Person B.', 'Person B leans on both forearms with the hands loosely clasped on the counter.'],
+      sdxl: [['side-by-side', 'standing', 'counter'], ['leaning forward', 'arm support', 'own hands together']],
+      nai: { core: ['side-by-side', 'standing', 'counter', 'leaning forward'], a: ['arm support'], b: ['arm support', 'own hands together'], nl: 'the two stand side by side leaning their forearms on a counter, a small gap between their shoulders' },
+      focus: { ja: '同じ方向（店内・窓の外など）', en: 'the same view ahead of them', tags: ['looking ahead'] },
+      camera: cam(['three_quarter', 'eye_level', 'side', 'high', 'low'], ['three_quarter', 'side'], 'three_quarter', 'knee_up', ['full_body', 'knee_up', 'upper_body'], { overhead: NO_TOP }, { close: 'カウンターと前腕の支えが画角外になります。' }),
+      gazes: { allowed: ['both_focus', 'b_focus_a_looks', 'mutual', 'both_viewer'], defaultId: 'both_focus' },
+      keywords: ['カウンター', 'バー', 'カフェ', '窓辺', '手すり', '並んで立つ', '眺める', 'もたれる', '前腕', '立ち話', '日常'],
+      suggest: { a: ex('gentle_smile'), b: ex('slight_smile') }
+    }),
+    // ================= 日常・テーブルと台所 =================
     pose({
       id: 'pair_daily_mug_handoff', source: 'DC-006（DC-008・DC-010を統合）', category: 'daily_table', family: 'sitting_kneeling',
       label: 'テーブル越しに飲み物を渡す', short: 'テーブルを挟んで向かい合い、Aがマグカップを低く差し出し、Bが片手で受け取る途中。',
@@ -304,22 +323,6 @@
       suggest: { a: ex('gentle_smile'), b: ex('slight_smile') }
     }),
     pose({
-      id: 'pair_daily_counter_side', source: 'DC-012（A/Bを入れ替え：相手を見る側をAに。視線は選択式）', category: 'daily_table', family: 'standing_leaning',
-      label: 'キッチンカウンターに並んで立つ', short: '同じカウンターに肩の間を少し空けて並ぶ。Aは腰をカウンターに預け、Bは前腕をのせる。触れずに近い距離。',
-      roles: ['腰を預けて立つ側', '前腕をのせて立つ側'], rel: ['level', 'none', 'side_by_side'],
-      place: ['Bの隣に立ち、片側の腰をカウンターの縁に軽く預ける。Bに近い手は自分の側のカウンターに置く。', 'Aの隣に立ち、片前腕をカウンターにのせる。もう一方の腕は自分の脇に下ろす。'],
-      contacts: [['a', 'Aの腰 → カウンターの縁', 'Person A leans one hip lightly against the counter edge'], ['b', 'Bの前腕 → カウンターの上', 'Person B rests one forearm on the counter'], ['both', '肩どうし → 少し間を空ける（触れない）', 'a small gap remains between their shoulders']],
-      roleEn: ['the one leaning a hip on the counter', 'the one resting a forearm on the counter'],
-      ts: ['Person A and Person B stand side by side at the same kitchen counter with a small gap between their shoulders.', 'Person A leans one hip against the counter edge with the near hand resting on the counter.', 'Person B rests one forearm on the counter, the other arm relaxed at the side.'],
-      sdxl: [['side-by-side', 'standing', 'counter'], ['leaning on object', 'arm support']],
-      nai: { core: ['side-by-side', 'standing', 'counter'], a: ['leaning on object'], b: ['arm support'], nl: 'the two stand side by side at a kitchen counter with a small gap between their shoulders' },
-      focus: { ja: 'カウンターの上', en: 'something on the counter', tags: ['looking down'] },
-      camera: cam(['three_quarter', 'eye_level', 'side', 'high', 'low'], ['three_quarter', 'eye_level'], 'three_quarter', 'knee_up', ['full_body', 'knee_up', 'upper_body'], { overhead: NO_TOP }, { close: 'カウンターと支えの手が画角外になります。' }),
-      gazes: { allowed: ['b_focus_a_looks', 'mutual', 'both_focus', 'both_viewer'], defaultId: 'b_focus_a_looks' },
-      keywords: ['キッチン', 'カウンター', '台所', '並んで立つ', '立ち話', '触れない', '距離感', '料理', '日常'],
-      suggest: { a: ex('gentle_smile'), b: ex('slight_smile') }
-    }),
-    pose({
       id: 'pair_daily_table_side_touch', source: 'DC-013（A/Bを入れ替え：触れる側をAに）', category: 'daily_table', family: 'approach_touch',
       label: 'テーブル脇で腕にそっと触れる', short: '椅子に座るBの横に立ったAが、片手をテーブルについて、Bの前腕にそっと手を添える。',
       roles: ['横に立って腕に触れる側', '椅子に座る側'], rel: ['a_taller', 'none', 'side_on'],
@@ -335,19 +338,54 @@
       suggest: { a: ex('gentle_smile', 'look_down'), b: ex('slight_smile', 'look_up') }
     }),
     pose({
-      id: 'pair_daily_cookbook', source: 'DC-026（A/Bを入れ替え：指さす側をAに）', category: 'daily_table', family: 'standing_leaning',
-      label: 'レシピをのぞき込む', short: 'カウンターで料理本を持つBの斜め後ろからAがのぞき込み、ページを指さしてBの二の腕に手を添える。',
-      roles: ['斜め後ろから指さす側', '料理本を持つ側'], rel: ['level', 'b_front', 'same_direction'],
-      place: ['Bの斜め後ろに半歩ずれて立ち、真後ろには入らずに横から身を乗り出す。片手の人差し指でページの一点を指し、もう一方の手をBの二の腕の外側に軽く置く。', 'カウンターの前に立ち、開いた料理本をカウンターのすぐ上で両手で支える。足を少し開いて自分で立つ。'],
-      contacts: [['a', 'Aの人差し指 → ページの一点', "Person A's index finger points to one spot on the page"], ['a', 'Aのもう一方の手 → Bの二の腕の外側', "Person A's other hand rests lightly on the outside of Person B's upper arm"], ['b', 'Bの両手 → 開いた料理本', "Person B's hands hold the open cookbook just above the counter"]],
-      roleEn: ['the one leaning in and pointing', 'the one holding the cookbook'],
-      ts: ['Person A and Person B stand at a kitchen counter in a staggered line, with Person B in front holding an open cookbook and Person A leaning in from just behind and to the side.', "Person A leans in beside Person B's shoulder, pointing at the page with one finger.", 'Person B stands holding the open book with both hands, weight on their own feet.'],
-      sdxl: [['pointing', 'holding book', 'standing'], ['open book', 'counter', "hand on another's arm", 'leaning forward']],
-      nai: { core: ['standing', 'open book', 'counter'], a: ['pointing', 'leaning forward', "hand on another's arm"], b: ['holding book'], nl: 'two people stand at a kitchen counter, one holding an open cookbook while the other leans in from behind to point at the page' },
-      focus: { ja: '料理本のページ', en: 'the same spot on the page', tags: ['looking down'] },
-      camera: cam(['three_quarter', 'eye_level', 'side', 'high'], ['three_quarter', 'eye_level'], 'three_quarter', 'knee_up', ['full_body', 'knee_up', 'upper_body'], null, { close: '料理本と指さす手が画角外になります。' }),
+      id: 'pair_daily_cooking_side', source: '新規（DC-012の生成確認で、料理の場面を独立させた）', category: 'daily_table', family: 'standing_leaning',
+      label: 'キッチンで並んで料理する', short: 'キッチンカウンターの前に並んでまっすぐ立ち、Aがまな板で野菜を切り、Bはボウルを持って隣で手伝う。',
+      roles: ['まな板で食材を切る側', 'ボウルを持って手伝う側'], rel: ['level', 'none', 'side_by_side'],
+      place: ['カウンターの前にまっすぐ立ち、まな板の上の野菜を包丁で切る。もう一方の手で野菜を押さえる。どこにももたれない。', 'Aの隣にまっすぐ立ち、両手でボウルを持って、まな板の近くに差し出す。肩の間は少し空ける。'],
+      contacts: [['a', 'Aの片手 → 包丁（まな板の上）', "one of Person A's hands holds a kitchen knife over the cutting board"], ['a', 'Aのもう一方の手 → 野菜を押さえる', "Person A's other hand steadies the vegetables on the board"], ['b', 'Bの両手 → ボウル（まな板の近く）', "Person B holds a bowl in both hands close to the cutting board"], ['both', '肩どうし → 少し間を空ける', 'a small gap remains between their shoulders']],
+      roleEn: ['the one cutting vegetables', 'the one holding the bowl and helping'],
+      ts: ['Person A and Person B stand side by side at a kitchen counter, preparing food together.', 'Person A stands upright facing the counter, slicing vegetables on a cutting board, the other hand steadying them.', 'Person B stands upright beside Person A, holding a bowl in both hands close to the cutting board, ready to take the cut vegetables.'],
+      sdxl: [['side-by-side', 'cooking', 'kitchen'], ['cutting board', 'holding knife', 'vegetable', 'holding bowl', 'standing']],
+      nai: { core: ['side-by-side', 'standing', 'cooking', 'kitchen', 'cutting board'], a: ['holding knife', 'vegetable'], b: ['holding bowl'], nl: 'the two stand side by side at a kitchen counter cooking together, one cutting vegetables on a cutting board while the other holds a bowl beside them' },
+      focus: { ja: 'まな板の手元', en: 'the cutting board', tags: ['looking down'] },
+      sceneJa: 'キッチン・まな板・包丁・野菜・ボウル（料理の場面だと分かるように出力へ含める）',
+      camera: cam(['three_quarter', 'eye_level', 'side', 'high'], ['three_quarter', 'eye_level'], 'three_quarter', 'knee_up', ['full_body', 'knee_up', 'upper_body'], null, { close: 'まな板とボウルの手元が画角外になります。' }),
+      gazes: { allowed: ['both_focus', 'a_focus_b_looks'], defaultId: 'both_focus' },
+      keywords: ['料理', 'りょうり', '一緒に料理', 'キッチン', '台所', 'まな板', '包丁', '野菜', 'ボウル', '手伝う', '並んで立つ', '日常'],
+      suggest: { a: ex('slight_smile'), b: ex('gentle_smile') }
+    }),
+    pose({
+      id: 'pair_daily_cookbook', source: 'DC-026（生成確認を受けて改訂：料理中の場面に限定し、勉強の場面は pair_daily_study_point へ分けた）', category: 'daily_table', family: 'standing_leaning',
+      label: 'レシピを見ながら料理する', short: 'キッチンカウンターでボウルを混ぜるBの斜め後ろから、Aが立てかけた料理本を指さし、Bの二の腕に手を添える。',
+      roles: ['斜め後ろから料理本を指さす側', 'ボウルを混ぜる側'], rel: ['level', 'b_front', 'same_direction'],
+      place: ['Bの斜め後ろに半歩ずれて立ち、真後ろには入らずに横から身を乗り出す。片手の人差し指で、カウンターに立てかけた料理本のページを指し、もう一方の手をBの二の腕の外側に軽く置く。', 'カウンターの前に立ち、片腕でボウルを抱えて、もう一方の手の泡立て器で中身を混ぜる。'],
+      contacts: [['a', 'Aの人差し指 → 立てかけた料理本のページ', "Person A's index finger points to the page of an open cookbook propped up on the counter"], ['a', 'Aのもう一方の手 → Bの二の腕の外側', "Person A's other hand rests lightly on the outside of Person B's upper arm"], ['b', 'Bの両手 → ボウルと泡立て器', "Person B's hands hold a bowl and a whisk"]],
+      roleEn: ['the one leaning in and pointing at the recipe', 'the one mixing the bowl'],
+      ts: ['Person A and Person B stand at a kitchen counter while cooking, with Person B in front mixing a bowl and Person A leaning in from just behind and to the side, checking an open cookbook propped up on the counter.', "Person A leans in beside Person B's shoulder, pointing at the recipe page with one finger.", 'Person B holds the bowl in one arm and stirs it with a whisk in the other hand.'],
+      sdxl: [['cooking', 'kitchen', 'pointing'], ['cookbook', 'open book', 'holding bowl', 'whisk', "hand on another's arm", 'standing']],
+      nai: { core: ['standing', 'cooking', 'kitchen', 'cookbook', 'open book'], a: ['pointing', 'leaning forward', "hand on another's arm"], b: ['holding bowl', 'whisk'], nl: 'two people cook at a kitchen counter, one mixing a bowl while the other leans in from behind to point at a recipe in an open cookbook' },
+      focus: { ja: '料理本のページ', en: 'the recipe page', tags: ['looking down'] },
+      sceneJa: 'キッチン・立てかけた料理本・ボウルと泡立て器（勉強の場面に流れないように出力へ含める）',
+      camera: cam(['three_quarter', 'eye_level', 'side', 'high'], ['three_quarter', 'eye_level'], 'three_quarter', 'knee_up', ['full_body', 'knee_up', 'upper_body'], null, { close: '料理本と手元が画角外になります。' }),
       gazes: { allowed: ['both_focus', 'back_gazes_front', 'front_looks_back'], defaultId: 'both_focus' },
-      keywords: ['レシピ', '料理本', '本', 'キッチン', 'カウンター', '台所', '指さす', 'のぞき込む', '料理', '一緒に作る', '日常'],
+      keywords: ['レシピ', '料理本', '料理', 'りょうり', 'キッチン', 'カウンター', '台所', '指さす', 'のぞき込む', '一緒に作る', 'お菓子作り', '日常'],
+      suggest: { a: ex('gentle_smile'), b: ex('slight_smile') }
+    }),
+    pose({
+      id: 'pair_daily_study_point', source: '新規（DC-026の生成確認で出た「勉強」の形を独立させた）', category: 'daily_table', family: 'approach_touch',
+      label: '机で本を指さして教える', short: '机に向かって座るBの斜め後ろからAがのぞき込み、開いた本のページを指さして、Bの二の腕に手を添える。',
+      roles: ['後ろから指さして教える側', '机に座って本を読む側'], rel: ['a_taller', 'b_front', 'same_direction'],
+      place: ['Bの斜め後ろに立ち、真後ろには入らずに横から身を乗り出す。片手の人差し指で机の上の本のページを指し、もう一方の手をBの二の腕の外側に軽く置く。', '机に向かって椅子に座り、開いた本を机に置く。片手をページの端に添え、もう一方の前腕は机に置く。'],
+      contacts: [['a', 'Aの人差し指 → 机の上の本のページ', "Person A's index finger points to a spot on the page of the open book"], ['a', 'Aのもう一方の手 → Bの二の腕の外側', "Person A's other hand rests lightly on the outside of Person B's upper arm"], ['b', 'Bの片手 → ページの端', "one of Person B's hands rests on the edge of the page"]],
+      roleEn: ['the one leaning in to point and explain', 'the one seated at the desk'],
+      ts: ['Person B sits at a desk with an open book, and Person A stands just behind and to the side of Person B, leaning in to point at the page.', "Person A leans in beside Person B's shoulder, pointing with one finger, the other hand resting on Person B's upper arm.", 'Person B sits with one hand on the edge of the page and the other forearm resting on the desk.'],
+      sdxl: [['pointing', 'open book', 'desk'], ['studying', 'sitting', 'standing', "hand on another's arm", 'leaning forward']],
+      nai: { core: ['open book', 'desk', 'studying'], a: ['standing', 'pointing', 'leaning forward', "hand on another's arm"], b: ['sitting', 'on chair'], nl: 'one person sits at a desk with an open book while the other leans in from behind to point at the page and explain' },
+      focus: { ja: '本のページ', en: 'the same spot on the page', tags: ['looking down'] },
+      sceneJa: '机・開いた本（勉強・教える場面）',
+      camera: cam(['three_quarter', 'eye_level', 'side', 'high'], ['three_quarter', 'eye_level'], 'three_quarter', 'upper_body', ['full_body', 'knee_up', 'upper_body'], null, { close: '本と指さす手が画角外になります。' }),
+      gazes: { allowed: ['both_focus', 'back_gazes_front', 'front_looks_back'], defaultId: 'both_focus' },
+      keywords: ['勉強', 'べんきょう', '教える', '宿題', 'テスト勉強', '机', '本', '指さす', 'のぞき込む', '図書館', '日常'],
       suggest: { a: ex('gentle_smile'), b: ex('slight_smile') }
     }),
 
@@ -416,7 +454,7 @@
     { id: 'DC-009', decision: 'adopted', poseId: 'pair_daily_counter_handoff', reasonJa: '立つ人と座る人の高低差をカウンターが隔てる受け渡し。A＝渡す側に揃えるため、立って渡す側をAにした。' },
     { id: 'DC-010', decision: 'merged_candidate', poseId: 'pair_daily_mug_handoff', reasonJa: '皿の縁を二人で持つ形は、生成ではテーブル越しの受け渡しと見分けにくい。指先の接点も消えやすいため、DC-006へ統合。' },
     { id: 'DC-011', decision: 'adopted', poseId: 'pair_daily_head_on_shoulder', reasonJa: '既存「片側から寄りかかる」はAの腕がBの肩に回り、Bが体重を預ける抱き寄せ型。DC-011は腕を回さず頭だけを預け、Aは前を見る日常型で、接触点と視線が違う。' },
-    { id: 'DC-012', decision: 'adopted', poseId: 'pair_daily_counter_side', reasonJa: '立位で接触なし、肩の間を空けて並ぶ構図は既存に無い（既存の立位はすべて接触あり）。' },
+    { id: 'DC-012', decision: 'adopted', poseId: 'pair_daily_counter_side', reasonJa: '立位で接触なし、肩の間を空けて並ぶ構図は既存に無い（既存の立位はすべて接触あり）。生成確認で料理の場面にならず「並んで眺める」に流れたため、両前腕で眺める形に改め、料理の場面は「キッチンで並んで料理する」に分けた（2026-10-30）。' },
     { id: 'DC-013', decision: 'adopted', poseId: 'pair_daily_table_side_touch', reasonJa: '立つ人と座る人が直角に近い向きで、手のひら→前腕の一点だけで触れる構図は既存に無い。' },
     { id: 'DC-014', decision: 'existing', poseId: 'pair_close_from_behind', reasonJa: '既存「背後から身を寄せる」と、同じ向きの前後配置・背中→胸の接点・腕を回さない点が同じ。壁は既存の「末尾に追加する語」で足せる。' },
     { id: 'DC-015', decision: 'merged_candidate', poseId: 'pair_daily_watch_forward', reasonJa: 'DC-002と横並び・前方視線・肩一点接触・背もたれ支持の4点が同じ。「同じクッション」は生成では区別できない。' },
@@ -430,7 +468,7 @@
     { id: 'DC-023', decision: 'hold', poseId: null, reasonJa: 'Manusの評価もP3（保留寄り）。向かいの長辺・同じ角への向き・一方向の視線の三点が画面で読めないとDC-005／DC-020と区別できない。' },
     { id: 'DC-024', decision: 'adopted', poseId: 'pair_daily_phone_show', reasonJa: '立つ人が一台の画面を座る人へ見せる、非接触の共同注視は既存に無い。見せる側をAにした。' },
     { id: 'DC-025', decision: 'adopted', poseId: 'pair_daily_floor_talk', reasonJa: '床座りの斜め向かい、話し手と聞き手、前腕への手添えは既存に無い。' },
-    { id: 'DC-026', decision: 'adopted', poseId: 'pair_daily_cookbook', reasonJa: '立位の前後ずれ、指さす人と本を持つ人の非対称、二の腕への手添えは既存に無い。指さす側をAにした。' }
+    { id: 'DC-026', decision: 'adopted', poseId: 'pair_daily_cookbook', reasonJa: '立位の前後ずれ、指さす人と料理する人の非対称、二の腕への手添えは既存に無い。指さす側をAにした。生成確認で本と指さしだけでは勉強の場面に流れたため、キッチン・料理本・ボウルを出力に含め、勉強の場面は「机で本を指さして教える」に分けた（2026-10-30）。' }
   ];
 
   // ---- 日常ポーズで使うタグ（danbooru.csv の投稿数。2026-10-30時点のtagcomplete版） ----
@@ -445,6 +483,8 @@
     'giving': 3767, 'mug': 28187, 'table': 84769, 'reaching': 29748, 'looking at object': 8899, 'elbow on table': 822, 'food': 442029,
     'feeding': 9142, 'holding spoon': 11094, 'looking at food': 1984, 'plate': 44749, 'counter': 3282, 'stool': 11014, 'holding plate': 13694,
     'leaning on object': 2915, 'pointing': 65269, 'bathtub': 9669, 'partially submerged': 35074, 'facing another': 12091,
-    'leaning on person': 6528, 'looking at another': 264736, 'chair': 91462, 'kotatsu': 7130, 'from behind': 232537
+    'leaning on person': 6528, 'looking at another': 264736, 'chair': 91462, 'kotatsu': 7130, 'from behind': 232537,
+    'own hands together': 78093, 'cooking': 9165, 'kitchen': 6817, 'cutting board': 1804, 'holding knife': 24424, 'vegetable': 5263,
+    'holding bowl': 7086, 'whisk': 2915, 'cookbook': 130, 'desk': 40794, 'studying': 641
   };
 })(window);

@@ -582,7 +582,7 @@
   }
 
   // 2026-10-28：二人用ポーズを46種へ拡張。当初の7種が先頭に同じ順で残っていることを確認する。
-  test('二人用：当初の7種類が先頭にそのまま残り、全66種（2026-10-30に日常20種を追加）', function () { eq(ids(D.pairPoses).slice(0, 7), pairIds); eq(D.pairPoses.length, 66); });
+  test('二人用：当初の7種類が先頭にそのまま残り、全68種（2026-10-30に日常22種を追加）', function () { eq(ids(D.pairPoses).slice(0, 7), pairIds); eq(D.pairPoses.length, 68); });
   test('二人用：IDは一意で、一人用プリセットIDと衝突しない', function () { ok(unique(ids(D.pairPoses))); ids(D.pairPoses).forEach(function (id) { ok(ids(D.presets).indexOf(id) < 0, id); }); });
   test('二人用：意味データの必須項目（人数・A/B配置・接触点・カメラ・モデル別表現・検索語）', function () {
     D.pairPoses.forEach(function (p) {
@@ -1097,10 +1097,10 @@
   }
   var EA = { main: 'confident_smile', gaze: 'look_down' }, EB = { main: 'shy', gaze: 'look_up', sub: 'parted_lips' };
   test('拡張ポーズ：追加39種がそろい、既存7種の後ろに並ぶ', function () { eq(ids(D.pairPoses).slice(7, 46), newPairIds); });
-  test('拡張ポーズ：全66種にカテゴリがあり、カテゴリ別件数の合計が全数と一致', function () {
+  test('拡張ポーズ：全68種にカテゴリがあり、カテゴリ別件数の合計が全数と一致', function () {
     D.pairPoses.forEach(function (p) { ok(D.pairPoseCategories[p.category], p.id); });
-    var c = P.categoryCounts(''); eq(c.all, 66);
-    eq(Object.keys(D.pairPoseCategories).reduce(function (n, k) { return n + (c[k] || 0); }, 0), 66);
+    var c = P.categoryCounts(''); eq(c.all, 68);
+    eq(Object.keys(D.pairPoseCategories).reduce(function (n, k) { return n + (c[k] || 0); }, 0), 68);
     eq([c.embrace, c.seated, c.bed, c.standing, c.carry], [11, 8, 11, 9, 7]);
   });
   test('拡張ポーズ：新規ポーズごとにTsubaki・SDXL・NovelAIの出力に主ポーズが入る', function () {
@@ -1681,8 +1681,8 @@
   });
 
   // ---- 二人用「日常」ポーズ20種（2026-10-30） ----
-  var dailyIds = ['pair_daily_shared_book', 'pair_daily_watch_forward', 'pair_daily_gaming', 'pair_daily_head_on_shoulder', 'pair_daily_sofa_floor', 'pair_daily_sofa_ends', 'pair_daily_bed_headboard', 'pair_daily_floor_board', 'pair_daily_phone_show', 'pair_daily_floor_talk',
-    'pair_daily_mug_handoff', 'pair_daily_table_talk', 'pair_daily_feeding', 'pair_daily_counter_handoff', 'pair_daily_counter_side', 'pair_daily_table_side_touch', 'pair_daily_cookbook',
+  var dailyIds = ['pair_daily_shared_book', 'pair_daily_watch_forward', 'pair_daily_gaming', 'pair_daily_head_on_shoulder', 'pair_daily_sofa_floor', 'pair_daily_sofa_ends', 'pair_daily_bed_headboard', 'pair_daily_floor_board', 'pair_daily_phone_show', 'pair_daily_floor_talk', 'pair_daily_counter_side',
+    'pair_daily_mug_handoff', 'pair_daily_table_talk', 'pair_daily_feeding', 'pair_daily_counter_handoff', 'pair_daily_table_side_touch', 'pair_daily_cooking_side', 'pair_daily_cookbook', 'pair_daily_study_point',
     'pair_daily_bath_side', 'pair_daily_bath_facing', 'pair_daily_bath_back_rest'];
   var dailyPoses = function () { return dailyIds.map(function (id) { return P.poseById(id); }); };
   var oldPairPoses = function () { return D.pairPoses.slice(0, 46); };
@@ -1695,13 +1695,13 @@
     var m = p.models, out = m.sdxl.core.concat(m.sdxl.placement, m.nai.core, m.nai.a, m.nai.b, m.nai.actions.map(function (x) { return x.tag; }), p.focus ? p.focus.tags : []);
     return out;
   }
-  test('日常：20種がそろい、既存46種の後ろに同じ順で並ぶ', function () {
+  test('日常：22種がそろい、既存46種の後ろに同じ順で並ぶ', function () {
     eq(ids(D.pairPoses).slice(46), dailyIds); eq(ids(D.pairPoses).slice(7, 46), newPairIds); eq(ids(D.pairPoses).slice(0, 7), pairIds);
     dailyPoses().forEach(function (p) { ok(p.daily && p.source, p.id); });
   });
-  test('日常：3カテゴリ（くつろぎ10・食卓と台所7・お風呂3）で絞り込め、既存5カテゴリの件数は変わらない', function () {
+  test('日常：3カテゴリ（くつろぎ11・テーブルと台所8・お風呂3）で絞り込め、既存5カテゴリの件数は変わらない', function () {
     var c = P.categoryCounts('');
-    eq([c.daily_relax, c.daily_table, c.daily_bath], [10, 7, 3]);
+    eq([c.daily_relax, c.daily_table, c.daily_bath], [11, 8, 3]);
     eq([c.embrace, c.seated, c.bed, c.standing, c.carry], [11, 8, 11, 9, 7]);
     eq(Object.keys(D.pairPoseCategories), ['embrace', 'seated', 'bed', 'standing', 'carry', 'daily_relax', 'daily_table', 'daily_bath']);
     ['daily_relax', 'daily_table', 'daily_bath'].forEach(function (k) { ok(P.filterPoses('', k).every(function (p) { return p.category === k; }), k); });
@@ -1711,7 +1711,7 @@
     ok(found('あーん').indexOf('pair_daily_feeding') >= 0); ok(found('食べさせる').indexOf('pair_daily_feeding') >= 0);
     ok(found('おふろ').indexOf('pair_daily_bath_side') >= 0); ok(found('湯船').length === 3);
     ok(found('映画').indexOf('pair_daily_watch_forward') >= 0); ok(found('げーむ').indexOf('pair_daily_gaming') >= 0);
-    ok(found('こたつ').indexOf('pair_daily_mug_handoff') >= 0); ok(found('日常').length >= 20);
+    ok(found('こたつ').indexOf('pair_daily_mug_handoff') >= 0); ok(found('日常').length >= 22); ok(found('りょうり').indexOf('pair_daily_cooking_side') >= 0); ok(found('べんきょう').indexOf('pair_daily_study_point') >= 0);
     ok(found('バックハグ').indexOf('pair_hug_from_behind') >= 0, '既存の検索は変わらない');
   });
   test('日常：Manus候補26件すべてに判定と理由があり、採用・統合先が実在する', function () {
@@ -1725,7 +1725,7 @@
     });
     var adopted = log.filter(function (x) { return x.decision === 'adopted'; }).map(function (x) { return x.poseId; });
     eq(adopted.length, 18); ok(unique(adopted));
-    eq(dailyIds.filter(function (id) { return adopted.indexOf(id) < 0; }), ['pair_daily_gaming', 'pair_daily_feeding'], 'DC以外の追加は派生のゲームと「あーん」だけ');
+    eq(dailyIds.filter(function (id) { return adopted.indexOf(id) < 0; }), ['pair_daily_gaming', 'pair_daily_feeding', 'pair_daily_cooking_side', 'pair_daily_study_point'], 'DC以外の追加は、派生のゲーム・「あーん」・生成確認で分けた料理と勉強だけ');
   });
   test('日常：SDXL・NovelAIのタグはすべて danbooru.csv で実在を確認したもの', function () {
     var extra = [];
@@ -1751,7 +1751,9 @@
     var plate = nai('pair_daily_counter_handoff'); ok(plate.a.indexOf('source#giving') >= 0 && /standing/.test(plate.a) && /stool/.test(plate.b));
     var head = nai('pair_daily_head_on_shoulder'); ok(head.b.indexOf("head on another's shoulder") >= 0 && head.a.indexOf("head on another's shoulder") < 0);
     var bath = nai('pair_daily_bath_back_rest'); ok(bath.b.indexOf('source#leaning on person') >= 0 && bath.a.indexOf('target#leaning on person') >= 0);
-    var cook = nai('pair_daily_cookbook'); ok(cook.a.indexOf('pointing') >= 0 && cook.b.indexOf('pointing') < 0 && cook.b.indexOf('holding book') >= 0);
+    var cook = nai('pair_daily_cookbook'); ok(cook.a.indexOf('pointing') >= 0 && cook.b.indexOf('pointing') < 0 && cook.b.indexOf('holding bowl') >= 0);
+    var study = nai('pair_daily_study_point'); ok(study.a.indexOf('pointing') >= 0 && /standing/.test(study.a) && /sitting/.test(study.b) && study.b.indexOf('pointing') < 0);
+    var side = nai('pair_daily_cooking_side'); ok(side.a.indexOf('holding knife') >= 0 && side.b.indexOf('holding knife') < 0 && side.b.indexOf('holding bowl') >= 0);
     var t = P.render(pairState('pair_daily_feeding'), 'tsubaki', {}).text;
     ok(t.indexOf('Person A feeds Person B') >= 0 && t.indexOf("holds the spoon up to Person B's mouth") >= 0);
     // A⇄Bの入れ替えは人物の入力だけを入れ替え、ポーズの役割は動かさない
@@ -1813,6 +1815,18 @@
     var p = P.poseById('pair_daily_feeding');
     eq(p.related, ['relationship_offer_bite_to_viewer']); ok(D.presets.some(function (x) { return x.id === p.related[0]; }));
     eq(P.applySuggestion(pairState(p.id)).state.people.b.expression, { main: 'shy', gaze: null, sub: 'parted_lips' });
+  });
+  test('日常：料理・勉強は場面を決める小物を3出力先に含め、互いに混ざらない', function () {
+    function all(id) { var st = pairState(id); return [P.render(st, 'tsubaki', {}).text, P.render(st, 'sdxl', {}).text, P.render(st, 'nai', {}).text].join(' | '); }
+    var side = all('pair_daily_cooking_side'), cook = all('pair_daily_cookbook'), study = all('pair_daily_study_point'), bar = all('pair_daily_counter_side');
+    ['kitchen', 'cooking', 'cutting board', 'holding bowl'].forEach(function (w) { ok(side.indexOf(w) >= 0, 'cooking_side ' + w); });
+    ['kitchen', 'cooking', 'cookbook', 'whisk'].forEach(function (w) { ok(cook.indexOf(w) >= 0, 'cookbook ' + w); });
+    ['desk', 'studying', 'open book', 'pointing'].forEach(function (w) { ok(study.indexOf(w) >= 0, 'study ' + w); });
+    ok(!/kitchen|cooking/.test(study) && !/desk|studying/.test(cook) && !/kitchen|cooking/.test(bar), '場面の語が別のポーズへ混ざらない');
+    ok(!/leaning on object|hip/.test(side), '料理中はどこにももたれない');
+    ok(P.structureJa(pairState('pair_daily_cooking_side')).indexOf('【場面を決める小物】') >= 0 && P.structureJa(pairState('pair_daily_counter_side')).indexOf('【場面を決める小物】') < 0);
+    oldPairPoses().forEach(function (p) { ok(!p.sceneJa, p.id); });
+    ok(P.poseById('pair_daily_cooking_side').gazes.allowed.indexOf('mutual') < 0, '包丁を使う側が手元から目を離す視線は選べない');
   });
   test('日常：保存・復元・リセットで、新しいポーズと選択（場所・見る先の視線・斜め後ろ）が保持される', function () {
     var st = P.set(exprState('pair_daily_mug_handoff', { main: 'gentle_smile' }, null, { surface: 'kotatsu', gaze: 'b_focus_a_looks', 'people.a.gender': 'male' }), 'people.b.prompt', 'red scarf');
