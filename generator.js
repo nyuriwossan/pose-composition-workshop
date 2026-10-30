@@ -198,6 +198,10 @@
     push(out.ja, '支持：' + body.support);
     push(out.ja, '手前と奥：' + body.depth);
     push(out.ja, '推奨画角：' + (shot ? shot.labelJa : pose.recommendedShot));
+    // プリクラ系（line: purikura）だけが持つ項目。既存のモード系の表示は変えない。
+    if (body.hands && !armsByUser && !armsByRestraint) push(out.ja, '手の形：' + body.hands);
+    if (pose.minNoteJa) push(out.ja, '最小画角の条件：' + pose.minNoteJa);
+    if (pose.fallback || pose.fallbackJa) push(out.ja, '崩れやすいとき：' + (pose.fallback ? pose.fallback.noteJa : pose.fallbackJa));
   }
   function blocks(raw, opts) {
     // opts は出力先別の語彙差し替え用。省略時は従来出力と完全に同じ。
@@ -501,7 +505,8 @@
     return groups.join(' ').replace(/\.\.+/g, '.').trim();
   }
   function structureJa(raw) {
-    var b = blocks(raw), names = { subjectPosture: '姿勢', editorial: 'モード系の身体配置', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', restraint: '拘束・固定', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', outputAssist: '出力補助', custom: '自由入力' };
+    var edSel = selected(D.editorialPoses, S.normalize(raw).pose.editorialPose);
+    var b = blocks(raw), names = { subjectPosture: '姿勢', editorial: edSel && edSel.line === 'purikura' ? 'プリクラ系の手と身体' : 'モード系の身体配置', lowerBody: '下半身', bodyFlow: '身体の流れ', arms: '腕・手', restraint: '拘束・固定', head: '顔・首', gaze: '視線', interaction: '画面外の相手', camera: 'カメラ', composition: '構図', outputAssist: '出力補助', custom: '自由入力' };
     var lines = [];
     Object.keys(b).forEach(function (key) {
       if (b[key].ja.length) lines.push('【' + names[key] + '】\n' + b[key].ja.join('\n'));

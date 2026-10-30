@@ -55,7 +55,7 @@
   test('データ：すべての選択肢に日本語ラベル', function () { [D.postures, D.motionStates, D.weights, D.armActions, D.headYaws, D.gazeTargets, D.shotSizes, D.placements].forEach(function (list) { list.forEach(function (x) { ok(x.labelJa); }); }); });
   test('データ：腕の使用手数は0〜2', function () { D.armActions.concat(D.combinedArms).forEach(function (x) { ok(x.resources.hands >= 0 && x.resources.hands <= 2); }); });
   test('データ：複合腕は2本の手を使う', function () { D.combinedArms.forEach(function (x) { eq(x.resources.hands, 2); }); });
-  test('データ：ビルトインプリセットは既存77件＋アヴァンギャルド8件＋モード・エディトリアル9件＋舞踊的な上半身4件', function () { eq(D.presets.length, 98); var c = D.getPresetCollectionCounts(D.presets); eq([c.basic + c.relationship + c.special, c.editorial, c.mode_editorial, c.dance], [77, 8, 9, 4]); });
+  test('データ：ビルトインプリセットは既存98件（既存77件＋アヴァンギャルド8件＋モード・エディトリアル9件＋舞踊的な上半身4件）＋プリクラ25件', function () { eq(D.presets.length, 123); var c = D.getPresetCollectionCounts(D.presets); eq([c.basic + c.relationship + c.special, c.editorial, c.mode_editorial, c.dance, c.purikura], [77, 8, 9, 4, 25]); ok(D.presets.slice(0, 98).every(function (p) { return p.meta.collection !== 'purikura'; }) && D.presets.slice(98).every(function (p) { return p.meta.collection === 'purikura'; }), '既存98件の後ろに追加'); });
   test('データ：全プリセットにshotSizeがある', function () { D.presets.forEach(function (p) { ok(p.patch.camera && p.patch.camera.shotSize); }); });
   test('データ：既存15プリセットを保持', function () { legacyPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：relationship既存15件が揃う', function () { relationshipExistingIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
@@ -63,7 +63,7 @@
   test('データ：背面5件・顔隠し2件・背中主役5件が揃う', function () { relationshipAddedIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：手のやりとり6件が揃う', function () { viewerHandPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
   test('データ：既存の拘束・演出8件が揃う', function () { specialPresetIds.forEach(function (id) { ok(ids(D.presets).indexOf(id) >= 0); }); });
-  test('データ：全プリセットにcollectionがある', function () { D.presets.forEach(function (p) { ok(['basic', 'relationship', 'special', 'editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) >= 0); }); });
+  test('データ：全プリセットにcollectionがある', function () { D.presets.forEach(function (p) { ok(['basic', 'relationship', 'special', 'editorial', 'mode_editorial', 'dance', 'purikura'].indexOf(p.meta.collection) >= 0); }); });
   test('データ：basic 15件・relationship 46件・special 16件', function () { var c = D.getPresetCollectionCounts(D.presets); eq([c.basic, c.relationship, c.special], [15, 46, 16]); });
   test('データ：全プリセットにposeFamilyが1つある', function () { D.presets.forEach(function (p) { ok(D.presetPoseFamilyLabels[p.meta.poseFamily], p.id); }); });
   test('データ：既存の特殊8件は拘束・固定系統を保持', function () { specialPresetIds.forEach(function (id) { eq(D.presets.filter(function (p) { return p.id === id; })[0].meta.poseFamily, 'restraint'); }); });
@@ -82,15 +82,16 @@
   test('分類：未知のshotSizeはother', function () { eq(D.getPresetFramingGroup({ patch: { camera: { shotSize: 'unknown' } } }), 'other'); });
   test('分類：全プリセットがアップ・半身・全身のいずれか', function () { D.presets.forEach(function (p) { ok(['up', 'half', 'full'].indexOf(D.getPresetFramingGroup(p)) >= 0); }); });
   test('分類：既存はアップ13・半身33・全身31、アヴァンギャルドはアップ1・半身7、モード・エディトリアルは半身9', function () {
-    var old = D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) < 0; });
+    var old = D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance', 'purikura'].indexOf(p.meta.collection) < 0; });
     var c = D.getPresetFramingCounts(old); eq([c.up, c.half, c.full], [13, 33, 31]);
     var e = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'editorial'; })); eq([e.up, e.half, e.full], [1, 7, 0]);
     var m = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'mode_editorial'; })); eq([m.up, m.half, m.full], [0, 9, 0]);
     var d = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'dance'; })); eq([d.up, d.half, d.full], [0, 4, 0]);
+    var k = D.getPresetFramingCounts(D.presets.filter(function (p) { return p.meta.collection === 'purikura'; })); eq([k.up + k.half, k.full], [25, 0], 'プリクラは全身なし');
   });
   test('分類：分類別件数の合計が全件数', function () { var c = D.getPresetFramingCounts(D.presets); eq(c.up + c.half + c.full + c.other, c.all); });
-  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 13 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'up'; }).length, '既存13件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
-  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 33 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'half'; }).length, '既存33件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
+  test('フィルター：アップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', false); eq(list.length, 13 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance', 'purikura'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'up'; }).length, '既存13件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'up'); }); });
+  test('フィルター：半身だけを返す', function () { var list = D.filterPresets(D.presets, 'half', false); eq(list.length, 33 + D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance', 'purikura'].indexOf(p.meta.collection) >= 0 && D.getPresetFramingGroup(p) === 'half'; }).length, '既存33件＋追加分'); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'half'); }); });
   test('フィルター：全身だけを返す', function () { var list = D.filterPresets(D.presets, 'full', false); eq(list.length, 31); list.forEach(function (p) { eq(D.getPresetFramingGroup(p), 'full'); }); });
   test('フィルター：相手視点だけを返す', function () { var list = D.filterPresets(D.presets, 'all', true); eq(list.length, 46); list.forEach(function (p) { ok(p.meta.audienceTags.indexOf('viewer_perspective') >= 0); }); });
   test('フィルター：relationshipのアップだけを返す', function () { var list = D.filterPresets(D.presets, 'up', { collection: 'relationship' }); eq(list.length, 12); });
@@ -582,7 +583,7 @@
   }
 
   // 2026-10-28：二人用ポーズを46種へ拡張。当初の7種が先頭に同じ順で残っていることを確認する。
-  test('二人用：当初の7種類が先頭にそのまま残り、全68種（2026-10-30に日常22種を追加）', function () { eq(ids(D.pairPoses).slice(0, 7), pairIds); eq(D.pairPoses.length, 68); });
+  test('二人用：当初の7種類が先頭にそのまま残り、全97種（2026-10-30に日常22種・プリクラ29種を追加）', function () { eq(ids(D.pairPoses).slice(0, 7), pairIds); eq(D.pairPoses.length, 97); });
   test('二人用：IDは一意で、一人用プリセットIDと衝突しない', function () { ok(unique(ids(D.pairPoses))); ids(D.pairPoses).forEach(function (id) { ok(ids(D.presets).indexOf(id) < 0, id); }); });
   test('二人用：意味データの必須項目（人数・A/B配置・接触点・カメラ・モデル別表現・検索語）', function () {
     D.pairPoses.forEach(function (p) {
@@ -1097,10 +1098,10 @@
   }
   var EA = { main: 'confident_smile', gaze: 'look_down' }, EB = { main: 'shy', gaze: 'look_up', sub: 'parted_lips' };
   test('拡張ポーズ：追加39種がそろい、既存7種の後ろに並ぶ', function () { eq(ids(D.pairPoses).slice(7, 46), newPairIds); });
-  test('拡張ポーズ：全68種にカテゴリがあり、カテゴリ別件数の合計が全数と一致', function () {
+  test('拡張ポーズ：全97種にカテゴリがあり、カテゴリ別件数の合計が全数と一致', function () {
     D.pairPoses.forEach(function (p) { ok(D.pairPoseCategories[p.category], p.id); });
-    var c = P.categoryCounts(''); eq(c.all, 68);
-    eq(Object.keys(D.pairPoseCategories).reduce(function (n, k) { return n + (c[k] || 0); }, 0), 68);
+    var c = P.categoryCounts(''); eq(c.all, 97);
+    eq(Object.keys(D.pairPoseCategories).reduce(function (n, k) { return n + (c[k] || 0); }, 0), 97);
     eq([c.embrace, c.seated, c.bed, c.standing, c.carry], [11, 8, 11, 9, 7]);
   });
   test('拡張ポーズ：新規ポーズごとにTsubaki・SDXL・NovelAIの出力に主ポーズが入る', function () {
@@ -1378,7 +1379,8 @@
 
   // ---- モード・アヴァンギャルド系（2026-10-29b） ----
   var M = PCW.modelOutput;
-  var allEdPoses = D.editorialPoses.filter(function (p) { return p.id !== 'none'; }), edPoses = allEdPoses.filter(function (p) { return !p.line; });
+  // プリクラ系（line: purikura、2026-10-30）は別の固定検証を持つため、ここでは既存21件（AV8・ME9・BL4）だけを対象にする
+  var allEdPoses = D.editorialPoses.filter(function (p) { return p.id !== 'none' && p.line !== 'purikura'; }), edPoses = allEdPoses.filter(function (p) { return !p.line; });
   function sid(pose) { return pose.sourceId || pose.avId; }
   var edPresets = D.presets.filter(function (p) { return p.meta.collection === 'editorial'; });
   var adoptedAv = ['AV-005', 'AV-006', 'AV-009', 'AV-011', 'AV-012', 'AV-013', 'AV-015', 'AV-017'];
@@ -1510,7 +1512,7 @@
     eq(editorialPart(S.normalize({ pose: { posture: 'standing' }, camera: { shotSize: 'waist_up' } })).ja, [], '未選択なら何も出さない');
   });
   test('モード系：既存の77件は対象外で、構造表示にモード系の項目が出ない', function () {
-    D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf(p.meta.collection) < 0; }).forEach(function (p) {
+    D.presets.filter(function (p) { return ['editorial', 'mode_editorial', 'dance', 'purikura'].indexOf(p.meta.collection) < 0; }).forEach(function (p) {
       var st = presetState(p.id);
       eq(st.pose.editorialPose, 'none', p.id);
       ok(G.structureJa(st).indexOf('モード系') < 0, p.id);
@@ -1696,14 +1698,14 @@
     return out;
   }
   test('日常：22種がそろい、既存46種の後ろに同じ順で並ぶ', function () {
-    eq(ids(D.pairPoses).slice(46), dailyIds); eq(ids(D.pairPoses).slice(7, 46), newPairIds); eq(ids(D.pairPoses).slice(0, 7), pairIds);
+    eq(ids(D.pairPoses).slice(46, 68), dailyIds); eq(ids(D.pairPoses).slice(7, 46), newPairIds); eq(ids(D.pairPoses).slice(0, 7), pairIds);
     dailyPoses().forEach(function (p) { ok(p.daily && p.source, p.id); });
   });
   test('日常：3カテゴリ（くつろぎ11・テーブルと台所8・お風呂3）で絞り込め、既存5カテゴリの件数は変わらない', function () {
     var c = P.categoryCounts('');
     eq([c.daily_relax, c.daily_table, c.daily_bath], [11, 8, 3]);
     eq([c.embrace, c.seated, c.bed, c.standing, c.carry], [11, 8, 11, 9, 7]);
-    eq(Object.keys(D.pairPoseCategories), ['embrace', 'seated', 'bed', 'standing', 'carry', 'daily_relax', 'daily_table', 'daily_bath']);
+    eq(Object.keys(D.pairPoseCategories).slice(0, 8), ['embrace', 'seated', 'bed', 'standing', 'carry', 'daily_relax', 'daily_table', 'daily_bath']);
     ['daily_relax', 'daily_table', 'daily_bath'].forEach(function (k) { ok(P.filterPoses('', k).every(function (p) { return p.category === k; }), k); });
   });
   test('日常：日本語で検索できる（あーん・お風呂・映画・ゲーム・こたつ・ひらがな）', function () {
@@ -1852,6 +1854,209 @@
     var rear = P.normalize(JSON.parse(JSON.stringify(pairState('pair_daily_gaming', { 'camera.angle': 'rear_three_quarter' })))); eq(rear.camera.angle, 'rear_three_quarter');
     var reset = P.resetPoseOnly(st); eq([reset.poseId, reset.surface, reset.gaze, reset.people.b.prompt], [null, null, null, 'red scarf']);
     var sw = P.selectPose(st, 'pair_hug_from_behind').state; eq([sw.surface, sw.gaze], [null, 'back_gazes_front'], '既存ポーズへ切り替えると成立しない値は既定へ');
+  });
+
+  // ===================== プリクラ・フォトブース 54件（2026-10-30） =====================
+  var PK_SOLO_TABLE = [['S001', 'P1', '低'], ['S002', 'P1', '中'], ['S003', 'P2', '中'], ['S004', 'P1', '中'], ['S005', 'P2', '中'], ['S006', 'P1', '低'], ['S007', 'P2', '中'], ['S008', 'P1', '中'], ['S009', 'P2', '中'], ['S010', 'P2', '中'], ['S011', 'P2', '低'], ['S012', 'P1', '中'], ['S013', 'P2', '中'], ['S014', 'P1', '中'], ['S015', 'P2', '低'], ['S016', 'P2', '中'], ['S017', 'P1', '高'], ['S018', 'P2', '高'], ['S019', 'P1', '中'], ['S020', 'P1', '中'], ['S021', 'P1', '高'], ['S022', 'P1', '中'], ['S023', 'P2', '高'], ['S024', 'P2', '中'], ['S025', 'P2', '中']];
+  var PK_PAIR_TABLE = [['P001', 'P1', '低'], ['P002', 'P2', '中'], ['P003', 'P1', '低'], ['P004', 'P2', '中'], ['P005', 'P1', '中'], ['P006', 'P2', '中'], ['P007', 'P1', '中'], ['P008', 'P2', '高'], ['P009', 'P1', '中'], ['P010', 'P1', '中'], ['P011', 'P2', '中'], ['P012', 'P2', '低'], ['P013', 'P2', '中'], ['P014', 'P2', '中'], ['P015', 'P1', '中'], ['P016', 'P1', '高'], ['P017', 'P2', '高'], ['P018', 'P1', '中'], ['P019', 'P2', '高'], ['P020', 'P2', '高'], ['P021', 'P3', '高'], ['P022', 'P1', '中'], ['P023', 'P1', '中'], ['P024', 'P1', '低'], ['P025', 'P2', '中'], ['P026', 'P2', '中'], ['P027', 'P2', '中'], ['P028', 'P2', '中'], ['P029', 'P3', '低']];
+  var oldPairIds68 = pairIds.concat(newPairIds, dailyIds);
+  function pkPairs() { return D.pairPoses.filter(function (p) { return /^pair_purikura_p\d{3}$/.test(p.id); }); }
+  function pkSoloPresets() { return D.presets.filter(function (p) { return p.meta.collection === 'purikura'; }); }
+  function pkWho(st) { return P.set(P.set(P.set(P.set(st, 'people.a.gender', 'female'), 'people.b.gender', 'female'), 'people.a.prompt', 'short black hair, navy coat'), 'people.b.prompt', 'long silver hair, white dress'); }
+  var PK_BANNED_EN = /\b(left|right) (hand|arm|palm|elbow|wrist|shoulder|cheek|temple)\b|\bwithout\b|\bno\b|\bnot\b|\bcamera\b|\bphones?\b|\bsmartphone\b|\b(girl|boy|woman|man|women|men|female|male|adult|bust|busty)\b|\b(dress|skirt|shirt|uniform|outfit|clothes)\b|\b(background|lighting|masterpiece|best quality|anime|photo booth|purikura|sticker|cute)\b/i;
+
+  test('プリクラ：件数は一人用123（既存98＋25）・二人用97（既存68＋29）・合計220、既存の並びは変わらない', function () {
+    eq(D.presets.length, 123); eq(D.pairPoses.length, 97); eq(D.presets.length + D.pairPoses.length, 220);
+    eq(ids(D.pairPoses).slice(0, 68), oldPairIds68, '既存68件の並び');
+    eq(ids(D.pairPoses).slice(68), PK_PAIR_TABLE.map(function (r) { return 'pair_purikura_p' + r[0].slice(1); }), '二人用29件は末尾');
+    eq(ids(pkSoloPresets()), PK_SOLO_TABLE.map(function (r) { return 'purikura_preset_s' + r[0].slice(1); }), '一人用25件');
+    eq(ids(D.purikuraEditorialPoses), PK_SOLO_TABLE.map(function (r) { return 'purikura_s' + r[0].slice(1); }));
+    ok(unique(ids(D.presets)) && unique(ids(D.pairPoses)) && unique(ids(D.editorialPoses)), 'IDが重複しない');
+  });
+  test('プリクラ：元の候補ID（PK-S001〜025・PK-P001〜029）が欠番なく一意で、優先度・難度が指示書の表と一致', function () {
+    var solo = D.purikuraEditorialPoses, pair = pkPairs();
+    eq(solo.map(function (p) { return [p.sourceId.replace('PK-', ''), p.priority, p.difficultyJa]; }), PK_SOLO_TABLE);
+    eq(pair.map(function (p) { return [p.sourceId.replace('PK-', ''), p.priority, p.difficultyJa]; }), PK_PAIR_TABLE);
+    eq(pkSoloPresets().map(function (p) { return p.meta.sourceId; }), solo.map(function (p) { return p.sourceId; }), 'プリセットにも元IDを保持');
+    eq(D.purikuraSoloCandidateLog.length + D.purikuraPairCandidateLog.length, 54);
+    ok(D.purikuraSoloCandidateLog.concat(D.purikuraPairCandidateLog).every(function (r) { return r.status === 'adopted'; }), '54件すべて採用');
+    ok(D.purikuraPairDataFixes['PK-P016'] && D.purikuraPairDataFixes['PK-P023'] && D.purikuraPairDataFixes.left_right && D.purikuraPairDataFixes.swap, '修正点の記録');
+  });
+  test('プリクラ：二人用4カテゴリは既存8カテゴリの後ろに並び、件数は8・7・6・8', function () {
+    eq(Object.keys(D.pairPoseCategories), ['embrace', 'seated', 'bed', 'standing', 'carry', 'daily_relax', 'daily_table', 'daily_bath', 'pk_classic', 'pk_touch', 'pk_shape', 'pk_layer']);
+    var c = P.categoryCounts(''); eq([c.pk_classic, c.pk_touch, c.pk_shape, c.pk_layer], [8, 7, 6, 8]);
+    eq([c.embrace, c.seated, c.bed, c.standing, c.carry, c.daily_relax, c.daily_table, c.daily_bath], [11, 8, 11, 9, 7, 11, 8, 3], '既存カテゴリの件数は不変');
+    ['pk_classic', 'pk_touch', 'pk_shape', 'pk_layer'].forEach(function (k) { ok(P.filterPoses('', k).every(function (p) { return p.category === k && p.purikura; }), k); });
+    eq(ids(P.filterPoses('プリクラ', 'all')).filter(function (id) { return id.indexOf('pair_purikura_') === 0; }).length, 29, '「プリクラ」で29件');
+    ok(ids(P.filterPoses('ほっぺつんつん', 'all')).indexOf('pair_purikura_p010') >= 0 && ids(P.filterPoses('がおー', 'all')).indexOf('pair_purikura_p027') >= 0, 'ひらがな検索');
+  });
+  test('プリクラ：一人用4分類（王道7・近接4・モード7・遊び7）で絞り込め、既存の系統件数は変わらない', function () {
+    var fam = {}; pkSoloPresets().forEach(function (p) { fam[p.meta.poseFamily] = (fam[p.meta.poseFamily] || 0) + 1; });
+    eq([fam.purikura_classic, fam.purikura_sweet, fam.purikura_mode, fam.purikura_play], [7, 4, 7, 7]);
+    ok(['purikura_classic', 'purikura_sweet', 'purikura_mode', 'purikura_play'].every(function (k) { return D.presetPoseFamilyLabels[k].indexOf('プリクラ：') === 0; }));
+    eq(D.presetCollections.purikura.labelJa, 'プリクラ・フォトブース');
+  });
+  test('プリクラ：二人用の英文に左右の手・否定・性別・服装・背景・画風・品質・撮影機材の語がない', function () {
+    pkPairs().forEach(function (p) {
+      var m = p.models, texts = [m.tsubaki.overview, m.tsubaki.a, m.tsubaki.b, m.tsubaki.roleEn.a, m.tsubaki.roleEn.b, m.nai.nl].concat(p.contacts.map(function (c) { return c.tsubaki; }));
+      texts.forEach(function (t) { ok(!PK_BANNED_EN.test(t), p.id + ' ' + (t.match(PK_BANNED_EN) || [''])[0] + ' / ' + t); });
+    });
+  });
+  test('プリクラ：二人用のタグはDanbooru一覧で確認した語だけ（Manusのshort_tagsは使わない）', function () {
+    var V = D.purikuraPairVerifiedTags;
+    pkPairs().forEach(function (p) {
+      var m = p.models, tags = m.sdxl.core.concat(m.sdxl.placement, m.nai.core, m.nai.a, m.nai.b, m.nai.actions.map(function (x) { return x.tag; }));
+      tags.forEach(function (t) { ok(V[t] > 0, p.id + ' ' + t); });
+      ok(m.sdxl.core.length >= 1 && p.contacts.length >= 2 && p.keywords.length >= 5, p.id + ' 主タグ・接触点・検索語');
+    });
+  });
+  test('プリクラ：二人用はTsubaki・SDXL・NovelAIの出力がそろい、Tsubakiにネガティブと adult／bust がない', function () {
+    pkPairs().forEach(function (p) {
+      var st = pkWho(pairState(p.id));
+      [{}, { emphasis: true }, { emphasis: true, naiEmphasisStyle: 'numeric', naiNaturalLanguage: true }].forEach(function (pr) {
+        var ts = P.render(st, 'tsubaki', pr), sd = P.render(st, 'sdxl', pr).text, na = P.render(st, 'nai', pr);
+        ok(!('negative' in ts) && !/adult|bust/i.test(ts.text), p.id + ' Tsubaki');
+        ok(ts.text.indexOf(p.models.tsubaki.a) >= 0 && ts.text.indexOf(p.models.tsubaki.b) >= 0 && ts.text.indexOf('Contact points:') >= 0, p.id + ' Tsubakiの配置文');
+        ok(stripEmphasis(sd).indexOf(p.models.sdxl.core[0]) >= 0 && /^2girls, /.test(sd), p.id + ' SDXL');
+        ok(stripEmphasis(na.base).indexOf('2girls') === 0 && na.a && na.b, p.id + ' NovelAI');
+        ok(!/undefined|NaN|\{focus\}|\{other\}/.test(ts.text + sd + na.text), p.id + ' 置換漏れなし');
+      });
+      var ja = P.structureJa(st);
+      ok(ja.indexOf('【元の候補】' + p.sourceId) >= 0 && ja.indexOf('【最小画角の条件】' + p.minNoteJa) >= 0, p.id + ' 日本語構造に元IDと最小画角');
+      eq(ja.indexOf('【崩れやすいとき】') >= 0, !!p.fallback, p.id + ' 簡易版の案内は持つポーズだけ');
+    });
+  });
+  test('プリクラ：既存68件の日本語構造に元の候補・最小画角・簡易版の行は出ない', function () {
+    oldPairIds68.forEach(function (id) { var ja = P.structureJa(pairState(id)); ok(ja.indexOf('【元の候補】') < 0 && ja.indexOf('【最小画角の条件】') < 0 && ja.indexOf('【崩れやすいとき】') < 0, id); });
+  });
+  test('プリクラ：P016は外側の腕で上の二つの丸み、内側の手で下の先端を作る（指示書の確定修正）', function () {
+    var p = P.poseById('pair_purikura_p016'), st = pkWho(pairState(p.id)), ts = P.render(st, 'tsubaki', {}).text, ja = P.structureJa(st);
+    ok(/外側の腕を自分の頭の上へ弧/.test(p.placement.a) && /外側の腕を自分の頭の上へ弧/.test(p.placement.b), '外側の腕は頭上');
+    ok(/内側の手は下ろして/.test(p.placement.a) && /内側の手は下ろして/.test(p.placement.b), '内側の手は下');
+    ok(/左上/.test(p.roles.a) && /左下/.test(p.roles.a) && /右上/.test(p.roles.b) && /右下/.test(p.roles.b), 'Aが左上・左下、Bが右上・右下');
+    eq(p.contacts.map(function (c) { return c.owner; }), ['both', 'both', 'both']);
+    ok(/外側の手の指先どうし → 二人の頭の間の真上/.test(ja) && /内側の手の指先どうし → あごの下の中央/.test(ja), '日本語の接触点');
+    ok(ts.indexOf("Person A curves the outer arm over their own head") >= 0 && ts.indexOf('lowers the inner hand so the fingertips meet') >= 0, 'Tsubaki A');
+    ok(ts.indexOf("Person B curves the outer arm over their own head") >= 0 && ts.indexOf("lowers the inner hand to meet Person A's fingertips below their chins") >= 0, 'Tsubaki B');
+    ok(ts.indexOf('outer fingertips meet above') >= 0 && ts.indexOf('inner fingertips meet at the center below their chins') >= 0, '上下の接点');
+    ok(!/inner (hand|arm)[^.;,]*above|outer (hand|arm)[^.;,]*below their chins/.test(ts), '内側の手を頭上・外側の手をあご下にする旧案が残っていない');
+    eq(p.fallback.to, 'pair_purikura_p007');
+    eq(p.camera.blockedShots.close ? 'blocked' : 'ok', 'blocked', '顔まわりの画角では下の接点が切れる');
+  });
+  test('プリクラ：二人用の手は「外側／内側」で書き、日本語と英語で持ち主・手の側がそろう', function () {
+    pkPairs().forEach(function (p) {
+      ['a', 'b'].forEach(function (k) {
+        var ja = p.placement[k], en = p.models.tsubaki[k];
+        if (/外側の手/.test(ja) && !/内側/.test(ja)) ok(/outer/.test(en), p.id + ' ' + k + ' 外側の手');
+        if (/内側の手/.test(ja) && !/外側/.test(ja)) ok(/inner/.test(en), p.id + ' ' + k + ' 内側の手');
+        ok(en.indexOf(k === 'a' ? 'Person A' : 'Person B') === 0, p.id + ' ' + k + ' 文の主語');
+      });
+      p.contacts.forEach(function (c) { ok(['a', 'b', 'both'].indexOf(c.owner) >= 0 && (c.owner === 'both' || c.ja.indexOf(c.owner.toUpperCase() + 'の') === 0), p.id + ' 接触点の持ち主 ' + c.ja); });
+      ok(/画面の(左|右)/.test(p.placement.a + p.placement.b) || /画面|前|後ろ/.test(p.placement.a), p.id + ' 画面上の位置');
+    });
+  });
+  test('プリクラ：上下・前後の関係がTsubakiの文に入り、高低差の視線に警告が出る', function () {
+    eq(pkPairs().filter(function (p) { return p.relation.vertical !== 'level'; }).map(function (p) { return p.sourceId + ':' + p.relation.vertical; }), ['PK-P020:a_taller', 'PK-P021:a_taller', 'PK-P023:b_taller', 'PK-P024:b_taller', 'PK-P025:a_taller', 'PK-P028:b_taller']);
+    ['pair_purikura_p023', 'pair_purikura_p024', 'pair_purikura_p028'].forEach(function (id) { ok(P.render(pairState(id), 'tsubaki', {}).text.indexOf("Person B's head is higher than Person A's head.") >= 0, id); });
+    var warn = P.issues(exprState('pair_purikura_p023', { gaze: 'look_down' }, { gaze: 'look_up' }), 'tsubaki', {}).map(function (x) { return x.id; });
+    ok(warn.indexOf('gaze_vertical_a') >= 0 && warn.indexOf('gaze_vertical_b') >= 0, 'しゃがむAが見下ろす・立つBが見上げるのは警告');
+    eq(D.pairGazeVerticalHints.a_taller, { a: 'up', b: 'down' }, '既存の上下ヒントは不変');
+  });
+  test('プリクラ：画角の制約（P023は膝上以上、P020・P021・P024・P025は顔まわり不可、P017〜P019は顔まわり可）', function () {
+    var p23 = P.poseById('pair_purikura_p023');
+    eq(p23.camera.shots, ['knee_up', 'full_body']); eq(p23.camera.defaultShot, 'knee_up');
+    ok(!P.shotState(p23, 'upper_body').ok && /膝/.test(P.shotState(p23, 'upper_body').reason) && !P.shotState(p23, 'close').ok, 'P023の狭い画角は理由つきで不可');
+    eq(P.set(pairState('pair_purikura_p023'), 'camera.shot', 'upper_body').camera.shot, 'knee_up', '狭い画角を選んでも膝上に戻る');
+    ['pair_purikura_p020', 'pair_purikura_p021', 'pair_purikura_p024', 'pair_purikura_p025'].forEach(function (id) { var s = P.shotState(P.poseById(id), 'close'); ok(!s.ok && /高さ|座る|しゃがむ/.test(s.reason), id); });
+    ['pair_purikura_p017', 'pair_purikura_p018', 'pair_purikura_p019'].forEach(function (id) { ok(P.shotState(P.poseById(id), 'close').ok, id); });
+    ok(P.angleState(P.poseById('pair_purikura_p025'), 'low').ok && P.angleState(P.poseById('pair_purikura_p020'), 'high').recommended, 'P025はあおり可・P020は俯瞰推奨');
+    pkPairs().forEach(function (p) {
+      ok(p.camera.angles.indexOf(p.camera.defaultAngle) >= 0 && p.camera.shots.indexOf(p.camera.defaultShot) >= 0, p.id + ' 既定値は選べる値');
+      ['eye_level', 'three_quarter', 'side', 'high', 'low', 'overhead'].forEach(function (a) { var st = P.angleState(p, a); ok(st.ok || st.reason.length > 0, p.id + ' ' + a + ' 不可の理由'); });
+      ['full_body', 'knee_up', 'upper_body', 'close'].forEach(function (sh) { var st = P.shotState(p, sh); ok(st.ok || (p.camera.blockedShots[sh] || '').length > 0, p.id + ' ' + sh + ' 不可の理由'); });
+      eq(p.surface, { mode: 'none', allowed: [], defaultId: null }, p.id + ' 場所の選択なし');
+    });
+  });
+  test('プリクラ：A⇄Bは人物の入力だけを入れ替え、ポーズ・役割・位置・接触点・画角・視線は変えない', function () {
+    pkPairs().forEach(function (p) {
+      var st = pkWho(exprState(p.id, { main: 'playful_smile' }, { main: 'shy' })), sw = P.swapPeople(st);
+      eq([sw.poseId, sw.camera, sw.gaze, sw.surface], [st.poseId, st.camera, st.gaze, st.surface], p.id + ' 構図は不変');
+      eq([sw.people.a.prompt, sw.people.b.prompt, sw.people.a.expression.main, sw.people.b.expression.main], ['long silver hair, white dress', 'short black hair, navy coat', 'shy', 'playful_smile'], p.id + ' 人物は交換');
+      var before = P.render(st, 'tsubaki', {}).text, after = P.render(sw, 'tsubaki', {}).text;
+      [p.models.tsubaki.overview, p.models.tsubaki.a, p.models.tsubaki.b].forEach(function (t) { ok(before.indexOf(t) >= 0 && after.indexOf(t) >= 0, p.id + ' ポーズ文は同じ'); });
+      eq(P.structureJa(sw).split('\n').filter(function (l) { return /^【(ポーズ|人物[AB]：|位置関係|接触点|カメラ|元の候補)/.test(l); }), P.structureJa(st).split('\n').filter(function (l) { return /^【(ポーズ|人物[AB]：|位置関係|接触点|カメラ|元の候補)/.test(l); }), p.id + ' 日本語の配置は同じ');
+    });
+  });
+  test('プリクラ：簡易版は自動で置き換えず、選ぶと人物A・Bの入力を保ったまま切り替わる', function () {
+    var withTo = pkPairs().filter(function (p) { return p.fallback && p.fallback.to; }).map(function (p) { return p.sourceId + '→' + p.fallback.to; });
+    eq(withTo, ['PK-P008→pair_purikura_p001', 'PK-P016→pair_purikura_p007', 'PK-P017→pair_purikura_p005']);
+    eq(pkPairs().filter(function (p) { return p.fallback && !p.fallback.to; }).map(function (p) { return p.sourceId; }), ['PK-P009', 'PK-P011', 'PK-P013', 'PK-P018', 'PK-P019', 'PK-P020', 'PK-P021']);
+    var st = pkWho(exprState('pair_purikura_p016', { main: 'gentle_smile' }, null));
+    eq(P.normalize(st).poseId, 'pair_purikura_p016', '選んだポーズのまま');
+    var next = P.selectPose(st, P.poseById('pair_purikura_p016').fallback.to).state;
+    eq([next.poseId, next.people.a.prompt, next.people.b.prompt, next.people.a.expression.main, next.people.a.gender], ['pair_purikura_p007', 'short black hair, navy coat', 'long silver hair, white dress', 'gentle_smile', 'female']);
+    ok(/上側の二つの手だけ/.test(P.poseById('pair_purikura_p018').fallback.noteJa) && /近い頬/.test(P.poseById('pair_purikura_p011').fallback.noteJa), '文章の簡易版');
+  });
+  test('プリクラ：二人用の視線は既定が成立し、「こちら」を見る視線はカメラ目線として出る', function () {
+    pkPairs().forEach(function (p) {
+      ok(p.gazes.allowed.indexOf(p.gazes.defaultId) >= 0 && p.gazes.allowed.every(function (g) { return P.gazeState(p, g).ok; }), p.id);
+      p.gazes.allowed.forEach(function (g) { var t = P.render(pairState(p.id, { gaze: g }), 'sdxl', {}).text; ok(t.indexOf('{focus}') < 0 && t.indexOf('looking at object') < 0, p.id + ' ' + g); });
+    });
+    var t = P.render(pairState('pair_purikura_p009'), 'tsubaki', {}).text;
+    ok(t.indexOf('Person A looks at the viewer, while Person B looks at Person A.') >= 0, 'P009：Aは前、BはAを見る');
+    ok(P.render(pairState('pair_purikura_p012'), 'tsubaki', {}).text.indexOf('Person A looks at Person B, while Person B looks at the viewer.') >= 0, 'P012：AはBを見て、Bは前');
+  });
+  test('プリクラ：二人用の保存・復元・リセットで、新しいポーズと人物入力が保たれる（模式図は増やさない）', function () {
+    var st = pkWho(exprState('pair_purikura_p023', { main: 'playful_smile' }, null, { 'camera.angle': 'three_quarter' })), mem = memoryStore();
+    ok(Store.savePairDraft(st, mem)); var back = Store.loadPairDraft(mem);
+    eq([back.poseId, back.camera.angle, back.camera.shot, back.people.a.expression.main, back.people.b.prompt], ['pair_purikura_p023', 'three_quarter', 'knee_up', 'playful_smile', 'long silver hair, white dress']);
+    Store.savePreset('プリクラ', st, mem, 'pair'); eq(Store.listPresets(mem)[0].state.poseId, 'pair_purikura_p023');
+    var reset = P.resetPoseOnly(st); eq([reset.poseId, reset.people.b.prompt], [null, 'long silver hair, white dress']);
+    eq(P.normalize({ poseId: 'pair_purikura_p999' }).poseId, null, '存在しないIDは未選択へ');
+    ok(pkPairs().every(function (p) { return !p.figure; }), '二人用に模式図データを持たない');
+  });
+  test('プリクラ：一人用の指示書修正（S015・S002/S024・S005/S020・S021・S017/S018/S023）', function () {
+    function e(n) { return D.purikuraEditorialPoses.filter(function (p) { return p.id === 'purikura_s' + n; })[0]; }
+    ok(e('015').minNoteJa.indexOf('低い前腕の交点と本人の顔') === 0, 'S015の最小画角');
+    ok(e('002').recommendedShot !== e('024').recommendedShot && e('024').recommendedShot === 'face_close_up', 'S002（頬の高さ）とS024（目尻の高さの顔アップ）');
+    ok(/cheeks/.test(e('002').prompt.arms.compact[0]) && /corners of the eyes/.test(e('024').prompt.arms.compact[0]) && /eyes fully visible/.test(e('024').prompt.arms.compact.join(' ')), 'S002/S024の手の高さ');
+    ok(/beside the lower cheeks/.test(e('005').prompt.arms.compact[0]) && /closer to the viewer/.test(e('020').prompt.arms.compact.join(' ')), 'S005（前後差なし）とS020（前後差）');
+    eq([e('020').fallback.to, e('021').fallback.to], ['purikura_s005', 'purikura_s022']);
+    eq(e('021').composition, { negativeSpace: 'above' }, 'S021は頭上に余白');
+    ['017', '018', '023'].forEach(function (n) { ok(e(n).fallbackJa && e(n).fallbackJa.length > 10, 'S' + n + ' 崩れやすいときの案内'); });
+  });
+  test('プリクラ：一人用25件は3モデルに出力され、Tsubakiにネガティブ・adult／bust、左右・否定語がない', function () {
+    var V = D.purikuraVerifiedTags;
+    pkSoloPresets().forEach(function (pr) {
+      var st = presetState(pr.id), ed = D.purikuraEditorialPoses.filter(function (x) { return x.id === st.pose.editorialPose; })[0];
+      ok(ed && ed.line === 'purikura', pr.id + ' 身体配置');
+      var ts = M.single(st, 'tsubaki', {}), sd = M.single(st, 'sdxl', {}).text, na = M.single(st, 'nai', {}).text;
+      ok(ts.negative === '' && !/\badult|\bbust/i.test(ts.text), pr.id + ' Tsubaki');
+      ok(ts.text.indexOf(ed.prompt.arms.detailed[0]) >= 0 || ts.text.indexOf(ed.prompt.arms.compact[0]) >= 0, pr.id + ' 手の文');
+      ok(sd.length > 0 && na.length > 0 && !/undefined|NaN/.test(sd + na + ts.text), pr.id + ' 出力');
+      ed.prompt.torso.compact.concat(ed.prompt.arms.compact, ed.prompt.torso.detailed, ed.prompt.arms.detailed).forEach(function (t) { ok(!/\b(left|right)\b|\bwithout\b|\bno\b|\bnot\b|\bcamera\b|\bphones?\b|\b(girl|woman|adult|bust)\b|\b(dress|skirt|shirt|outfit|background|lighting|masterpiece|purikura)\b/i.test(t), pr.id + ' ' + t); });
+      ['torso', 'arms'].forEach(function (k) { ed.tags[k].verified.forEach(function (t) { ok(V[t] > 0, pr.id + ' ' + t); }); });
+      ok(G.structureJa(st).indexOf('プリクラ系の手と身体') >= 0, pr.id + ' 日本語構造の見出し');
+    });
+  });
+  test('プリクラ：一人用の模式図は手の形の記号つきで描かれ、頭上・顔まわりの手が画面内に収まる', function () {
+    pkSoloPresets().forEach(function (pr) {
+      var st = presetState(pr.id), svg = F.svg(st), m = F.compute(st);
+      ok(svg.indexOf('NaN') < 0 && svg.indexOf('undefined') < 0 && /^<svg[\s\S]*<\/svg>$/.test(svg), pr.id + ' SVG');
+      eq(svg.indexOf('pf-handshape') >= 0, m.arms.some(function (a) { return !!a.shape; }), pr.id + ' 手の形の記号は手の形を持つ腕だけ');
+      eq(m.arms.length, 2, pr.id + ' 腕は2本');
+      m.arms.forEach(function (a) { [a.hand, a.elbow].forEach(function (pt) { ok(pt.x >= -2 && pt.x <= F.size.width + 2 && pt.y >= -2 && pt.y <= F.size.height + 2, pr.id + ' 手と肘が画面内'); }); });
+    });
+    ['purikura_preset_s021', 'purikura_preset_s022', 'purikura_preset_s025'].forEach(function (id) { ok(F.svg(presetState(id)).indexOf('pf-heart') >= 0, id + ' ハート'); });
+    ok(pkSoloPresets().filter(function (pr) { var sv = F.svg(presetState(pr.id)); return sv.indexOf('pf-handshape') >= 0 || sv.indexOf('pf-heart') >= 0; }).length >= 20, '大半のプリクラ図に手の形の記号');
+    ok(F.svg(presetState('basic_front')).indexOf('pf-handshape') < 0, '既存プリセットに記号は出ない');
+  });
+  test('プリクラ：一人用の保存・復元・プリセット切替で身体配置と人物入力が保たれる', function () {
+    var st = S.applyPatch(presetState('purikura_preset_s016'), { 'subject.appearance': 'short black hair' }), mem = memoryStore();
+    ok(Store.saveDraft(st, mem)); var back = Store.loadDraft(mem);
+    eq(back.pose.editorialPose, 'purikura_s016'); eq(G.detailed(back), G.detailed(st), '復元後の出力が同じ');
+    var sw = S.applyPatch(back, { 'pose.editorialPose': 'purikura_s005' }); eq(sw.pose.editorialPose, 'purikura_s005');
+    eq(S.normalize({ pose: { editorialPose: 'purikura_s999' } }).pose.editorialPose, S.initial().pose.editorialPose, '存在しないIDは既定へ');
   });
 
   function run() {

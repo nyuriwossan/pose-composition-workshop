@@ -20,7 +20,12 @@
     special_pose: '特殊ポーズ・運動',
     editorial_sculpt: 'モード・彫刻的な上半身',
     mode_twist: 'モード・上半身のひねり',
-    dance_flow: '舞踊的な上半身・しなやかな捻り'
+    dance_flow: '舞踊的な上半身・しなやかな捻り',
+    // プリクラ・フォトブース一人用の4分類（2026-10-30）
+    purikura_classic: 'プリクラ：王道・顔まわり手形',
+    purikura_sweet: 'プリクラ：近接・甘め',
+    purikura_mode: 'プリクラ：モード・遠近',
+    purikura_play: 'プリクラ：遊び・構図変化'
   };
   function inferPresetPoseFamily(preset) {
     var meta = preset && preset.meta || {};
@@ -68,7 +73,7 @@
       counts.all += 1;
       if (counts[collection] != null) counts[collection] += 1;
       return counts;
-    }, { all: 0, basic: 0, relationship: 0, special: 0, mode_editorial: 0, editorial: 0, dance: 0 });
+    }, { all: 0, basic: 0, relationship: 0, special: 0, mode_editorial: 0, editorial: 0, dance: 0, purikura: 0 });
   }
   function getPresetPoseFamilyCounts(presets) {
     return (presets || []).reduce(function (counts, preset) {
@@ -95,7 +100,7 @@
   }
   function renderPresetCollectionFilters(active, presets) {
     var counts = getPresetCollectionCounts(presets);
-    return [['all', 'すべて'], ['basic', '基本ポーズ'], ['relationship', '恋人・親しい相手'], ['special', '特殊・演出'], ['mode_editorial', 'モード・エディトリアル'], ['editorial', 'モード・アヴァンギャルド'], ['dance', '舞踊的な上半身']].map(function (row) {
+    return [['all', 'すべて'], ['basic', '基本ポーズ'], ['relationship', '恋人・親しい相手'], ['special', '特殊・演出'], ['mode_editorial', 'モード・エディトリアル'], ['editorial', 'モード・アヴァンギャルド'], ['dance', '舞踊的な上半身'], ['purikura', 'プリクラ・フォトブース']].map(function (row) {
       return '<button type="button" class="collection-filter" data-collection-filter="' + row[0] + '" aria-pressed="' + (active === row[0]) + '">' + row[1] + ' <b>' + counts[row[0]] + '</b></button>';
     }).join('');
   }

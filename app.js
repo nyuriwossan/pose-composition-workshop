@@ -66,7 +66,10 @@
     return S.designSummary(state);
   }
   var EDITORIAL_LEGEND = '橙の点線＝肩と骨盤の線、橙の丸＝いちばん手前、橙の矢印＝胸郭の回り込み、曲線の腕＝肘を通る腕の弧';
+  var PURIKURA_LEGEND = '橙の記号＝手の形（V・猫の手・手のひら・L字・グー）とハート、白抜きの大きな手＝手前に出す手';
   function editorialLegendNeeded(st) { var m = F && F.compute(st); return !!(m && m.editorial); }
+  // 図の凡例：プリクラ系は手の形の凡例、それ以外は従来のモード系の凡例
+  function editorialLegendFor(st) { var m = F && F.compute(st); return m && m.editorial && m.editorial.handShapes ? PURIKURA_LEGEND : EDITORIAL_LEGEND; }
   function editorialPose(id) { return option(D.editorialPoses, id); }
   function editorialShotText(p) {
     var pose = p && p.patch && p.patch.pose && editorialPose(p.patch.pose.editorialPose);
@@ -74,7 +77,7 @@
   }
   function structureStrip() {
     var figure = F && state.pose.posture ? '<div class="strip-figure" aria-hidden="false">' + F.svg(state, { size: 'strip', label: true, ariaLabel: '現在の設計の模式図' }) + '</div>' : '';
-    return '<div class="structure-strip' + (figure ? ' structure-strip--figure' : '') + '">' + figure + '<div class="strip-copy"><small>現在の構造</small><p>' + esc(currentSummary()) + '</p>' + (figure ? '<small class="strip-note">図は設計の目安です（点線の枠＝撮影範囲、青い印＝カメラの高さ' + (editorialLegendNeeded(state) ? '、' + EDITORIAL_LEGEND : '') + '）</small>' : '') + '</div></div>';
+    return '<div class="structure-strip' + (figure ? ' structure-strip--figure' : '') + '">' + figure + '<div class="strip-copy"><small>現在の構造</small><p>' + esc(currentSummary()) + '</p>' + (figure ? '<small class="strip-note">図は設計の目安です（点線の枠＝撮影範囲、青い印＝カメラの高さ' + (editorialLegendNeeded(state) ? '、' + editorialLegendFor(state) : '') + '）</small>' : '') + '</div></div>';
   }
   function heading(step) {
     return '<div class="section-heading"><p class="eyebrow">STEP ' + step + ' / 6</p><h1>' + esc(stepInfo[step].title) + '</h1><p>' + esc(stepInfo[step].copy) + '</p></div>' + structureStrip();
@@ -146,13 +149,24 @@
       var edNone = D.editorialPoses.filter(function (x) { return x.id === 'none'; });
       var edMode = D.editorialPoses.filter(function (x) { return x.line === 'mode'; }), edAvant = D.editorialPoses.filter(function (x) { return x.id !== 'none' && !x.line; });
       var edDance = D.editorialPoses.filter(function (x) { return x.line === 'dance'; });
+      var edPurikura = D.editorialPoses.filter(function (x) { return x.line === 'purikura'; });
       edBody = chips('pose.editorialPose', edNone, { max: 1, expandKey: 'editorial' }) +
         (edMode.length ? '<div class="subsection"><h3>モード・エディトリアル（上半身のひねり・自然な非対称）</h3>' + chips('pose.editorialPose', edMode, { max: edMode.length, expandKey: 'editorial' }) + '</div>' : '') +
         (edDance.length ? '<div class="subsection"><h3>舞踊的な上半身（しなやかな捻り・腕の弧）</h3>' + chips('pose.editorialPose', edDance, { max: edDance.length, expandKey: 'editorial' }) + '</div>' : '') +
-        '<div class="subsection"><h3>アヴァンギャルド（彫刻的・幾何学的）</h3>' + chips('pose.editorialPose', edAvant, { max: edAvant.length, expandKey: 'editorial' }) + '</div>';
-      if (edActive) edBody += '<p class="editorial-note"><b>' + esc(edPose.labelJa) + '</b>' + esc(edPose.shortJa) + '<br><span>推奨画角：' + esc(label(D.shotSizes, edPose.recommendedShot)) + '（' + esc(label(D.shotSizes, edPose.minShot)) + '以上）。腕を別に指定すると、腕はそちらを優先します。</span></p>';
-    } else edBody = '<button class="detail-toggle" type="button" data-expand="editorial">モード系の身体配置を選ぶ</button>';
-    var editorial = card('モード系の身体配置（任意）', '胸郭・肩・頭・腕の位置関係をまとめて指定します。画風や衣装は加えません。', edBody);
+        '<div class="subsection"><h3>アヴァンギャルド（彫刻的・幾何学的）</h3>' + chips('pose.editorialPose', edAvant, { max: edAvant.length, expandKey: 'editorial' }) + '</div>' +
+        (edPurikura.length ? '<div class="subsection"><h3>プリクラ・フォトブース（顔まわりの手の形・遠近）</h3>' + Object.keys(D.purikuraSoloGroups).map(function (g) {
+          var list = edPurikura.filter(function (x) { return x.groupId === g; });
+          return '<p class="chip-note">' + esc(D.purikuraSoloGroups[g].replace(/^プリクラ：/, '')) + '</p>' + chips('pose.editorialPose', list, { max: list.length, expandKey: 'editorial' });
+        }).join('') + '</div>' : '');
+      if (edActive) {
+        var pk = edPose.line === 'purikura';
+        var fb = pk && edPose.fallback ? option(D.editorialPoses, edPose.fallback.to) : null;
+        edBody += '<p class="editorial-note"><b>' + esc(edPose.labelJa) + (pk ? '（' + esc(edPose.sourceId) + '）' : '') + '</b>' + esc(edPose.shortJa) + '<br><span>推奨画角：' + esc(label(D.shotSizes, edPose.recommendedShot)) + '（' + esc(label(D.shotSizes, edPose.minShot)) + '以上）。' + (pk && edPose.minNoteJa ? '最小画角の条件：' + esc(edPose.minNoteJa) + '。' : '') + '腕を別に指定すると、腕はそちらを優先します。</span>' +
+          (pk && (edPose.fallback || edPose.fallbackJa) ? '<span class="purikura-fallback">崩れやすいとき：' + esc(edPose.fallback ? edPose.fallback.noteJa : edPose.fallbackJa) + '</span>' : '') + '</p>' +
+          (fb ? '<div class="chip-grid"><button type="button" class="chip" data-choice="1" data-path="pose.editorialPose" data-id="' + attr(fb.id) + '" aria-pressed="false">簡易版「' + esc(fb.labelJa) + '」に切り替える</button></div>' : '');
+      }
+    } else edBody = '<button class="detail-toggle" type="button" data-expand="editorial">モード・プリクラ系の身体配置を選ぶ</button>';
+    var editorial = card('モード・プリクラ系の身体配置（任意）', '胸郭・肩・頭・腕（プリクラ系は手の形）の位置関係をまとめて指定します。画風や衣装は加えません。', edBody);
     main.innerHTML = heading(2) + flows + lower + upper + editorial;
   }
   function renderStep3() {
@@ -334,6 +348,8 @@
     if (meta.collection === 'editorial') fields.push(meta.avId || '', editorialShotText(p), 'モード', 'アヴァンギャルド', '前衛', '彫刻的', '幾何学');
     if (meta.collection === 'dance') fields.push(meta.sourceId || '', editorialShotText(p), '舞踊', 'バレエ', 'コンテンポラリー', 'しなやか', '螺旋', '腕の弧', '捻り');
     if (meta.collection === 'mode_editorial') fields.push(meta.sourceId || '', editorialShotText(p), 'モード', 'エディトリアル', 'ファッション', 'ひねり', '非対称', '洗練');
+    if (meta.collection === 'purikura') fields.push(meta.sourceId || '', editorialShotText(p), 'プリクラ', 'フォトブース', '韓国', '4カット', '四カット', 'セルフ写真', '手の形', 'ハンドサイン');
+    if (meta.collection === 'purikura') (meta.keywords || []).forEach(function (k) { fields.push(k); });
     return fields;
   }
   function visibleSinglePresets() {
@@ -389,7 +405,8 @@
     var userHtml = users.length ? '<h3>保存した設計</h3>' + users.map(userPresetRow).join('') : '';
     var displayToggle = '<div class="segmented display-tabs" role="group" aria-label="プリセットの表示方法"><button type="button" data-preset-display="name" aria-pressed="' + (view.presetDisplay !== 'figure') + '">名前で選ぶ</button><button type="button" data-preset-display="figure" aria-pressed="' + (view.presetDisplay === 'figure') + '">図で選ぶ</button></div>';
     var hasEditorial = visiblePresets.some(function (p) { return ['editorial', 'mode_editorial', 'dance'].indexOf((p.meta || {}).collection) >= 0; });
-    var figureNote = view.presetDisplay === 'figure' ? '<p class="figure-note">' + esc(F.note) + ' 点線の枠は撮影範囲、青い印はカメラの高さです。' + (hasEditorial ? esc(EDITORIAL_LEGEND) + '。' : '') + '</p>' : '';
+    var hasPurikura = visiblePresets.some(function (p) { return (p.meta || {}).collection === 'purikura'; });
+    var figureNote = view.presetDisplay === 'figure' ? '<p class="figure-note">' + esc(F.note) + ' 点線の枠は撮影範囲、青い印はカメラの高さです。' + (hasEditorial ? esc(EDITORIAL_LEGEND) + '。' : '') + (hasPurikura ? esc(PURIKURA_LEGEND) + '。' : '') + '</p>' : '';
     openSheet('<div class="sheet-head"><div><h2>プリセットから開始</h2><p>整合済みの開始地点です。読み込み後も各項目を調整できます。</p></div><button class="icon-btn" data-action="close-sheet" aria-label="閉じる">×</button></div>' + countTabs() + displayToggle + filters + figureNote + '<div class="preset-list' + (view.presetDisplay === 'figure' ? ' preset-list--figure' : '') + '" id="presetList">' + (builtins || '<p class="preset-empty">該当するプリセットはありません。</p>') + '</div>' + userHtml);
   }
   function saveSheet(kind) {

@@ -22,7 +22,7 @@
 
   function poseCard(ctx, p, selected) {
     var fam = (D.pairPoseCategories || {})[p.category] || D.presetPoseFamilyLabels[p.poseFamily] || '';
-    return '<button type="button" class="pair-pose-card" data-pair-pose="' + ctx.attr(p.id) + '" aria-pressed="' + selected + '"><strong>' + ctx.esc(p.labelJa) + '</strong><small>' + ctx.esc(p.shortJa) + '</small><span class="preset-tags"><span class="preset-tag">二人</span><span class="preset-tag">' + ctx.esc(fam) + '</span></span></button>';
+    return '<button type="button" class="pair-pose-card" data-pair-pose="' + ctx.attr(p.id) + '" aria-pressed="' + selected + '"><strong>' + ctx.esc(p.labelJa) + '</strong><small>' + ctx.esc(p.shortJa) + '</small><span class="preset-tags"><span class="preset-tag">二人</span><span class="preset-tag">' + ctx.esc(fam) + '</span>' + (p.sourceId ? '<span class="preset-tag">' + ctx.esc(p.sourceId) + '</span>' : '') + '</span></button>';
   }
   function poseListHtml(ctx, selectedId) {
     var list = P.filterPoses(ui.query, ui.family);
@@ -38,10 +38,17 @@
     }).join('');
   }
 
+  // プリクラ二人用だけ：元の候補ID・最小画角・簡易版への切り替え（人物A・Bの入力は保持される）
+  function purikuraNote(ctx, p) {
+    if (!p.sourceId) return '';
+    var f = p.fallback, alt = f && f.to ? P.poseById(f.to) : null;
+    return '<div class="pair-source"><small>元の候補 ' + ctx.esc(p.sourceId) + (p.minNoteJa ? '／最小画角：' + ctx.esc(p.minNoteJa) : '') + '</small>' +
+      (f ? '<div class="pair-fallback"><p>崩れやすいとき：' + ctx.esc(f.noteJa) + '</p>' + (alt ? '<div class="chip-grid"><button type="button" class="chip" data-pair-pose="' + ctx.attr(alt.id) + '" aria-pressed="false">簡易版「' + ctx.esc(alt.labelJa) + '」に切り替える</button></div>' : '') + '</div>' : '') + '</div>';
+  }
   function picker(ctx, s) {
     var p = P.poseById(s.poseId);
     if (p && !ui.picking) {
-      return '<section class="design-card pair-selected"><div class="card-head"><div><small class="mini-label">選択中のポーズ</small><h2>' + ctx.esc(p.labelJa) + '</h2><p>' + ctx.esc(p.shortJa) + '</p></div><button type="button" class="btn btn--nowrap" data-pair-action="pick">変更</button></div></section>';
+      return '<section class="design-card pair-selected"><div class="card-head"><div><small class="mini-label">選択中のポーズ</small><h2>' + ctx.esc(p.labelJa) + '</h2><p>' + ctx.esc(p.shortJa) + '</p></div><button type="button" class="btn btn--nowrap" data-pair-action="pick">変更</button></div>' + purikuraNote(ctx, p) + '</section>';
     }
     return '<section class="design-card"><div class="card-head"><div><h2>ポーズを選ぶ</h2><p>日本語で検索できます（例：膝、バックハグ、壁、お姫様抱っこ、あーん、お風呂）。</p></div><span class="count-pill">' + D.pairPoses.length + '種</span></div>' +
       '<label class="field-label visually-hidden" for="pairSearch">ポーズを検索</label><input id="pairSearch" type="search" data-pair-search placeholder="ポーズを検索" value="' + ctx.attr(ui.query) + '" autocomplete="off">' +

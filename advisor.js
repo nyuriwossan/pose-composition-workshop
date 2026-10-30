@@ -52,6 +52,7 @@
   function editorialIssues(s, out) {
     var pose = S.option(D.editorialPoses, s.pose.editorialPose);
     if (!pose || pose.id === 'none') return;
+    var kind = pose.line === 'purikura' ? 'プリクラ系ポーズ' : 'モード系ポーズ';   // 既存のモード系の文言は変えない
     var rec = S.option(D.shotSizes, pose.recommendedShot), min = S.option(D.shotSizes, pose.minShot);
     var recLabel = rec ? rec.labelJa : pose.recommendedShot;
     if (D.editorialShotTooTight(pose.id, s.camera.shotSize)) out.push(issue('editorial_shot_too_tight', 'warning', 'visibility', '「' + pose.labelJa + '」の要点が画角に入りません', '肩・肘・腕の位置関係が切れるため、このポーズの指定は保持したまま出力していません。' + (min ? min.labelJa + '以上、' : '') + 'おすすめは' + recLabel + 'です。', ['camera.shotSize', 'pose.editorialPose'], [
@@ -64,7 +65,7 @@
       var need = S.option(D.postures, pose.postures[0]);
       var patch = { 'pose.posture': pose.postures[0] };
       if (pose.supportType) patch['pose.support.type'] = pose.supportType;
-      out.push(issue('editorial_posture_mismatch', 'warning', 'support', '基本姿勢とモード系ポーズが揃っていません', '「' + pose.labelJa + '」は' + (need ? need.labelJa : pose.postures[0]) + '姿勢で組み立てたポーズです。今の基本姿勢のままだと、骨盤や支持点の説明が食い違います。', ['pose.posture', 'pose.editorialPose'], [
+      out.push(issue('editorial_posture_mismatch', 'warning', 'support', '基本姿勢と' + kind + 'が揃っていません', '「' + pose.labelJa + '」は' + (need ? need.labelJa : pose.postures[0]) + '姿勢で組み立てたポーズです。今の基本姿勢のままだと、骨盤や支持点の説明が食い違います。', ['pose.posture', 'pose.editorialPose'], [
         { labelJa: (need ? need.labelJa : pose.postures[0]) + 'へ変更', patch: patch }
       ]));
     }
@@ -73,17 +74,23 @@
     if (s.pose.torso.relationToPelvis || s.pose.torso.lean !== 'neutral') overlap.push('上半身');
     if (s.pose.shoulders.emphasis) overlap.push('肩');
     if (s.pose.head.tilt !== 'level') overlap.push('首の傾き');
-    if (overlap.length) out.push(issue('editorial_body_overlap', 'info', 'bodyFlow', 'モード系ポーズと身体の流れの指定が重なっています', overlap.join('・') + 'の指定が、「' + pose.labelJa + '」の胸郭・肩・頭の説明と食い違う場合があります。どちらも出力します。', ['pose.editorialPose', 'pose.pelvis', 'pose.torso', 'pose.shoulders', 'pose.head.tilt'], [
+    if (overlap.length) out.push(issue('editorial_body_overlap', 'info', 'bodyFlow', kind + 'と身体の流れの指定が重なっています', overlap.join('・') + 'の指定が、「' + pose.labelJa + '」の胸郭・肩・頭の説明と食い違う場合があります。どちらも出力します。', ['pose.editorialPose', 'pose.pelvis', 'pose.torso', 'pose.shoulders', 'pose.head.tilt'], [
       { labelJa: '身体の流れの指定を外す', patch: { 'pose.pelvis.orientation': null, 'pose.pelvis.shift': 'none', 'pose.torso.relationToPelvis': null, 'pose.torso.lean': 'neutral', 'pose.shoulders.emphasis': null, 'pose.head.tilt': 'level' } }
     ]));
     var arms = s.pose.arms;
     if ((arms.mode === 'combined' && arms.combined) || arms.primary.action || arms.secondary.action) out.push(issue('editorial_arms_user_override', 'info', 'arms', '腕は利用者の指定を優先しています', '「' + pose.labelJa + '」の腕の配置は出力していません。このポーズの腕を使う場合は、腕の指定を外してください。', ['pose.arms', 'pose.editorialPose'], [
       { labelJa: '腕の指定を外す', patch: { 'pose.arms.mode': 'separate', 'pose.arms.primary.action': null, 'pose.arms.secondary.action': null, 'pose.arms.combined': null } }
     ]));
-    if (s.pose.supportPose && s.pose.supportPose !== 'none') out.push(issue('editorial_special_pose_overlap', 'warning', 'support', '特殊ポーズとモード系ポーズを同時に指定しています', '支持姿勢の手足の配置と、このポーズの胸郭・腕の配置が食い違いやすくなります。', ['pose.supportPose', 'pose.editorialPose'], [
-      { labelJa: 'モード系ポーズを外す', patch: { 'pose.editorialPose': 'none' } }
+    if (s.pose.supportPose && s.pose.supportPose !== 'none') out.push(issue('editorial_special_pose_overlap', 'warning', 'support', '特殊ポーズと' + kind + 'を同時に指定しています', '支持姿勢の手足の配置と、このポーズの胸郭・腕の配置が食い違いやすくなります。', ['pose.supportPose', 'pose.editorialPose'], [
+      { labelJa: kind + 'を外す', patch: { 'pose.editorialPose': 'none' } }
+    ]));
+    // プリクラ系：崩れやすい原案には簡易版へ移るボタンを出す（自動では置き換えない）
+    var alt = pose.fallback ? S.option(D.editorialPoses, pose.fallback.to) : null;
+    if (alt) out.push(issue('purikura_fallback', 'info', 'arms', '崩れやすい場合の簡易版があります', pose.fallback.noteJa + '原案の指定はそのまま残しています。', ['pose.editorialPose'], [
+      { labelJa: '簡易版「' + alt.labelJa + '」にする', patch: { 'pose.editorialPose': alt.id } }
     ]));
   }
+
   function interactionIssues(s, out) {
     if (s.interaction.target !== 'viewer') return;
     var high = ['slightly_high', 'high', 'top_down'].indexOf(s.camera.elevation) >= 0;

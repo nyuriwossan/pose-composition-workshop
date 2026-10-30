@@ -434,6 +434,17 @@
     return { shoulder: shoulder, elbow: elbow, hand: hand, upper: a, fore: c };
   }
 
+  // プリクラ系の顔まわりの手：肘を指定位置に置き、上腕・前腕が最大長を超えるときは
+  // 肩と手の中点へ寄せて縮める（顔の前へ出る腕を、手前に向かう短い腕として描く）
+  function hintedArm(shoulder, hand, hint) {
+    var m = P((shoulder.x + hand.x) / 2, (shoulder.y + hand.y) / 2), elbow = hint;
+    for (var k = 0; k <= 20; k += 1) {
+      var t = k / 20; elbow = P(hint.x + (m.x - hint.x) * t, hint.y + (m.y - hint.y) * t);
+      if (dist(shoulder, elbow) <= UPPER && dist(elbow, hand) <= FORE) break;
+    }
+    return { shoulder: shoulder, elbow: elbow, hand: hand, upper: dist(shoulder, elbow), fore: dist(elbow, hand) };
+  }
+
   // モード系の腕：腕が未指定で、拘束・Viewerとの手のやりとりがないときだけ使う（利用者の腕指定を優先）
   function editorialTargets(s, b, L) {
     var ed = b.editorial;
@@ -458,7 +469,9 @@
         return add(a, spec.dx || 0, spec.dy || 0);
       }
       // elbow を持つ指定は例外用の個別調整（顔の前の前腕など、2関節の計算では置けない形）
-      return { to: at(t), bend: t.bend, hintY: t.hintY, hidden: !!t.hidden, toward: !!t.toward, elbowOut: t.elbowOut, fixedElbow: t.elbow ? at(t.elbow) : null };
+      var target = { to: at(t), bend: t.bend, hintY: t.hintY, hidden: !!t.hidden, toward: !!t.toward, elbowOut: t.elbowOut, fixedElbow: t.elbow ? at(t.elbow) : null, elbowHint: t.elbowHint ? at(t.elbowHint) : null };
+      if (t.hand) target.shape = t.hand;   // プリクラ系だけ：手の形の記号（V・猫の手・手のひら など）
+      return target;
     });
   }
 
@@ -477,12 +490,13 @@
     return targets.map(function (t, i) {
       var shoulder = b.shoulders[i];
       var hint = b.view === 'front' ? (t.bend || (i === 0 ? 1 : -1)) * (t.elbowOut || 1) : (t.bend || -b.facing);
-      var solved = t.fixedElbow ? { shoulder: shoulder, elbow: t.fixedElbow, hand: t.to, upper: dist(shoulder, t.fixedElbow), fore: dist(t.fixedElbow, t.to) } : solveArm(shoulder, t.to, hint, t.toward, t.hintY);
+      var solved = t.fixedElbow ? { shoulder: shoulder, elbow: t.fixedElbow, hand: t.to, upper: dist(shoulder, t.fixedElbow), fore: dist(t.fixedElbow, t.to) } : (t.elbowHint ? hintedArm(shoulder, t.to, t.elbowHint) : solveArm(shoulder, t.to, hint, t.toward, t.hintY));
       solved.near = i === 0;
       solved.hidden = !!t.hidden;
       solved.toward = !!t.toward;
       solved.offFrame = !!t.offFrame;
       solved.mark = t.mark || null;
+      if (t.shape) solved.shape = t.shape;
       return solved;
     });
   }
@@ -521,6 +535,12 @@
         else if (part === 'knees') pts = pts.concat(L.knees);
       });
     }
+    // プリクラ系（cropHands）：手の形が主役なので、撮影範囲の枠に手と頭上のハートまで含める
+    if (b.editorial && b.editorial.cropHands && parts !== 'all') {
+      arms.filter(function (a) { return !a.hidden && !a.offFrame; }).forEach(function (a) { pts.push(a.hand, a.elbow); });
+      var hp = heartPoint(b);
+      if (hp) pts.push(add(hp.at, 0, -hp.r));
+    }
     var box = bbox(pts);
     var pad = shot === 'wide' ? 14 : shot === 'full_body' ? 5 : 4;
     box = { x0: box.x0 - pad, y0: box.y0 - pad, x1: box.x1 + pad, y1: box.y1 + pad };
@@ -530,6 +550,14 @@
     else { var growY = (w / ratio - h) / 2; box.y0 -= growY; box.y1 += growY; }
     var rollDeg = s.camera.roll === 'dutch' ? -10 : s.camera.roll === 'slight_dutch' ? -5 : 0;
     return { x: round(box.x0), y: round(box.y0), w: round(box.x1 - box.x0), h: round(box.y1 - box.y0), roll: rollDeg };
+  }
+
+  // プリクラ系の「両手で作る大きなハート」の中心と大きさ
+  function heartPoint(b) {
+    var h = b.editorial && b.editorial.heart;
+    if (!h || b.view !== 'front') return null;
+    var L = landmarks(b), base = h.at === 'head' ? b.head : L[h.at];
+    return base ? { at: add(base, h.dx || 0, h.dy || 0), r: h.r || 5 } : null;
   }
 
   var ELEVATION_Y = { eye_level: 'eye', slightly_low: 'chest', low: 'ground', slightly_high: 'above', high: 'high', top_down: 'top' };
@@ -555,12 +583,17 @@
     var b = buildBody(s);
     var arms = buildArms(s, b);
     var viewKey = b.back ? 'back' : b.view;
+    var edInfo = b.editorial ? { near: b.editorial.near || null, twist: b.editorial.twist || 0, axes: b.view === 'front', curve: !!b.editorial.curve } : null;
+    // プリクラ系だけが持つ指定（既存のモード系の値は変えない）
+    if (edInfo && b.editorial.axes === false) edInfo.axes = false;
+    if (edInfo && b.editorial.heart) edInfo.heart = heartPoint(b);
+    if (edInfo && b.editorial.cropHands) edInfo.handShapes = true;
     return {
       view: b.view, viewKey: viewKey, viewLabel: VIEW_LABELS[viewKey],
       head: b.head, neck: b.neck, hip: b.hip, arch: b.arch || null, shoulders: b.shoulders, legs: b.legs, arms: arms,
       face: b.face, ground: b.ground, props: b.props || [], heelsUp: !!b.heelsUp, facing: b.facing,
       crop: cropFor(s, b, arms), camera: cameraFor(s, b),
-      editorial: b.editorial ? { near: b.editorial.near || null, twist: b.editorial.twist || 0, axes: b.view === 'front', curve: !!b.editorial.curve } : null
+      editorial: edInfo
     };
   }
 
@@ -596,7 +629,29 @@
       g += '<path class="pf-twist" d="M' + round(a0.x) + ' ' + round(a0.y) + ' Q' + round(c.x) + ' ' + round(c.y + 9) + ' ' + round(a1.x) + ' ' + round(a1.y) + '"/>' +
         '<path class="pf-twist pf-twist-head" d="M' + round(a1.x - d * 4) + ' ' + round(a1.y - 1) + ' L' + round(a1.x) + ' ' + round(a1.y) + ' L' + round(a1.x - d * 2) + ' ' + round(a1.y + 4) + '"/>';
     }
+    if (e.heart) g += heartSvg(e.heart.at, e.heart.r);
     return g + '</g>';
+  }
+
+  function heartSvg(c, r) {
+    var x = c.x, y = c.y;
+    return '<path class="pf-heart" d="M' + round(x) + ' ' + round(y + r * 0.9) + ' C' + round(x - r * 1.3) + ' ' + round(y + r * 0.1) + ' ' + round(x - r * 0.9) + ' ' + round(y - r * 0.9) + ' ' + round(x) + ' ' + round(y - r * 0.35) + ' C' + round(x + r * 0.9) + ' ' + round(y - r * 0.9) + ' ' + round(x + r * 1.3) + ' ' + round(y + r * 0.1) + ' ' + round(x) + ' ' + round(y + r * 0.9) + ' Z"/>';
+  }
+  // プリクラ系の手の形の記号。前腕の向き（肘→手）を基準に、指の向きを描く。
+  function handShapeSvg(a) {
+    var dx = a.hand.x - a.elbow.x, dy = a.hand.y - a.elbow.y, l = Math.hypot(dx, dy) || 1, u = { x: dx / l, y: dy / l }, n = { x: -u.y, y: u.x };
+    var h = a.hand, k = a.toward ? 1.35 : 1;
+    function at(along, side) { return P(h.x + (u.x * along + n.x * side) * k, h.y + (u.y * along + n.y * side) * k); }
+    function seg(p, q) { return 'M' + round(p.x) + ' ' + round(p.y) + ' L' + round(q.x) + ' ' + round(q.y); }
+    var d = '';
+    if (a.shape === 'v') d = seg(at(1.5, -0.6), at(6.5, -2.6)) + ' ' + seg(at(1.5, 0.6), at(6.5, 2.6));
+    else if (a.shape === 'palm') d = seg(at(2, -1.6), at(6, -3.6)) + ' ' + seg(at(2, 0), at(6.6, 0)) + ' ' + seg(at(2, 1.6), at(6, 3.6));
+    else if (a.shape === 'paw') { var p0 = at(2, -2.4), p1 = at(2, 2.4), c0 = at(6.2, -2.6), c1 = at(6.2, 2.6); d = 'M' + round(p0.x) + ' ' + round(p0.y) + ' C' + round(c0.x) + ' ' + round(c0.y) + ' ' + round(c1.x) + ' ' + round(c1.y) + ' ' + round(p1.x) + ' ' + round(p1.y); }
+    else if (a.shape === 'L') d = seg(at(1.5, 0), at(7, 0)) + ' ' + seg(at(1.5, 0), at(1.5, 4.2));
+    else if (a.shape === 'c') { var q0 = at(1.5, -2.8), q1 = at(1.5, 2.8), m0 = at(7, -3.4), m1 = at(7, 3.4); d = 'M' + round(q0.x) + ' ' + round(q0.y) + ' C' + round(m0.x) + ' ' + round(m0.y) + ' ' + round(m1.x) + ' ' + round(m1.y) + ' ' + round(q1.x) + ' ' + round(q1.y); }
+    else if (a.shape === 'point') d = seg(at(1.5, 0), at(8, 0));
+    if (a.shape === 'fist') return '<circle class="pf-handshape pf-handshape--fist" cx="' + round(h.x) + '" cy="' + round(h.y) + '" r="3.4"/>';
+    return d ? '<path class="pf-handshape" d="' + d + '"/>' : '';
   }
 
   function cameraSvg(c) {
@@ -626,6 +681,7 @@
           '<circle class="pf-joint' + (a.hidden ? ' pf-hidden' : '') + '" cx="' + round(a.elbow.x) + '" cy="' + round(a.elbow.y) + '" r="1.5"/>';
       } else s = poly([a.shoulder, a.elbow, a.hand], c);
       s += '<circle class="pf-hand' + (a.toward ? ' pf-hand--toward' : '') + (a.hidden ? ' pf-hidden' : '') + '" cx="' + round(a.hand.x) + '" cy="' + round(a.hand.y) + '" r="' + (a.toward ? 3.2 : 2.2) + '"/>';
+      if (a.shape) s += handShapeSvg(a);
       if (a.mark === 'bound') s += '<circle class="pf-bound" cx="' + round(a.hand.x) + '" cy="' + round(a.hand.y) + '" r="4.2"/>';
       return s;
     }

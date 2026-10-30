@@ -401,6 +401,12 @@
     return out;
   }
 
+  // 簡易版の案内文。切り替え先があればその名前を添える（切り替えは利用者が選ぶ）
+  function fallbackText(p) {
+    var f = p && p.fallback; if (!f) return '';
+    var alt = f.to ? poseById(f.to) : null;
+    return f.noteJa + (alt ? '（簡易版：「' + alt.labelJa + '」）' : '');
+  }
   function structureJa(state) {
     var s = normalize(state), p = poseById(s.poseId);
     if (!p) return '';
@@ -423,6 +429,10 @@
     if (p.sceneJa) lines.push('【場面を決める小物】' + p.sceneJa);
     if (s.gaze) lines.push('【視線】' + gazeLabel(p, s.gaze));
     lines.push('【カメラ】' + byId(D.pairAngles, s.camera.angle).labelJa + '・' + byId(D.pairShots, s.camera.shot).labelJa);
+    // プリクラ二人用だけ：元の候補ID・最小画角・崩れやすいときの簡易版（自動では置き換えない）
+    if (p.sourceId) lines.push('【元の候補】' + p.sourceId);
+    if (p.minNoteJa) lines.push('【最小画角の条件】' + p.minNoteJa);
+    if (p.fallback) lines.push('【崩れやすいとき】' + fallbackText(p));
     return lines.join('\n');
   }
 
@@ -504,6 +514,7 @@
     normalize: normalize,
     set: set,
     selectPose: selectPose,
+    fallbackText: fallbackText,
     swapPeople: swapPeople,
     resetPoseOnly: resetPoseOnly,
     resetExpressions: resetExpressions,
